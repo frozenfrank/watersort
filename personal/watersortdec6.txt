@@ -1,0 +1,14 @@
+i
+dec6
+11
+r	g	g	b
+r	pk	pn	g
+pk	pk	o	p
+r	b	o	g
+m	m	m	pn
+p	p	lb	r
+p	pk	m	o
+o	b	lb	lb
+b	pn	lb	pn
+-	-	-	-
+-	-	-	-
