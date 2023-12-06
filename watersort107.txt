@@ -1,0 +1,18 @@
+s
+14
+m   g   o   y
+r   p   pk  ?
+pk  pn  m   p
+y   pn  r   br
+pk  b   br  ?
+pk  g   p   y
+o   g   lb  dg
+r   dg  lb  pn
+b   b   lb  m
+dg  br  pn  o
+g   m   y   o
+r   br  dg  b
+
+-o 5 4 p
+-level 100
+lb

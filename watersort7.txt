@@ -1,0 +1,10 @@
+i
+7
+7
+r	m	o	?
+m	m	r	pn
+r	pn	r	b
+b	o	b	b
+o	m	o	pn
+-	-	-	-
+-	-	-	-
