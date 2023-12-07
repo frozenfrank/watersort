@@ -1,6 +1,7 @@
 from collections import deque, defaultdict;
 import copy;
 import itertools;
+import sys;
 
 NUM_SPACES_PER_VIAL = 4
 DEBUG_ONLY = False
@@ -493,6 +494,11 @@ def readGame(userInteraction = False) -> Game:
   numVials = int(input())   # Read num vials
   vials = []
 
+  # Automatically detect the last empty vials
+  numEmpty = 2
+  if numVials < 7: # I actually don't know if this is the threshold. There may other thresholds at higher counts
+    numEmpty = 1
+
   # Read in the colors
   if userInteraction: print(f"On the next {numVials} lines, please type {NUM_SPACES_PER_VIAL} words representing the colors in each vial from top to bottom.\n"+
                             "  Stopping short of the depth of a vial will fill the remaining spaces with question marks.\n" +
@@ -502,7 +508,7 @@ def readGame(userInteraction = False) -> Game:
   i = 0
   while i < numVials:
     i += 1
-    if emptyRest:
+    if emptyRest or i > numVials - numEmpty:
       vials.append(["-"] * NUM_SPACES_PER_VIAL)
       continue
 
@@ -552,7 +558,14 @@ def chooseInteraction():
   validModes = set("psqi")
   mode: str = None
   level: str = None
-  userInteracting = False
+  userInteracting = True
+
+  # Allow the level number to be passed in from the command line
+  if len(sys.argv) == 2:
+    # CONSIDER: Reading in the level file and automatically resuming any previous progress
+    level = sys.argv[1]
+    mode = "i"
+
   while not mode:
     print("""
           How are we interacting?
@@ -569,8 +582,9 @@ def chooseInteraction():
       DEBUG_ONLY = not DEBUG_ONLY
     elif response in validModes:
       mode = response
+      if mode == "i":
+        userInteracting = False
     else:
-      userInteracting = True
       level = response
       mode = "i"
 
@@ -579,7 +593,8 @@ def chooseInteraction():
 
   # Read initial state
   if mode == "i" and not level:
-    print("What level is this?")
+    if userInteracting:
+      print("What level is this?")
     level = input()
   originalGame = readGame(userInteraction=userInteracting)
   if level != None:
