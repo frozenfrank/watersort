@@ -1,7 +1,7 @@
 i
+dec1
 7
-7
-r	m	o	?
+r	m	o	pn
 m	m	r	pn
 r	pn	r	b
 b	o	b	b
