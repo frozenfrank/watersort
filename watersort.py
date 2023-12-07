@@ -42,6 +42,13 @@ class Game:
   # Flags set on the root game
   error: bool
 
+  # Cached for single use calculation
+  COMPLETE_STR = " complete"
+  COLOR_WIDTH = 3             # CONSIDER: Make more direct by dynamically figuring the maximum color length
+  NUMBER_WIDTH = 1            # Num is always less than NUM_SPACES_PER_VIAL (which is small)
+  EXTRA_CHARS = 3             # The number of additional chars in our result string
+  TOTAL_MOVE_PRINT_WIDTH = COLOR_WIDTH + NUMBER_WIDTH + EXTRA_CHARS + len(COMPLETE_STR)
+
   @staticmethod
   def Create(vials, error = False) -> "Game":
     return Game(vials, None, None, None, error)
@@ -168,22 +175,21 @@ class Game:
       Game._prevPrintedMoves = None
     else:
       curGame = self
+      SEPARATOR = "\t "
 
       moves = deque()
       while curGame and curGame.move:
         start, end = curGame.move
-        # CONSIDER: Who how many squares are moving with this move
         # CONSIDER: Color coding the displayed color
-        # CONSIDER: Indicating when a vial is finished
         moves.appendleft(curGame.move)
-        lines.appendleft(f"{start+1} -> {end+1} {curGame.__getMoveInfo()}")
+        moveString = f"{start+1}->{end+1}".ljust(8)
+        lines.appendleft(moveString + curGame.__getMoveString())
         curGame = curGame.prev
 
       if Game._prevPrintedMoves:
         prevMoves = Game._prevPrintedMoves
         i = 0
 
-        SEPARATOR = "\t\t "
         while i < len(prevMoves) and i < len(moves):
           if moves[i] == prevMoves[i]:
             lines[i] += SEPARATOR + "(same)"
@@ -208,23 +214,27 @@ class Game:
 
     print("\n".join(["".join(line) for line in lines]))
   def __getMoveString(self) -> str:
-    COLOR_WIDTH = 3   # CONSIDER: Make more direct by dynamically figuring the maximum color length
-    NUMBER_WIDTH = 2  # Num is always less than NUM_SPACES_PER_VIAL (which is small)
-    EXTRA_CHARS = 3   # The number of additional chars in our result string
 
     info = self.__getMoveInfo()
+    result: str
     if info == None:
-      return "".ljust(COLOR_WIDTH + NUMBER_WIDTH + EXTRA_CHARS)
-    color, num = str(info[0]), str(info[1])
+      result = ""
+    else:
+      color, num, complete = info
+      completeStr = Game.COMPLETE_STR if complete else ""
+      result = f"({num} {color}{completeStr})"
 
-    return f"({color.ljust(COLOR_WIDTH)} {num.rjust(NUMBER_WIDTH)})"
-    pass
-  def __getMoveInfo(self) -> (str, int): # (Color moved, num moved) OR None
+    return result.ljust(Game.TOTAL_MOVE_PRINT_WIDTH)
+  def __getMoveInfo(self) -> (str, int): # (colorMoved, numMoved, isComplete) OR None
     if not self.move:
       return None
-    colorMoved = self.getTopVialColor(self.move[1])
-    numMoved = self.prev.__countOnTop(colorMoved, self.move[0])
-    return (colorMoved, numMoved)
+    start, end = self.move
+
+    colorMoved = self.getTopVialColor(end)
+    _, _, numMoved = self.prev.__countOnTop(colorMoved, start)
+    complete, _, _ = self.__countOnTop(colorMoved, end)
+
+    return (colorMoved, numMoved, complete)
 
   def isFinished(self) -> bool:
     for vial in self.vials:
@@ -261,6 +271,7 @@ class Game:
       return INVALID_MOVE # End vial is full
 
     # Verify that this vial isn't full
+    isComplete, onlyColor, numOnTop = self.__countOnTop(startColor, startVial)
     if isComplete:
       return INVALID_MOVE # Start is fully filled
     if onlyColor and endColor == "-":
@@ -540,9 +551,12 @@ def readGame(userInteraction = False) -> Game:
 def chooseInteraction():
   validModes = set("psqi")
   mode: str = None
+  level: str = None
+  userInteracting = False
   while not mode:
     print("""
           How are we interacting?
+          NAME  level name
           p     play
           s     solve
           i     interact
@@ -556,16 +570,15 @@ def chooseInteraction():
     elif response in validModes:
       mode = response
     else:
-      print(f"Invalid response '{response}'. Try again.")
+      userInteracting = True
+      level = response
+      mode = "i"
 
   if mode == "q":
     quit()
 
   # Read initial state
-  level: int = None
-  userInteracting = False
-  if mode == "i":
-    userInteracting = True
+  if mode == "i" and not level:
     print("What level is this?")
     level = input()
   originalGame = readGame(userInteraction=userInteracting)

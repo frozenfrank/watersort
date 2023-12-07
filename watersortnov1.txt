@@ -1,0 +1,10 @@
+i
+nov1
+7
+b	b	o	o
+r	pn	pn	o
+pn	r	m	r
+m	b	m	pn
+r	m	b	o
+-	-	-	-
+-	-	-	-

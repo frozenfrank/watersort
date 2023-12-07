@@ -1,0 +1,10 @@
+i
+nov2
+7
+b	r	?	?
+pn	m	b	?
+o	?	?	?
+pn	b	m	?
+pn	m	m	r
+-	-	-	-
+-	-	-	-
