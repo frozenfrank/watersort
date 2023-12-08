@@ -20,7 +20,7 @@ Num     Index   Code      Name
 8       7       pn        Pink
 9       8       br        Brown
 10      9       lb        Light Blue
-11      10      dg        Dark Green
+11      10      gn        Dark Green
 12      11      b         Blue
                 ?         Unknown
                 -         Empty
@@ -34,7 +34,7 @@ class Game:
   __isRoot: bool
   prev: "Game" # Original has no root
   root: "Game" # Original has no root
-  level: int
+  level: str
 
   # Flags set on the static class
   reset = False
@@ -119,11 +119,13 @@ class Game:
     # Other options start with a dash
     print("Other options:\n" +
           "   -o VIAL SPACE COLOR     to provide other values\n" +
-          "   -p or -print            to print the current board\n" +
+          "   -p or -print            to print the ROOT board\n" +
+          "   -pc                     to print the CURRENT board\n" +
           "   -s or -save             to save the discovered colors\n" +
           "   -r or -reset            to reset the search algorithm\n" +
-          "   -moves                  to print the moves to this point\n" +
+          "   -m OR -moves            to print the moves to this point\n" +
           "   -level NUM              to change the level of this game\n" +
+          "   -e OR -exit             to save and exit\n" +
           "   -q OR quit              to quit\n" +
           "   -d OR -debug            to see debug info")
     rsp: str
@@ -132,39 +134,58 @@ class Game:
 
       rsp = input()
       if not rsp:
+        # CONSIDER: This may not actually be the best behavior
         break
       elif rsp == "quit" or rsp[0] == "-":
+        root = self.root
+
+        # Program mechanics
         if rsp == "-q" or rsp == "-quit" or rsp == "quit":
           quit() # Consider terminating just to menu above us??
-        elif rsp == "-p" or rsp == "-print":
-          self.printVials()
+        elif rsp == "-e" or rsp == "-exit":
+          saveGame(root)
+          quit()
         elif rsp == "-s" or rsp == "-save":
-          saveGame(self.root)
+          saveGame(root)
         elif rsp == "-r" or rsp == "-reset":
           Game.reset = True
           return "?"
+
+        # Printing status
+        elif rsp == "-p" or rsp == "-print":
+          root.printVials()
+        elif rsp == "-pc":
+          original.printVials()
+        elif rsp == "-m" or rsp == "-moves":
+          original.printMoves()
         elif rsp == "-d" or rsp == "-debug":
-          print("Printing debug info")
-        elif rsp == "-moves":
-          self.printMoves()
+          print("Printing debug info... (None)")
+          # TODO: Print the queue length, and other search related stats
+
+        # Special commands
         elif rsp.startswith("-level"):
-          self.saveNewLevel(rsp)
+          root.saveNewLevel(rsp)
         elif rsp.startswith("-o"):
-          self.saveOtherColor(rsp)
+          root.saveOtherColor(rsp)
+
+        # Default
+        else:
+          print("Unrecognized command: " + rsp)
       else:
+        # They answered the original question
         break
     return rsp
   def saveOtherColor(self, input: str) -> None:
     flag, o_vial, o_space, color = input.split()
     vial = int(o_vial) - 1
     space = int(o_space) - 1
+    Game.reset = True
     self.root.vials[vial][space] = color
     print(f"Saved color '{color}' to vial {o_vial} in slot {o_space}. Continue on.")
   def saveNewLevel(self, input: str) -> None:
     flag, o_level = input.split()
-    level = int(o_level)
-    self.root.level = level
-    print(f"Saved new level ({level}). Continue on.")
+    self.root.level = o_level
+    print(f"Saved new level ({o_level}). Continue on.")
 
   _prevPrintedMoves: deque[Move] = None
   def printMoves(self) -> None:
@@ -344,6 +365,8 @@ class Game:
   def generateNextMoves(self) -> list[Move]:
     moves = list()
     for start, end in itertools.product(range(self.__numVials), range(self.__numVials)):
+      if Game.reset:
+        return list()
       if self.canMove(start, end):
         moves.append((start, end))
     return moves
@@ -495,9 +518,11 @@ def readGame(userInteraction = False) -> Game:
   vials = []
 
   # Automatically detect the last empty vials
-  numEmpty = 2
-  if numVials < 7: # I actually don't know if this is the threshold. There may other thresholds at higher counts
-    numEmpty = 1
+  numEmpty = 0
+  if userInteraction:
+    numEmpty = 2
+    if numVials < 7: # I actually don't know if this is the threshold. There may other thresholds at higher counts
+      numEmpty = 1
 
   # Read in the colors
   if userInteraction: print(f"On the next {numVials} lines, please type {NUM_SPACES_PER_VIAL} words representing the colors in each vial from top to bottom.\n"+
