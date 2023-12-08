@@ -1,0 +1,10 @@
+i
+dec8
+7
+r	pn	pn	m
+r	m	pn	b
+r	o	b	m
+o	o	b	m
+r	pn	o	b
+-	-	-	-
+-	-	-	-
