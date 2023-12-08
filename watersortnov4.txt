@@ -1,0 +1,12 @@
+i
+nov4
+9
+g	lb	lb	pn
+r	r	o	pn
+m	o	pn	g
+b	r	r	g
+pn	o	lb	g
+lb	m	m	b
+b	o	b	m
+-	-	-	-
+-	-	-	-

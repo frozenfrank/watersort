@@ -1,0 +1,14 @@
+i
+nov5
+11
+pk	p	m	p
+b	r	pn	b
+lb	lb	o	r
+pn	o	r	p
+pk	lb	p	pn
+o	b	g	o
+m	g	g	pk
+pn	r	m	lb
+pk	g	m	b
+-	-	-	-
+-	-	-	-

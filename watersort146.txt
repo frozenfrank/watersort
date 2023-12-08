@@ -1,0 +1,14 @@
+i
+146
+11
+r	o	pn	?
+g	m	pn	?
+pk	p	lb	?
+p	pn	b	?
+lb	p	pk	?
+pk	r	p	?
+pk	o	lb	?
+b	g	r	?
+m	b	pn	?
+-	-	-	-
+-	-	-	-
