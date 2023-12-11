@@ -11,11 +11,11 @@ FORCE_SOLVE_LEVEL = None # "100"
 
 
 SOLVE_METHOD = "MIX" # "BFS", "DFS", "MIX"
+VALID_SOLVE_METHODS = set(["MIX", "BFS", "DFS"]) # An enum is more accurate, but overkill for this need
+
 MIX_SWITCH_THRESHOLD_MOVES = 10
 ENABLE_QUEUE_CHECKS = False # Disable only for temporary testing
 DENSE_QUEUE_CHECKING = True
-REPORT_ITERATION_FREQ = 10000 if SOLVE_METHOD == "BFS" else 1000
-QUEUE_CHECK_FREQ = REPORT_ITERATION_FREQ * 10
 
 
 '''
@@ -522,7 +522,7 @@ def playGame(game: "Game"):
     currentGame = currentGame.spawn((startVial, endVial))
 
   print("Goodbye.")
-def solveGame(game: "Game"):
+def solveGame(game: "Game", solveMethod = "MIX"):
   # Intelligent search through all the possible game states until we find a solution.
   # The game already handles asking for more information as required
 
@@ -532,6 +532,9 @@ def solveGame(game: "Game"):
 
   startTime: float = None
   endTime: float = None
+
+  REPORT_ITERATION_FREQ = 10000 if solveMethod == "BFS" else 1000
+  QUEUE_CHECK_FREQ = REPORT_ITERATION_FREQ * 10
 
   while Game.reset and not solution:
     Game.reset = False
@@ -546,7 +549,7 @@ def solveGame(game: "Game"):
     q: deque[Game] = deque()
     computed: set[Game] = set()
     q.append(game)
-    searchBFS: bool = SOLVE_METHOD != "DFS"
+    searchBFS: bool = solveMethod != "DFS"
 
     numIterations = 0
     numDeadEnds = 0
@@ -573,12 +576,12 @@ def solveGame(game: "Game"):
       if numIterations % REPORT_ITERATION_FREQ == 0:
         print(f"Checked {numIterations} iterations.")
 
-        if SOLVE_METHOD == "MIX" and current._numMoves >= MIX_SWITCH_THRESHOLD_MOVES:
+        if solveMethod == "MIX" and current._numMoves >= MIX_SWITCH_THRESHOLD_MOVES:
           searchBFS = False
           print("Switching to DFS search for MIX solve method")
 
         if numIterations % QUEUE_CHECK_FREQ == 0:
-          if ENABLE_QUEUE_CHECKS and SOLVE_METHOD != "BFS":
+          if ENABLE_QUEUE_CHECKS and solveMethod != "BFS":
             current.requestVal(current, "This is a lot. Are you sure?")
           else:
             print(f"QUEUE CHECK: \titrs: {numIterations} \tmvs: {current._numMoves} \tq len: {len(q)} \tends: {numDeadEnds} \tdup games: {numDuplicateGames} \tmins: {round((time() - startTime) / 60, 1)}")
@@ -611,7 +614,7 @@ def solveGame(game: "Game"):
   minsSearching = round((endTime - startTime) / 60, 1)
   print(f"""
         Finished search algorithm:
-          {SOLVE_METHOD                 }\t   Solving method
+          {solveMethod                  }\t   Solving method
           {numResets                    }\t   Num resets
           {secsSearching                }\t   Seconds searching since last reset
           {minsSearching                }\t   Minutes searching since last reset
@@ -739,19 +742,33 @@ def chooseInteraction():
   while not mode:
     print("""
           How are we interacting?
-          NAME  level name
-          p     play
-          s     solve (from new input)
-          i     interact (or resume an existing game)
-          q     quit
-          d     debug mode
+          NAME        level name
+          p           play
+          s           solve (from new input)
+          i           interact (or resume an existing game)
+          q           quit
+          d           debug mode
+          m METHOD    method of solving
           """)
     response = input().strip()
-    if response == "d":
+    words = response.split()
+    firstWord = words[0]
+    if firstWord == "d":
       global DEBUG_ONLY
       DEBUG_ONLY = not DEBUG_ONLY
-    elif response in validModes:
-      mode = response
+    elif firstWord == "m":
+      if len(words) < 2:
+        print("Cannot set the solve method without the method as well")
+      else:
+        requestedMethod = words[1].upper()
+        if requestedMethod in VALID_SOLVE_METHODS:
+          global SOLVE_METHOD
+          SOLVE_METHOD = requestedMethod
+          print("Set solve method to " + requestedMethod)
+        else:
+          print(f"Solve method '{requestedMethod}' is not a valid input. Choose one of the following instead: " + ", ".join(VALID_SOLVE_METHODS))
+    elif firstWord in validModes:
+      mode = firstWord
       if mode == "i":
         userInteracting = False
     else:
@@ -788,7 +805,7 @@ def chooseInteraction():
   if mode == "p":
     playGame(originalGame)
   elif mode == "i" or mode == "s":
-    solveGame(originalGame)
+    solveGame(originalGame, solveMethod=SOLVE_METHOD)
     saveGame(originalGame)
   else:
     print("Unrecognized mode: " + mode)
