@@ -1,10 +1,12 @@
 from collections import deque, defaultdict;
+from typing import Callable;
 import copy;
 import itertools;
 import sys;
 
 NUM_SPACES_PER_VIAL = 4
 DEBUG_ONLY = False
+SOLVE_BFS = False
 
 
 '''
@@ -28,7 +30,7 @@ Num     Index   Code      Name
 
 Move = tuple[int, int]
 class Game:
-  vials: list[deque[str]]
+  vials: list[list[str]]
   __numVials: int
   move: Move # The move applied to the parent that got us here
   __isRoot: bool
@@ -41,7 +43,8 @@ class Game:
   quit = False
 
   # Flags set on the root game
-  error: bool
+  modified: bool # Indicates it's changed from the last read in state
+  _colorError: bool
 
   # Cached for single use calculation
   COMPLETE_STR = " complete"
@@ -51,10 +54,12 @@ class Game:
   TOTAL_MOVE_PRINT_WIDTH = COLOR_WIDTH + NUMBER_WIDTH + EXTRA_CHARS + len(COMPLETE_STR)
 
   @staticmethod
-  def Create(vials, error = False) -> "Game":
-    return Game(vials, None, None, None, error)
+  def Create(vials) -> "Game":
+    newGame = Game(vials, None, None, None)
+    newGame._analyzeColors()
+    return newGame
 
-  def __init__(self, vials, move, root, prev, error = False):
+  def __init__(self, vials, move, root, prev, error = False, modified = False):
     self.vials = copy.deepcopy(vials)
     self.__numVials = len(vials)
     self.move = move
@@ -62,7 +67,8 @@ class Game:
     self.__isRoot = root == None
     self.root = self if self.__isRoot else root
     self.level = 0
-    self.error = error
+    self._colorError = error
+    self.modified = modified
 
   # Returns the nth-parent of the game,
   # or None if n is greater than the number of parents
@@ -74,6 +80,8 @@ class Game:
       else:
         return None
     return out
+  def hasError(self) -> bool:
+    return self._colorError # Or other errors
 
   def getTopVialColor(self, vialIndex) -> str:
     vial = self.vials[vialIndex]
@@ -108,11 +116,15 @@ class Game:
     startVial = vialIndex + 1
     request = f"What's the new value in the {startVial} vial?"
     val = self.requestVal(original, request)
-    self.root.vials[vialIndex][spaceIndex] = val
+    if not val or val == "":
+      val = "?"
+    else:
+      Game.reset = True # Reset the search to handle this new discovery properly
+      self.root.modified = True
+      self.root.vials[vialIndex][spaceIndex] = val
+
     return val
   def requestVal(self, original: "Game", request: str) -> str:
-    Game.reset = True # Reset the search to handle this new discovery properly
-
     original.printVials()
     original.printMoves()
 
@@ -121,10 +133,12 @@ class Game:
           "   -o VIAL SPACE COLOR     to provide other values\n" +
           "   -p or -print            to print the ROOT board\n" +
           "   -pc                     to print the CURRENT board\n" +
+          "   -c or -colors           to print the distribution of colors in the vials\n" +
           "   -s or -save             to save the discovered colors\n" +
           "   -r or -reset            to reset the search algorithm\n" +
           "   -m OR -moves            to print the moves to this point\n" +
           "   -level NUM              to change the level of this game\n" +
+          "   -vials NUM              to change the number of vials in the game\n" +
           "   -e OR -exit             to save and exit\n" +
           "   -q OR quit              to quit\n" +
           "   -d OR -debug            to see debug info")
@@ -146,7 +160,7 @@ class Game:
           saveGame(root)
           quit()
         elif rsp == "-s" or rsp == "-save":
-          saveGame(root)
+          saveGame(root, forceSave=True)
         elif rsp == "-r" or rsp == "-reset":
           Game.reset = True
           return "?"
@@ -161,12 +175,16 @@ class Game:
         elif rsp == "-d" or rsp == "-debug":
           print("Printing debug info... (None)")
           # TODO: Print the queue length, and other search related stats
+        elif rsp == "-c" or rsp == "-colors" or rsp == "-color":
+          root.printColors()
 
         # Special commands
         elif rsp.startswith("-level"):
           root.saveNewLevel(rsp)
         elif rsp.startswith("-o"):
           root.saveOtherColor(rsp)
+        elif rsp.startswith("-v"):
+          root.saveNewVials(rsp)
 
         # Default
         else:
@@ -174,18 +192,39 @@ class Game:
       else:
         # They answered the original question
         break
+
     return rsp
   def saveOtherColor(self, input: str) -> None:
     flag, o_vial, o_space, color = input.split()
     vial = int(o_vial) - 1
     space = int(o_space) - 1
     Game.reset = True
+    self.root.modified = True
     self.root.vials[vial][space] = color
     print(f"Saved color '{color}' to vial {o_vial} in slot {o_space}. Continue on.")
   def saveNewLevel(self, input: str) -> None:
     flag, o_level = input.split()
     self.root.level = o_level
+    self.root.modified = True
     print(f"Saved new level ({o_level}). Continue on.")
+  def saveNewVials(self, input: str) -> None:
+    flag, o_vials = input.split()
+    numVials = int(o_vials)
+    if numVials > len(self.vials):
+      self.modified = True
+      Game.reset = True
+      while numVials > len(self.vials):
+        self.vials.append(["-"] * NUM_SPACES_PER_VIAL)
+      print(f"Increased number of vials to {numVials}")
+    elif numVials < len(self.vials):
+      self.modified = True
+      Game.reset = True
+      self.vials = self.vials[0:numVials]
+      print(f"Truncated the vials to only the first {numVials}")
+    else:
+      print(f"No change to number of vials. Still have {numVials}")
+    self.__numVials = numVials
+
 
   _prevPrintedMoves: deque[Move] = None
   def printMoves(self) -> None:
@@ -257,6 +296,43 @@ class Game:
     complete, _, _ = self.__countOnTop(colorMoved, end)
 
     return (colorMoved, numMoved, complete)
+  # Prints out the state of the colors, including any errors
+  def printColors(self, analyzedData = None) -> list[str]:
+    lines = []
+    countColors, errors = analyzedData if analyzedData else self._analyzeColors()
+
+    lines.append("Frequency of colors:")
+    for color, count in sorted(countColors.items()):
+      if color == "-": continue
+      lines.append(f"  {color}: \t{count}")
+
+    if len(errors):
+      lines.append("\nErrors:")
+      for error in errors:
+        lines.append("  " + error)
+
+    print("\n".join(lines))
+  def _analyzeColors(self) -> tuple[dict[str, int], list[str]]: # (dict[color, occurrences], list[error strings])
+
+    # Analyze the colors represented
+    countColors = defaultdict(int)
+    for vial, space in itertools.product(self.vials, range(NUM_SPACES_PER_VIAL)):
+      countColors[vial[space]] += 1
+
+    errors = list()
+    hasUnknowns = countColors["?"] == 0
+    for color, count in countColors.items():
+      if color == "?" or color == "-":
+        continue
+
+      if count > NUM_SPACES_PER_VIAL:
+        errors.append(f"Color '{color}' appears too many times ({count})!")
+      elif count < NUM_SPACES_PER_VIAL and hasUnknowns:
+        errors.append(f"Color '{color}' appears too few times ({count})!")
+
+    self.root._colorError = len(errors) > 0
+    return (countColors, errors)
+
 
   def isFinished(self) -> bool:
     for vial in self.vials:
@@ -448,8 +524,9 @@ def solveGame(game: "Game"):
       if Game.reset or Game.quit:
         break
 
-      # current = q.popleft()   # Take from the end, will result in depth-first searching
-      current = q.pop()       # Take from the start, will result in breadth-first searching
+      # Taking from the front or the back makes all the difference between BFS and DFS
+      current = q.popleft() if SOLVE_BFS else q.pop()
+
       numIterations += 1
       hasNextGame = False
       if DEBUG_ONLY: current.printVials()
@@ -512,9 +589,41 @@ def testSolutionPrints(solution: "Game"):
   solution.getNthParent(0).printMoves()
 
 
-def readGame(userInteraction = False) -> Game:
+def readGameInput(userInteracting: bool) -> Game:
+  game = _readGame(input, userInteraction=userInteracting)
+  game.modified = True
+  return game
+def readGameFile(gameFileName: str) -> Game:
+  gameRead: Game = None
+  try:
+    gameFile = open(gameFileName, "r")
+    nextLine = lambda: gameFile.readline().strip()
+
+    nextLine()                      # Skip mode
+    level = nextLine()              # Read level name
+    gameRead = _readGame(nextLine)
+    gameRead.level = level
+
+    gameFile.close()
+  except FileNotFoundError:
+    print("Attempted to resume progress, but no file exists for this level.")
+    # The file doesn't exist, just ask for it from the user
+  else:
+    print("Resumed game progress from saved file " + gameFileName)
+  finally:
+    return gameRead
+def _readGame(nextLine: Callable[[], str], userInteraction = False) -> Game:
   if userInteraction: print("How many vials are in this game?")
-  numVials = int(input())   # Read num vials
+  numVials = None
+  while not numVials:
+    rsp = nextLine()  # Read num vials
+    if rsp.isnumeric():
+      numVials = int(rsp)
+    elif rsp == "quit" or rsp == "q" or rsp == "-q":
+      quit()
+    else:
+      print("We asked for the number of vials. That's not a number.")
+
   vials = []
 
   # Automatically detect the last empty vials
@@ -538,8 +647,8 @@ def readGame(userInteraction = False) -> Game:
       continue
 
     if userInteraction: print(f"Vial {i}: ")
-    response = input()
-    if response == "":
+    response = nextLine()
+    if response == "" or not response:
       emptyRest = True
       i -= 1 # Place an empty value for this row
       continue
@@ -553,37 +662,14 @@ def readGame(userInteraction = False) -> Game:
       spaces.append("?")
     vials.append(spaces)
 
-  # Analyze the colors represented
-  countColors = defaultdict(int)
-  for vial, space in itertools.product(range(numVials), range(NUM_SPACES_PER_VIAL)):
-    countColors[vials[vial][space]] += 1
+  return Game.Create(vials)
 
-  errors = list()
-  hasUnknowns = countColors["?"] == 0
-  for color, count in countColors.items():
-    if color == "?" or color == "-":
-      continue
-
-    if userInteraction:
-      print(f"Color '{color}' \tappears {count} times")
-
-    if count > NUM_SPACES_PER_VIAL:
-      errors.append(f"Color '{color}' appears too many times ({count})!")
-    elif count < NUM_SPACES_PER_VIAL and hasUnknowns:
-      errors.append(f"Color '{color}' appears too few times ({count})!")
-
-  if len(errors):
-    SEPARATOR = "\n  "
-    print(f"We found {len(errors)} errors while reading in the data:"
-          + SEPARATOR + SEPARATOR.join(errors))
-
-
-  return Game.Create(vials, error=len(errors) > 0)
 def chooseInteraction():
   validModes = set("psqi")
   mode: str = None
   level: str = None
   userInteracting = True
+  originalGame: Game = None
 
   # Allow the level number to be passed in from the command line
   if len(sys.argv) == 2:
@@ -591,13 +677,14 @@ def chooseInteraction():
     level = sys.argv[1]
     mode = "i"
 
+  # Request the mode
   while not mode:
     print("""
           How are we interacting?
           NAME  level name
           p     play
-          s     solve
-          i     interact
+          s     solve (from new input)
+          i     interact (or resume an existing game)
           q     quit
           d     debug mode
           """)
@@ -617,37 +704,53 @@ def chooseInteraction():
     quit()
 
   # Read initial state
-  if mode == "i" and not level:
+  if (mode == "i" or mode == "s") and not level:
     if userInteracting:
       print("What level is this?")
     level = input()
-  originalGame = readGame(userInteraction=userInteracting)
-  if level != None:
-    originalGame.level = level
 
-  if originalGame.error:
+  # Attempt to read the game state out of a file
+  if mode != "s" and level:
+    gameFileName = generateFileName(level)
+    originalGame = readGameFile(gameFileName)
+
+  # Fallback to reading in manually
+  if not originalGame:
+    originalGame = readGameInput(userInteracting)
+    if level != None:
+      originalGame.level = level
     saveGame(originalGame)
-    print("Aborting because of errors in the game. Try reviewing the saved file, and resubmitting.")
-    return
 
+  # Verify game has no error
+  if originalGame.hasError():
+    saveGame(originalGame)
+    originalGame.requestVal(originalGame, "The colors aren't right in this game. Fix them, and press enter to proceed.")
+    originalGame._analyzeColors()
+    if originalGame.hasError():
+      saveGame(originalGame, forceSave=True)
+      print("Things still aren't right. Review the saved file, and try again.")
+      return
+    else:
+      print("Issues resolved. Proceeding.")
 
   # Choose mode
   if mode == "p":
     playGame(originalGame)
-  elif mode == "i":
+  elif mode == "i" or mode == "s":
+    solveGame(originalGame)
     saveGame(originalGame)
-    solveGame(originalGame)
-  elif mode == "s":
-    solveGame(originalGame)
   else:
     return
 
-def saveGame(game: "Game") -> None:
+def saveGame(game: "Game", forceSave = False) -> None:
+  if not forceSave and not game.modified:
+    return None # No saving necessary
   fileName = generateFileName(game.level)
   result = generateFileContents(game)
   saveFileContents(fileName, result)
+  game.modified = False
   print(f"Saved discovered game state to file: {fileName}")
-def generateFileName(levelNum: int) -> str:
+def generateFileName(levelNum: str) -> str:
   return f"watersort{levelNum}.txt"
 def generateFileContents(game: "Game") -> str:
   lines = list()
