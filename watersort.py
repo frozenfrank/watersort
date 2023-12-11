@@ -14,7 +14,7 @@ SOLVE_METHOD = "MIX" # "BFS", "DFS", "MIX"
 VALID_SOLVE_METHODS = set(["MIX", "BFS", "DFS"]) # An enum is more accurate, but overkill for this need
 
 MIX_SWITCH_THRESHOLD_MOVES = 10
-ENABLE_QUEUE_CHECKS = False # Disable only for temporary testing
+ENABLE_QUEUE_CHECKS = True # Disable only for temporary testing
 DENSE_QUEUE_CHECKING = True
 
 
@@ -150,9 +150,10 @@ class Game:
       self.root.vials[vialIndex][spaceIndex] = val
 
     return val
-  def requestVal(self, original: "Game", request: str) -> str:
-    original.printVials()
-    original.printMoves()
+  def requestVal(self, original: "Game", request: str, printState = True) -> str:
+    if printState:
+      original.printVials()
+      original.printMoves()
 
     # Other options start with a dash
     print("Other options:\n" +
@@ -574,17 +575,26 @@ def solveGame(game: "Game", solveMethod = "MIX"):
       # Perform some work at some checkpoints
       numIterations += 1
       if numIterations % REPORT_ITERATION_FREQ == 0:
-        print(f"Checked {numIterations} iterations.")
+        if solveMethod != "BFS":
+          print(f"Checked {numIterations} iterations.")
 
         if solveMethod == "MIX" and current._numMoves >= MIX_SWITCH_THRESHOLD_MOVES:
           searchBFS = False
           print("Switching to DFS search for MIX solve method")
 
         if numIterations % QUEUE_CHECK_FREQ == 0:
-          if ENABLE_QUEUE_CHECKS and solveMethod != "BFS":
+          if ENABLE_QUEUE_CHECKS and not searchBFS:
             current.requestVal(current, "This is a lot. Are you sure?")
           else:
             print(f"QUEUE CHECK: \titrs: {numIterations} \tmvs: {current._numMoves} \tq len: {len(q)} \tends: {numDeadEnds} \tdup games: {numDuplicateGames} \tmins: {round((time() - startTime) / 60, 1)}")
+            if solveMethod == "MIX":
+              rsp = current.requestVal(current, "This is a lot. Would you like to switch to a faster approach? (Yes/no)", printState=False)
+              rsp.lower()
+              if rsp and rsp[0] == "y":
+                searchBFS = False
+                solveMethod = "DFS"
+              else:
+                pass
 
       # Check all next moves
       hasNextGame = False
@@ -733,10 +743,14 @@ def chooseInteraction():
     level = FORCE_SOLVE_LEVEL
     mode = "i"
     print(f"FORCING SOLVE LEVEL to {level}")
-  elif len(sys.argv) == 2:
+  elif len(sys.argv) > 1:
     # COMMAND LINE
     level = sys.argv[1]
     mode = "i"
+
+  # Read solve method from command line
+  if len(sys.argv) > 2:
+    setSolveMethod(sys.argv[2])
 
   # Request the mode
   while not mode:
@@ -760,13 +774,7 @@ def chooseInteraction():
       if len(words) < 2:
         print("Cannot set the solve method without the method as well")
       else:
-        requestedMethod = words[1].upper()
-        if requestedMethod in VALID_SOLVE_METHODS:
-          global SOLVE_METHOD
-          SOLVE_METHOD = requestedMethod
-          print("Set solve method to " + requestedMethod)
-        else:
-          print(f"Solve method '{requestedMethod}' is not a valid input. Choose one of the following instead: " + ", ".join(VALID_SOLVE_METHODS))
+        setSolveMethod(words[1])
     elif firstWord in validModes:
       mode = firstWord
       if mode == "i":
@@ -835,6 +843,16 @@ def saveFileContents(fileName: str, contents: str) -> None:
   sourceFile = open(fileName, 'w')
   print(contents, file = sourceFile)
   sourceFile.close()
+
+def setSolveMethod(method: str) -> bool:
+  method = method.upper()
+  if method in VALID_SOLVE_METHODS:
+    global SOLVE_METHOD
+    SOLVE_METHOD = method
+    print("Set solve method to " + method)
+  else:
+    print(f"Solve method '{method}' is not a valid input. Choose one of the following instead: " + ", ".join(VALID_SOLVE_METHODS))
+
 
 # Run the program!
 chooseInteraction()
