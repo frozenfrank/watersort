@@ -7,6 +7,7 @@ import sys;
 NUM_SPACES_PER_VIAL = 4
 DEBUG_ONLY = False
 SOLVE_BFS = False
+FORCE_SOLVE_LEVEL = "100"
 
 
 '''
@@ -671,9 +672,14 @@ def chooseInteraction():
   userInteracting = True
   originalGame: Game = None
 
-  # Allow the level number to be passed in from the command line
-  if len(sys.argv) == 2:
-    # CONSIDER: Reading in the level file and automatically resuming any previous progress
+  # Allow different forms of level override
+  if FORCE_SOLVE_LEVEL:
+    # DEBUG
+    level = FORCE_SOLVE_LEVEL
+    mode = "i"
+    print(f"FORCING SOLVE LEVEL to {level}")
+  elif len(sys.argv) == 2:
+    # COMMAND LINE
     level = sys.argv[1]
     mode = "i"
 
