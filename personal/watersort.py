@@ -751,7 +751,7 @@ def saveGame(game: "Game", forceSave = False) -> None:
   game.modified = False
   print(f"Saved discovered game state to file: {fileName}")
 def generateFileName(levelNum: str) -> str:
-  return f"watersort{levelNum}.txt"
+  return f"wslevels/{levelNum}.txt"
 def generateFileContents(game: "Game") -> str:
   lines = list()
   lines.append("i")
