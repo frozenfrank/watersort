@@ -10,7 +10,7 @@ DEBUG_ONLY = False
 FORCE_SOLVE_LEVEL = None # "100"
 
 
-SOLVE_METHOD = "MIX" # "BFS", "DFS", "MIX"
+SOLVE_METHOD = "MIX"
 VALID_SOLVE_METHODS = set(["MIX", "BFS", "DFS"]) # An enum is more accurate, but overkill for this need
 
 MIX_SWITCH_THRESHOLD_MOVES = 10
@@ -855,4 +855,7 @@ def setSolveMethod(method: str) -> bool:
 
 
 # Run the program!
+# Call signatures:
+# py watersort.py LEVEL <MODE>
+# py watersort.py LEVEL MIX <Move Threshold>
 chooseInteraction()
