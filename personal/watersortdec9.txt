@@ -1,0 +1,10 @@
+i
+dec9
+7
+b	r	r	b
+pn	o	pn	o
+o	m	m	pn
+b	m	b	o
+pn	r	r	m
+-	-	-	-
+-	-	-	-
