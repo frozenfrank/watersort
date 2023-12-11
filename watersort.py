@@ -1,4 +1,5 @@
-from collections import deque, defaultdict;
+from collections import deque, defaultdict
+from time import time;
 from typing import Callable;
 import copy;
 import itertools;
@@ -6,8 +7,15 @@ import sys;
 
 NUM_SPACES_PER_VIAL = 4
 DEBUG_ONLY = False
-SOLVE_BFS = False
-FORCE_SOLVE_LEVEL = "100"
+FORCE_SOLVE_LEVEL = None # "100"
+
+
+SOLVE_METHOD = "MIX" # "BFS", "DFS", "MIX"
+MIX_SWITCH_THRESHOLD_MOVES = 10
+ENABLE_QUEUE_CHECKS = False # Disable only for temporary testing
+DENSE_QUEUE_CHECKING = True
+REPORT_ITERATION_FREQ = 10000 if SOLVE_METHOD == "BFS" else 1000
+QUEUE_CHECK_FREQ = REPORT_ITERATION_FREQ * 10
 
 
 '''
@@ -29,23 +37,26 @@ Num     Index   Code      Name
                 -         Empty
 '''
 
+Vials = list[list[str]]
 Move = tuple[int, int]
 class Game:
-  vials: list[list[str]]
+  vials: Vials
   __numVials: int
   move: Move # The move applied to the parent that got us here
+  _numMoves: int
   __isRoot: bool
   prev: "Game" # Original has no root
   root: "Game" # Original has no root
-  level: str
 
   # Flags set on the static class
   reset = False
   quit = False
 
   # Flags set on the root game
+  level: str
   modified: bool # Indicates it's changed from the last read in state
   _colorError: bool
+  _hasUnknowns: bool
 
   # Cached for single use calculation
   COMPLETE_STR = " complete"
@@ -60,15 +71,14 @@ class Game:
     newGame._analyzeColors()
     return newGame
 
-  def __init__(self, vials, move, root, prev, error = False, modified = False):
+  def __init__(self, vials: "Vials", move: "Move", root: "Game", prev: "Game", modified = False):
     self.vials = copy.deepcopy(vials)
     self.__numVials = len(vials)
     self.move = move
     self.prev = prev
     self.__isRoot = root == None
     self.root = self if self.__isRoot else root
-    self.level = 0
-    self._colorError = error
+    self._numMoves = 0 if self.__isRoot else prev._numMoves + 1
     self.modified = modified
 
   # Returns the nth-parent of the game,
@@ -83,6 +93,21 @@ class Game:
     return out
   def hasError(self) -> bool:
     return self._colorError # Or other errors
+  # Attempts to correct any errors, and then returns a bool indicating if errors still exist
+  def attemptCorrectErrors(self) -> bool:
+    if not self.hasError():
+      return False
+
+    self.requestVal(self, "The colors aren't right in this game. Fix them, and press enter to proceed.")
+    self._analyzeColors()
+    if self.hasError():
+      saveGame(self, forceSave=True)
+      print("Things still aren't right. Review the saved file, and try again.")
+      quit()
+      return True
+    else:
+      print("Issues resolved. Proceeding.")
+      return False
 
   def getTopVialColor(self, vialIndex) -> str:
     vial = self.vials[vialIndex]
@@ -331,8 +356,14 @@ class Game:
       elif count < NUM_SPACES_PER_VIAL and hasUnknowns:
         errors.append(f"Color '{color}' appears too few times ({count})!")
 
+    self.root._hasUnknowns = hasUnknowns
     self.root._colorError = len(errors) > 0
     return (countColors, errors)
+  def printVialsDense(self) -> None:
+    out = list()
+    for vial, space in itertools.product(range(self.__numVials), range(NUM_SPACES_PER_VIAL)):
+      out.append(self.vials[vial][space].ljust(2))
+    print("".join(out))
 
 
   def isFinished(self) -> bool:
@@ -437,7 +468,7 @@ class Game:
     newGame.makeMove(move[0], move[1])
     return newGame
 
-  def generateNextGames(self) -> list("Game"):
+  def generateNextGames(self) -> list["Game"]:
     return [self.spawn(move) for move in self.generateNextMoves()]
   def generateNextMoves(self) -> list[Move]:
     moves = list()
@@ -499,14 +530,23 @@ def solveGame(game: "Game"):
   numResets = -1
   Game.reset = True
 
+  startTime: float = None
+  endTime: float = None
+
   while Game.reset and not solution:
     Game.reset = False
     numResets += 1
+
+    # First correct any errors in the game
+    game.attemptCorrectErrors()
+
+    startTime = time()
 
     # Setup our search
     q: deque[Game] = deque()
     computed: set[Game] = set()
     q.append(game)
+    searchBFS: bool = SOLVE_METHOD != "DFS"
 
     numIterations = 0
     numDeadEnds = 0
@@ -517,7 +557,7 @@ def solveGame(game: "Game"):
     # CONSIDER: Switching our approach based on the state of the game
     # When we still have unknowns, we should find the shortest path to find an unknown,
     # and continue in that same path until we reach a dead end.
-    # This makes it easier for a human to
+    # This makes it easier for a human to follow along in the game
 
     # Perform the search
     while q and not solution:
@@ -526,17 +566,25 @@ def solveGame(game: "Game"):
         break
 
       # Taking from the front or the back makes all the difference between BFS and DFS
-      current = q.popleft() if SOLVE_BFS else q.pop()
+      current = q.popleft() if searchBFS else q.pop()
 
+      # Perform some work at some checkpoints
       numIterations += 1
-      hasNextGame = False
-      if DEBUG_ONLY: current.printVials()
-      if numIterations % 1000 == 0:
+      if numIterations % REPORT_ITERATION_FREQ == 0:
         print(f"Checked {numIterations} iterations.")
-      if numIterations % 10000 == 0:
-        current.requestVal(current, "This is a lot. Are you sure?")
+
+        if SOLVE_METHOD == "MIX" and current._numMoves >= MIX_SWITCH_THRESHOLD_MOVES:
+          searchBFS = False
+          print("Switching to DFS search for MIX solve method")
+
+        if numIterations % QUEUE_CHECK_FREQ == 0:
+          if ENABLE_QUEUE_CHECKS and SOLVE_METHOD != "BFS":
+            current.requestVal(current, "This is a lot. Are you sure?")
+          else:
+            print(f"QUEUE CHECK: \titrs: {numIterations} \tmvs: {current._numMoves} \tq len: {len(q)} \tends: {numDeadEnds} \tdup games: {numDuplicateGames} \tmins: {round((time() - startTime) / 60, 1)}")
 
       # Check all next moves
+      hasNextGame = False
       for nextGame in current.generateNextGames():
         numPartialSolutionsGenerated += 1
         if nextGame in computed:
@@ -557,24 +605,28 @@ def solveGame(game: "Game"):
       maxQueueLength = max(maxQueueLength, len(q))
       if not hasNextGame:
         numDeadEnds += 1
-      if DEBUG_ONLY:
-        for game in q: print(game)
-        print(f"Finished first check with {len(q)} queued states and {len(computed)} computed states")
 
+  endTime = time()
+  secsSearching = round(endTime - startTime, 1)
+  minsSearching = round((endTime - startTime) / 60, 1)
   print(f"""
         Finished search algorithm:
+          {SOLVE_METHOD                 }\t   Solving method
           {numResets                    }\t   Num resets
+          {secsSearching                }\t   Seconds searching since last reset
+          {minsSearching                }\t   Minutes searching since last reset
           {numIterations                }\t   Num iterations
           {len(q)                       }\t   Ending queue length
           {maxQueueLength               }\t   Max queue length
           {numDeadEnds                  }\t   Num dead ends
           {numPartialSolutionsGenerated }\t   Partial solutions generated
+          {numDuplicateGames            }\t   Num duplicate games
           {len(computed)                }\t   Num states computed
         """)
 
   if solution:
     print("Found solution!")
-    solution.printVials()
+    # solution.printVials()
     solution.printMoves()
   else:
     print("Cannot not find solution.")
@@ -728,16 +780,9 @@ def chooseInteraction():
     saveGame(originalGame)
 
   # Verify game has no error
-  if originalGame.hasError():
-    saveGame(originalGame)
-    originalGame.requestVal(originalGame, "The colors aren't right in this game. Fix them, and press enter to proceed.")
-    originalGame._analyzeColors()
-    if originalGame.hasError():
-      saveGame(originalGame, forceSave=True)
-      print("Things still aren't right. Review the saved file, and try again.")
-      return
-    else:
-      print("Issues resolved. Proceeding.")
+  if originalGame.attemptCorrectErrors():
+    print("Attempts to resolve the errors did not work. Abandoning program.")
+    return
 
   # Choose mode
   if mode == "p":
@@ -746,7 +791,9 @@ def chooseInteraction():
     solveGame(originalGame)
     saveGame(originalGame)
   else:
-    return
+    print("Unrecognized mode: " + mode)
+
+  quit(0)
 
 def saveGame(game: "Game", forceSave = False) -> None:
   if not forceSave and not game.modified:
