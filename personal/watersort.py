@@ -331,6 +331,9 @@ class Game:
     lines.append("Frequency of colors:")
     for color, count in sorted(countColors.items()):
       if color == "-": continue
+      label = "\t"
+      if color != "?" and count != NUM_SPACES_PER_VIAL:
+        label += "(too many)" if count > NUM_SPACES_PER_VIAL else "(too few)"
       lines.append(f"  {color}: \t{count}")
 
     if len(errors):
