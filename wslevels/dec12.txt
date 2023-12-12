@@ -1,0 +1,14 @@
+i
+dec12
+11
+m	pn	g	?
+lb	p	g	?
+lb	m	pk	?
+g	m	g	pn
+b	p	r	?
+o	o	r	pk
+pn	b	lb	?
+o	p	p	pk
+pn	lb	r	?
+-	-	-	-
+-	-	-	-
