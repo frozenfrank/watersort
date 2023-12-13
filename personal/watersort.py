@@ -1,4 +1,5 @@
 from collections import deque, defaultdict
+import random
 from time import time;
 from typing import Callable;
 import copy;
@@ -17,6 +18,8 @@ MIX_SWITCH_THRESHOLD_MOVES = 10
 ENABLE_QUEUE_CHECKS = True # Disable only for temporary testing
 DENSE_QUEUE_CHECKING = True
 
+SHUFFLE_NEXT_MOVES = False
+ANALYZE_ATTEMPTS = 100
 
 '''
 COLORS
@@ -526,23 +529,37 @@ def playGame(game: "Game"):
     currentGame = currentGame.spawn((startVial, endVial))
 
   print("Goodbye.")
-def solveGame(game: "Game", solveMethod = "MIX"):
+def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0):
   # Intelligent search through all the possible game states until we find a solution.
   # The game already handles asking for more information as required
 
   solution: Game = None
-  numResets = -1
-  Game.reset = True
+  numResets = 0
 
+  analysisStart: float = time()
   startTime: float = None
   endTime: float = None
 
   REPORT_ITERATION_FREQ = 10000 if solveMethod == "BFS" else 1000
   QUEUE_CHECK_FREQ = REPORT_ITERATION_FREQ * 10
 
-  while Game.reset and not solution:
-    Game.reset = False
-    numResets += 1
+  # Analyzing variables
+  partialDepth = defaultdict(int)
+  dupGameDepth = defaultdict(int)
+  deadEndDepth = defaultdict(int)
+  solutionDepth = defaultdict(int)
+  uniqueSolsDepth = defaultdict(int)
+  uniqueSolutions: set["Game"] = set()
+  analysisSamplesRemaining = analyzeSampleCount
+
+  while Game.reset or not solution or analysisSamplesRemaining > 0:
+    if Game.reset:
+      Game.reset = False
+      numResets += 1
+    elif analysisSamplesRemaining > 0:
+      analysisSamplesRemaining -= 1
+      solution = None
+
 
     # First correct any errors in the game
     game.attemptCorrectErrors()
@@ -550,8 +567,8 @@ def solveGame(game: "Game", solveMethod = "MIX"):
     startTime = time()
 
     # Setup our search
-    q: deque[Game] = deque()
-    computed: set[Game] = set()
+    q: deque["Game"] = deque()
+    computed: set["Game"] = set()
     q.append(game)
     searchBFS: bool = solveMethod != "DFS"
 
@@ -577,7 +594,7 @@ def solveGame(game: "Game", solveMethod = "MIX"):
 
       # Perform some work at some checkpoints
       numIterations += 1
-      if numIterations % REPORT_ITERATION_FREQ == 0:
+      if numIterations % REPORT_ITERATION_FREQ == 0 and not analyzeSampleCount:
         if solveMethod != "BFS":
           print(f"Checked {numIterations} iterations.")
 
@@ -601,54 +618,98 @@ def solveGame(game: "Game", solveMethod = "MIX"):
 
       # Check all next moves
       hasNextGame = False
-      for nextGame in current.generateNextGames():
+      nextGames = current.generateNextGames()
+      if SHUFFLE_NEXT_MOVES: random.shuffle(nextGames)
+      for nextGame in nextGames:
         numPartialSolutionsGenerated += 1
+        partialDepth[nextGame._numMoves] += 1
+
         if nextGame in computed:
           numDuplicateGames += 1
+          dupGameDepth[nextGame._numMoves] += 1
           continue
         computed.add(nextGame)
         hasNextGame = True
-        if (nextGame.isFinished()):
+        if nextGame.isFinished():
           solution = nextGame
+          solutionDepth[solution._numMoves] += 1
+          if solution not in uniqueSolutions:
+            uniqueSolutions.add(solution)
+            uniqueSolsDepth[solution._numMoves] += 1
           break
         else:
-          # NOTE: We may be re-computing things expensively with alternative paths to the same game state
-          # It would be better to memoize the game states with a custom hash function to avoid this,
-          # But i don't expect it to make a large difference in this context. Order really matters here.
           q.append(nextGame)
 
       # Maintain stats
       maxQueueLength = max(maxQueueLength, len(q))
       if not hasNextGame:
         numDeadEnds += 1
+        deadEndDepth[current._numMoves] += 1
 
+  # End timer
   endTime = time()
-  secsSearching = round(endTime - startTime, 1)
-  minsSearching = round((endTime - startTime) / 60, 1)
-  print(f"""
-        Finished search algorithm:
-          {solveMethod                  }\t   Solving method
-          {numResets                    }\t   Num resets
-          {secsSearching                }\t   Seconds searching since last reset
-          {minsSearching                }\t   Minutes searching since last reset
-          {numIterations                }\t   Num iterations
-          {len(q)                       }\t   Ending queue length
-          {maxQueueLength               }\t   Max queue length
-          {numDeadEnds                  }\t   Num dead ends
-          {numPartialSolutionsGenerated }\t   Partial solutions generated
-          {numDuplicateGames            }\t   Num duplicate games
-          {len(computed)                }\t   Num states computed
-        """)
 
-  if solution:
-    print("Found solution!")
-    # solution.printVials()
-    solution.printMoves()
+  # Print results
+  if analyzeSampleCount > 0:
+    secsAnalyzing, minsAnalyzing = getTimeRunning(analysisStart, endTime)
+
+    minSolutionMoves, maxSolutionMoves, modeSolutionMoves, countUniqueSols = analyzeCounterDictionary(uniqueSolsDepth)
+    minDeadEnd, lastDeadEnd, modeDeadEnds, _ = analyzeCounterDictionary(deadEndDepth)
+    nDupSols = analyzeSampleCount - countUniqueSols
+
+    print(f"""
+        Finished analyzing solution space:
+          * Note: These values are counted an independent occurrences. It's possible that
+            the same states from multiple distinct samples found the same sets of game states.
+
+          Report:
+          {analyzeSampleCount           }\t   Analysis samples
+          {secsAnalyzing                }\t   Seconds analyzing
+          {minsAnalyzing                }\t   Minutes analyzing
+          {minDeadEnd                   }\t   Dead end (First)
+          {modeDeadEnds                 }\t   Dead end (Mode)
+          {lastDeadEnd                  }\t   Dead end (Last)
+          {minSolutionMoves             }\t   Solution moves (Min)
+          {modeSolutionMoves            }\t   Solution moves (Mode)
+          {maxSolutionMoves             }\t   Solution moves (Max)
+          {countUniqueSols              }\t   Unique solutions
+          {fPercent(nDupSols, analyzeSampleCount)}\t   Percent duplicated solutions
+          """)
+
+    saveAnalysisResults(\
+      game.level, endTime - analysisStart, analyzeSampleCount, \
+      partialDepth, dupGameDepth, deadEndDepth, solutionDepth, uniqueSolsDepth)
   else:
-    print("Cannot not find solution.")
+    secsSearching, minsSearching = getTimeRunning(startTime, endTime)
 
-  if game.level:
-    saveGame(game)
+    print(f"""
+          Finished search algorithm:
+
+            Overall:
+            {solveMethod                  }\t   Solving method
+            {numResets                    }\t   Num resets
+
+            Since last reset:
+            {secsSearching                }\t   Seconds searching
+            {minsSearching                }\t   Minutes searching
+            {numIterations                }\t   Num iterations
+            {len(q)                       }\t   Ending queue length
+            {maxQueueLength               }\t   Max queue length
+            {numDeadEnds                  }\t   Num dead ends
+            {numPartialSolutionsGenerated }\t   Partial solutions generated
+            {numDuplicateGames            }\t   Num duplicate games
+            {len(computed)                }\t   Num states computed
+          """)
+
+    if solution:
+      print("Found solution!")
+      solution.printMoves()
+    else:
+      print("Cannot not find solution.")
+
+    if game.level:
+      saveGame(game)
+
   pass
 def testSolutionPrints(solution: "Game"):
   # Requires that the solution have at least 10 moves to solve
@@ -656,6 +717,27 @@ def testSolutionPrints(solution: "Game"):
   solution.getNthParent(5).printMoves()
   solution.getNthParent(2).printMoves()
   solution.getNthParent(0).printMoves()
+def getTimeRunning(startTime: float, endTime: float) -> tuple[float, float]: # (seconds, minutes)
+  seconds = round(endTime - startTime, 1)
+  minutes = round((endTime - startTime) / 60, 1)
+  return (seconds, minutes)
+def analyzeCounterDictionary(dict: defaultdict[int]) -> tuple[int, int, int]: # (min, max, mode, total)
+  minKey = min(*dict.keys())
+  maxKey = max(*dict.keys())
+  totalOccurrences = sum(dict.values())
+
+  # Compute mode
+  modeKey = None
+  modeKeyOccurrences = 0
+  for key, occurrences in dict.items():
+    if occurrences > modeKeyOccurrences:
+      modeKey = key
+      modeKeyOccurrences = occurrences
+
+  return (minKey, maxKey, modeKey, totalOccurrences)
+def fPercent(num: float, den: float, roundDigits=1) -> str:
+  if den == 0: return "--%"
+  return str(round(num/den*100, roundDigits)) + "%"
 
 
 def readGameInput(userInteracting: bool) -> Game:
@@ -739,6 +821,7 @@ def chooseInteraction():
   level: str = None
   userInteracting = True
   originalGame: Game = None
+  analyzeSamples = ANALYZE_ATTEMPTS
 
   # Allow different forms of level override
   if FORCE_SOLVE_LEVEL:
@@ -763,6 +846,7 @@ def chooseInteraction():
           p           play
           s           solve (from new input)
           i           interact (or resume an existing game)
+          a SAMPLES?  analyze
           q           quit
           d           debug mode
           m METHOD    method of solving
@@ -778,6 +862,10 @@ def chooseInteraction():
         print("Cannot set the solve method without the method as well")
       else:
         setSolveMethod(words[1])
+    elif firstWord == "a":
+      mode = "a"
+      if len(words) > 1:
+        analyzeSamples = int(words[1])
     elif firstWord in validModes:
       mode = firstWord
       if mode == "i":
@@ -790,7 +878,7 @@ def chooseInteraction():
     quit()
 
   # Read initial state
-  if (mode == "i" or mode == "s") and not level:
+  if (mode == "i" or mode == "s" or mode == "a") and not level:
     if userInteracting:
       print("What level is this?")
     level = input()
@@ -818,6 +906,10 @@ def chooseInteraction():
   elif mode == "i" or mode == "s":
     solveGame(originalGame, solveMethod=SOLVE_METHOD)
     saveGame(originalGame)
+  elif mode == "a":
+    global SHUFFLE_NEXT_MOVES
+    SHUFFLE_NEXT_MOVES = True
+    solveGame(originalGame, solveMethod="DFS", analyzeSampleCount=analyzeSamples)
   else:
     print("Unrecognized mode: " + mode)
 
@@ -831,8 +923,10 @@ def saveGame(game: "Game", forceSave = False) -> None:
   saveFileContents(fileName, result)
   game.modified = False
   print(f"Saved discovered game state to file: {fileName}")
-def generateFileName(levelNum: str) -> str:
-  return f"wslevels/{levelNum}.txt"
+def getBasePath(absolutePath = True) -> str:
+  return "/Users/frozenfrank/Documents/College/Fall 2023/CPC/personal/" if absolutePath else ""
+def generateFileName(levelNum: str, absolutePath = True) -> str:
+  return getBasePath(absolutePath) + f"wslevels/{levelNum}.txt"
 def generateFileContents(game: "Game") -> str:
   lines = list()
   lines.append("i")
@@ -855,6 +949,78 @@ def setSolveMethod(method: str) -> bool:
     print("Set solve method to " + method)
   else:
     print(f"Solve method '{method}' is not a valid input. Choose one of the following instead: " + ", ".join(VALID_SOLVE_METHODS))
+
+def generateAnalysisResultsName(level: str, absolutePath = True) -> str:
+  return getBasePath(absolutePath) + f"wsanalysis/{level}-{round(time())}.csv"
+def saveAnalysisResults(level, seconds, samples, partialStates, dupStates, deadStates, solStates, uniqueSolStates) -> None:
+  # Generates a CSV file with data
+  # This spreadsheet has been setup to analyze these data exports
+  # https://docs.google.com/spreadsheets/d/1HK8ic2QTs1onlG_x7o9s0yXxY1Nl9mFLO9mHtou2RcA/edit#gid=1119310589
+
+  fileName = generateAnalysisResultsName(level)
+  headers = [
+    ("Level", level),
+    ("Seconds", round(seconds, 1)),
+    ("Samples", samples)
+  ]
+  columns = [
+    ("Partial Game States", partialStates),
+    ("Duplicate Game States", dupStates),
+    ("Dead End States", deadStates),
+    ("Solutions", solStates),
+    ("Unique Solutions", uniqueSolStates),
+  ]
+  saveCSVFile(fileName, columns, headers, keyColumnName="Depth")
+  print("Saved analysis results to file: " + fileName)
+
+def saveCSVFile(fileName: str, columns: list[tuple[str, defaultdict]], headers: list[tuple[str, ...]] = None, keyColumnName = "Key") -> None:
+  # Creates a CSV file with the following format:
+  # The first several data rows contain special STRING-VALUE pairs of special data (headers)
+
+  # Key, Col Name 1, Col Name 2...
+  # Level, LEVEL
+  # Seconds, SECONDS
+  # Samples, SAMPLES
+  # 1, val 1, val 2...
+  # 2, val 1, val 2...
+  # 3, val 1, val 2...
+
+  lines = []
+  row = []
+  maxIndex = float("-inf")
+  minIndex = float("inf")
+
+  # Process columns into header row
+  row.append(keyColumnName)
+  for colName, dictValues in columns:
+    row.append(colName)
+    maxIndex = max(maxIndex, *dictValues.keys())
+    minIndex = min(minIndex, *dictValues.keys())
+  lines.append(",".join(row))
+
+  # Insert special rows of headers
+  if headers:
+    for header in headers:
+      lines.append(",".join(map(str, header)))
+
+  # Add all data in the dicts
+  for i in range(minIndex, maxIndex + 1):
+    row.clear()
+    row.append(i)
+    for colName, dictValues in columns:
+      row.append(dictValues[i])
+    lines.append(",".join(map(str, row)))
+
+  # Add a row of zeros
+  row = [0] * (1 + len(columns))
+  row[0] = maxIndex + 1
+  lines.append(",".join(map(str, row)))
+
+  # End with newline
+  lines.append("")
+
+  # Finish
+  saveFileContents(fileName, "\n".join(lines))
 
 
 # Run the program!
