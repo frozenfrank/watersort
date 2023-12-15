@@ -1,14 +1,14 @@
 i
 dec12
 11
-m	pn	g	?
-lb	p	g	?
-lb	m	pk	?
+m	pn	g	o
+lb	p	g	r
+lb	m	pk	b
 g	m	g	pn
-b	p	r	?
+b	p	r	b
 o	o	r	pk
-pn	b	lb	?
+pn	b	lb	pk
 o	p	p	pk
-pn	lb	r	?
+pn	lb	r	m
 -	-	-	-
 -	-	-	-
