@@ -7,7 +7,7 @@ import itertools;
 import sys;
 
 SOLVER_VERSION = 1
-ANALYZER_VERSION = 1
+ANALYZER_VERSION = 2
 
 NUM_SPACES_PER_VIAL = 4
 DEBUG_ONLY = False
@@ -554,6 +554,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0):
   uniqueSolsDepth = defaultdict(int)
   solFindSeconds = defaultdict(int)
   uniqueSolutions: set["Game"] = set()
+  isUniqueList: list[bool] = list()
   analysisSamplesRemaining = analyzeSampleCount
   lastReportTime = 0
   REPORT_SEC_FREQ = 15
@@ -642,6 +643,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0):
           dupGameDepth[nextGame._numMoves] += 1
           continue
         computed.add(nextGame)
+
         hasNextGame = True
         if nextGame.isFinished():
           if not solution or nextGame._numMoves < solution._numMoves:
@@ -652,7 +654,10 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0):
           if solution not in uniqueSolutions:
             uniqueSolutions.add(solution)
             uniqueSolsDepth[solution._numMoves] += 1
-          break
+            isUniqueList.append(True)
+          else:
+            isUniqueList.append(False)
+          break # Finish searching
         else:
           q.append(nextGame)
 
@@ -669,6 +674,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0):
   if analyzeSampleCount > 0:
     secsAnalyzing, minsAnalyzing = getTimeRunning(analysisStart, endTime)
 
+    # Print out interesting information to the console only
     minSolutionMoves, maxSolutionMoves, modeSolutionMoves, countUniqueSols = analyzeCounterDictionary(uniqueSolsDepth)
     minDeadEnd, lastDeadEnd, modeDeadEnds, _ = analyzeCounterDictionary(deadEndDepth)
     nDupSols = analyzeSampleCount - countUniqueSols
@@ -696,10 +702,15 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0):
           {fPercent(nDupSols, analyzeSampleCount)}\t   Percent duplicated solutions
           """)
 
+    # Identify and prepare some extra data
+    extraDataLen = identifyExtraDataLength(partialDepth)
+    longestSolvesDict = prepareLongestSolves(extraDataLen, solFindSeconds)
+    uniqueDistributionDict = prepareUniqueDistribution(extraDataLen, isUniqueList)
+
     saveAnalysisResults(\
       game.level, endTime - analysisStart, analyzeSampleCount, \
       partialDepth, dupGameDepth, deadEndDepth, solutionDepth, uniqueSolsDepth, \
-        solFindSeconds)
+      longestSolvesDict, uniqueDistributionDict, solFindSeconds)
   else:
     secsSearching, minsSearching = getTimeRunning(startTime, endTime)
 
@@ -863,14 +874,14 @@ def chooseInteraction():
   while not mode:
     print("""
           How are we interacting?
-          NAME        level name
-          p           play
-          s           solve (from new input)
-          i           interact (or resume an existing game)
-          a SAMPLES?  analyze
-          q           quit
-          d           debug mode
-          m METHOD    method of solving
+          NAME                      level name
+          p                         play
+          s                         solve (from new input)
+          i                         interact (or resume an existing game)
+          a SAMPLES? LEVEL?         analyze
+          q                         quit
+          d                         debug mode
+          m METHOD                  method of solving
           """)
     response = input().strip()
     words = response.split()
@@ -887,6 +898,8 @@ def chooseInteraction():
       mode = "a"
       if len(words) > 1:
         analyzeSamples = int(words[1])
+      if len(words) > 2:
+        level = words[2]
     elif firstWord in validModes:
       mode = firstWord
       if mode == "i":
@@ -973,18 +986,23 @@ def setSolveMethod(method: str) -> bool:
 
 def generateAnalysisResultsName(level: str, absolutePath = True) -> str:
   return getBasePath(absolutePath) + f"wsanalysis/{level}-{round(time())}.csv"
-def saveAnalysisResults(level, seconds, samples, partialStates, dupStates, deadStates, solStates, uniqueSolStates, solveTimes: defaultdict[int] = None) -> None:
+def saveAnalysisResults(level, seconds, samples, partialStates, dupStates, deadStates, solStates, uniqueSolStates, longestSolves, uniqueSolsDistribution, solveTimes: defaultdict[int] = None) -> None:
   # Generates a CSV file with data
   # This spreadsheet has been setup to analyze these data exports
   # https://docs.google.com/spreadsheets/d/1HK8ic2QTs1onlG_x7o9s0yXxY1Nl9mFLO9mHtou2RcA/edit#gid=1119310589
+
+  extraDataLength = max(
+    max(longestSolves.keys()),
+    max(uniqueSolsDistribution.keys()))
 
   fileName = generateAnalysisResultsName(level)
   headers = [
     ("Level", level),
     ("Seconds", round(seconds, 1)),
     ("Samples", samples),
-    ("Solver Version", SOLVER_VERSION)
-    ("Analyzer Version", ANALYZER_VERSION)
+    ("Solver Version", SOLVER_VERSION),
+    ("Analyzer Version", ANALYZER_VERSION),
+    ("Extra Data Length", extraDataLength)
   ]
   if solveTimes:
     headers.append(("Max Solution Seconds", max(solveTimes.keys())))
@@ -996,6 +1014,8 @@ def saveAnalysisResults(level, seconds, samples, partialStates, dupStates, deadS
     ("Dead End States", deadStates),
     ("Solutions", solStates),
     ("Unique Solutions", uniqueSolStates),
+    ("Longest Solves (s)", longestSolves),
+    ("Unique Sol Distribution", uniqueSolsDistribution),
   ]
   saveCSVFile(fileName, columns, headers, keyColumnName="Depth")
   print("Saved analysis results to file: " + fileName)
@@ -1009,6 +1029,32 @@ def printCounterDict(counter: defaultdict[int], title = "Counter:", indentation 
     lines.append(indentation + str(key).rjust(keyWidth) + ": " + str(count));
 
   print("\n".join(lines))
+def identifyExtraDataLength(partialStatesDepthDict: defaultdict[int, int]) -> int:
+  deepestGame = max(partialStatesDepthDict.keys())
+  return min(round(deepestGame // 5) * 5, 50) # Round down to the nearest multiple of 5, capped at 50
+def prepareLongestSolves(targetCount: int, solSolveTimes: defaultdict[float, int]) -> defaultdict[int, int]:
+  longestSolvesList = list()
+  for time, count in sorted(solSolveTimes.items(), reverse=True):
+    longestSolvesList.extend(itertools.repeat(time, count))
+    if len(longestSolvesList) >= targetCount:
+      break
+
+  longestSolvesDict = defaultdict(int)
+  for i in range(min(targetCount, len(longestSolvesList))):
+    longestSolvesDict[i + 1] = longestSolvesList[i]
+
+  return longestSolvesDict
+def prepareUniqueDistribution(targetCount: int, isUniqueList: list[bool]) -> defaultdict[int, int]:
+  targetCount = min(targetCount, len(isUniqueList))
+  divisor = len(isUniqueList) / targetCount
+
+  uniqueSolvesDistribution = defaultdict(int)
+  for index, isUnique in enumerate(isUniqueList):
+    if isUnique:
+      uniqueSolvesDistribution[int(1 + (index // divisor))] += 1
+
+  return uniqueSolvesDistribution
+
 
 def saveCSVFile(fileName: str, columns: list[tuple[str, defaultdict]], headers: list[tuple[str, ...]] = None, keyColumnName = "Key") -> None:
   # Creates a CSV file with the following format:
