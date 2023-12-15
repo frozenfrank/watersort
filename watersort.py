@@ -678,7 +678,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0):
     minSolutionMoves, maxSolutionMoves, modeSolutionMoves, countUniqueSols = analyzeCounterDictionary(uniqueSolsDepth)
     minDeadEnd, lastDeadEnd, modeDeadEnds, _ = analyzeCounterDictionary(deadEndDepth)
     nDupSols = analyzeSampleCount - countUniqueSols
-    minFindTime, modeFindTime, maxFindTime, _ = analyzeCounterDictionary(solFindSeconds);
+    minFindTime, maxFindTime, modeFindTime, _ = analyzeCounterDictionary(solFindSeconds);
 
     printCounterDict(solFindSeconds, title="Time to find Solutions:")
 
@@ -753,7 +753,7 @@ def getTimeRunning(startTime: float, endTime: float) -> tuple[float, float]: # (
   seconds = round(endTime - startTime, 1)
   minutes = round((endTime - startTime) / 60, 1)
   return (seconds, minutes)
-def analyzeCounterDictionary(dict: defaultdict[int]) -> tuple[int, int, int]: # (min, max, mode, total)
+def analyzeCounterDictionary(dict: defaultdict[int]) -> tuple[int, int, int, int]: # (min, max, mode, total)
   minKey = min(dict.keys())
   maxKey = max(dict.keys())
   totalOccurrences = sum(dict.values())
