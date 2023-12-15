@@ -1,4 +1,4 @@
-Depth,Partial Game States,Duplicate Game States,Dead End States,Solution States,Unique Solution States
+Depth,Partial Game States,Duplicate Game States,Dead End States,Solutions,Unique Solution
 Level,227
 Seconds,269.6
 Samples,10000
