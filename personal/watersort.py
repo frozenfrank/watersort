@@ -6,6 +6,9 @@ import copy;
 import itertools;
 import sys;
 
+SOLVER_VERSION = 1
+ANALYZER_VERSION = 1
+
 NUM_SPACES_PER_VIAL = 4
 DEBUG_ONLY = False
 FORCE_SOLVE_LEVEL = None # "100"
@@ -133,6 +136,8 @@ class Game:
       return self.tryAccessVal(self, vialIndex, spaceIndex)
     else:
       rootVal = self.root.tryAccessVal(self, vialIndex, spaceIndex)
+      if not rootVal:
+        return "?"
       self.vials[vialIndex][spaceIndex] = rootVal
       return rootVal
   # The following two methods to be called on `self.root` only
@@ -145,9 +150,7 @@ class Game:
     startVial = vialIndex + 1
     request = f"What's the new value in the {startVial} vial?"
     val = self.requestVal(original, request)
-    if not val or val == "":
-      val = "?"
-    else:
+    if val:
       Game.reset = True # Reset the search to handle this new discovery properly
       self.root.modified = True
       self.root.vials[vialIndex][spaceIndex] = val
@@ -193,7 +196,7 @@ class Game:
           saveGame(root, forceSave=True)
         elif rsp == "-r" or rsp == "-reset":
           Game.reset = True
-          return "?"
+          return ""
 
         # Printing status
         elif rsp == "-p" or rsp == "-print":
@@ -337,7 +340,7 @@ class Game:
       label = "\t"
       if color != "?" and count != NUM_SPACES_PER_VIAL:
         label += "(too many)" if count > NUM_SPACES_PER_VIAL else "(too few)"
-      lines.append(f"  {color}: \t{count}")
+      lines.append(f"  {color}: \t{count}" + label)
 
     if len(errors):
       lines.append("\nErrors:")
@@ -549,14 +552,24 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0):
   deadEndDepth = defaultdict(int)
   solutionDepth = defaultdict(int)
   uniqueSolsDepth = defaultdict(int)
+  solFindSeconds = defaultdict(int)
   uniqueSolutions: set["Game"] = set()
   analysisSamplesRemaining = analyzeSampleCount
+  lastReportTime = 0
+  REPORT_SEC_FREQ = 15
+
+  # Temp only
+  timeCheck: float
 
   while Game.reset or not solution or analysisSamplesRemaining > 0:
     if Game.reset:
       Game.reset = False
       numResets += 1
     elif analysisSamplesRemaining > 0:
+      timeCheck = time()
+      if analysisSamplesRemaining % 1000 == 0 or timeCheck - lastReportTime > REPORT_SEC_FREQ:
+        print(f"Searching for {analysisSamplesRemaining} more solutions. Running for {round(timeCheck - analysisStart, 1)} seconds. ")
+        lastReportTime = timeCheck
       analysisSamplesRemaining -= 1
       solution = None
 
@@ -631,8 +644,11 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0):
         computed.add(nextGame)
         hasNextGame = True
         if nextGame.isFinished():
-          solution = nextGame
+          if not solution or nextGame._numMoves < solution._numMoves:
+            solution = nextGame
           solutionDepth[solution._numMoves] += 1
+          timeCheck = time()
+          solFindSeconds[int((timeCheck - startTime + 0.9) // 1)] += 1
           if solution not in uniqueSolutions:
             uniqueSolutions.add(solution)
             uniqueSolsDepth[solution._numMoves] += 1
@@ -656,6 +672,9 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0):
     minSolutionMoves, maxSolutionMoves, modeSolutionMoves, countUniqueSols = analyzeCounterDictionary(uniqueSolsDepth)
     minDeadEnd, lastDeadEnd, modeDeadEnds, _ = analyzeCounterDictionary(deadEndDepth)
     nDupSols = analyzeSampleCount - countUniqueSols
+    minFindTime, modeFindTime, maxFindTime, _ = analyzeCounterDictionary(solFindSeconds);
+
+    printCounterDict(solFindSeconds, title="Time to find Solutions:")
 
     print(f"""
         Finished analyzing solution space:
@@ -666,6 +685,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0):
           {analyzeSampleCount           }\t   Analysis samples
           {secsAnalyzing                }\t   Seconds analyzing
           {minsAnalyzing                }\t   Minutes analyzing
+          {maxFindTime                  }\t   Maximum solution find time
           {minDeadEnd                   }\t   Dead end (First)
           {modeDeadEnds                 }\t   Dead end (Mode)
           {lastDeadEnd                  }\t   Dead end (Last)
@@ -678,7 +698,8 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0):
 
     saveAnalysisResults(\
       game.level, endTime - analysisStart, analyzeSampleCount, \
-      partialDepth, dupGameDepth, deadEndDepth, solutionDepth, uniqueSolsDepth)
+      partialDepth, dupGameDepth, deadEndDepth, solutionDepth, uniqueSolsDepth, \
+        solFindSeconds)
   else:
     secsSearching, minsSearching = getTimeRunning(startTime, endTime)
 
@@ -722,8 +743,8 @@ def getTimeRunning(startTime: float, endTime: float) -> tuple[float, float]: # (
   minutes = round((endTime - startTime) / 60, 1)
   return (seconds, minutes)
 def analyzeCounterDictionary(dict: defaultdict[int]) -> tuple[int, int, int]: # (min, max, mode, total)
-  minKey = min(*dict.keys())
-  maxKey = max(*dict.keys())
+  minKey = min(dict.keys())
+  maxKey = max(dict.keys())
   totalOccurrences = sum(dict.values())
 
   # Compute mode
@@ -952,7 +973,7 @@ def setSolveMethod(method: str) -> bool:
 
 def generateAnalysisResultsName(level: str, absolutePath = True) -> str:
   return getBasePath(absolutePath) + f"wsanalysis/{level}-{round(time())}.csv"
-def saveAnalysisResults(level, seconds, samples, partialStates, dupStates, deadStates, solStates, uniqueSolStates) -> None:
+def saveAnalysisResults(level, seconds, samples, partialStates, dupStates, deadStates, solStates, uniqueSolStates, solveTimes: defaultdict[int] = None) -> None:
   # Generates a CSV file with data
   # This spreadsheet has been setup to analyze these data exports
   # https://docs.google.com/spreadsheets/d/1HK8ic2QTs1onlG_x7o9s0yXxY1Nl9mFLO9mHtou2RcA/edit#gid=1119310589
@@ -961,8 +982,14 @@ def saveAnalysisResults(level, seconds, samples, partialStates, dupStates, deadS
   headers = [
     ("Level", level),
     ("Seconds", round(seconds, 1)),
-    ("Samples", samples)
+    ("Samples", samples),
+    ("Solver Version", SOLVER_VERSION)
+    ("Analyzer Version", ANALYZER_VERSION)
   ]
+  if solveTimes:
+    headers.append(("Max Solution Seconds", max(solveTimes.keys())))
+
+
   columns = [
     ("Partial Game States", partialStates),
     ("Duplicate Game States", dupStates),
@@ -972,6 +999,16 @@ def saveAnalysisResults(level, seconds, samples, partialStates, dupStates, deadS
   ]
   saveCSVFile(fileName, columns, headers, keyColumnName="Depth")
   print("Saved analysis results to file: " + fileName)
+def printCounterDict(counter: defaultdict[int], title = "Counter:", indentation = "  ", keyWidth = 4) -> None:
+  lines = []
+
+  if title:
+    lines.append(title)
+
+  for key, count in sorted(counter.items()):
+    lines.append(indentation + str(key).rjust(keyWidth) + ": " + str(count));
+
+  print("\n".join(lines))
 
 def saveCSVFile(fileName: str, columns: list[tuple[str, defaultdict]], headers: list[tuple[str, ...]] = None, keyColumnName = "Key") -> None:
   # Creates a CSV file with the following format:
