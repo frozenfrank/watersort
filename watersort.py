@@ -15,7 +15,7 @@ FORCE_SOLVE_LEVEL = None # "100"
 
 
 SOLVE_METHOD = "MIX"
-VALID_SOLVE_METHODS = set(["MIX", "BFS", "DFS"]) # An enum is more accurate, but overkill for this need
+VALID_SOLVE_METHODS = set(["MIX", "BFS", "DFS", "DFR"]) # An enum is more accurate, but overkill for this need
 
 MIX_SWITCH_THRESHOLD_MOVES = 10
 ENABLE_QUEUE_CHECKS = True # Disable only for temporary testing
@@ -23,6 +23,7 @@ DENSE_QUEUE_CHECKING = True
 
 SHUFFLE_NEXT_MOVES = False
 ANALYZE_ATTEMPTS = 100
+DFR_SEARCH_ATTEMPTS = 10
 
 '''
 COLORS
@@ -532,21 +533,24 @@ def playGame(game: "Game"):
     currentGame = currentGame.spawn((startVial, endVial))
 
   print("Goodbye.")
-def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0):
+def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, randomSamplesRemaining = 0):
   # Intelligent search through all the possible game states until we find a solution.
   # The game already handles asking for more information as required
 
-  solution: Game = None
-  numResets = 0
+  minSolution: Game = None
+  numResets = -1
+  randomSamplesRemaining = randomSamplesRemaining if solveMethod == "DFR" else 0
 
-  analysisStart: float = time()
   startTime: float = None
   endTime: float = None
 
-  REPORT_ITERATION_FREQ = 10000 if solveMethod == "BFS" else 1000
-  QUEUE_CHECK_FREQ = REPORT_ITERATION_FREQ * 10
+  minSolutionUpdates = 0
+
 
   # Analyzing variables
+  analysisStart: float = time()
+  REPORT_ITERATION_FREQ = 10000 if solveMethod == "BFS" else 1000
+  QUEUE_CHECK_FREQ = REPORT_ITERATION_FREQ * 10
   partialDepth = defaultdict(int)
   dupGameDepth = defaultdict(int)
   deadEndDepth = defaultdict(int)
@@ -562,17 +566,17 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0):
   # Temp only
   timeCheck: float
 
-  while Game.reset or not solution or analysisSamplesRemaining > 0:
-    if Game.reset:
-      Game.reset = False
-      numResets += 1
+  while Game.reset or not minSolution or randomSamplesRemaining > 0 or analysisSamplesRemaining > 0:
+    Game.reset = False
+    numResets += 1
+    if randomSamplesRemaining > 0:
+      randomSamplesRemaining -= 1
     elif analysisSamplesRemaining > 0:
       timeCheck = time()
       if analysisSamplesRemaining % 1000 == 0 or timeCheck - lastReportTime > REPORT_SEC_FREQ:
         print(f"Searching for {analysisSamplesRemaining} more solutions. Running for {round(timeCheck - analysisStart, 1)} seconds. ")
         lastReportTime = timeCheck
       analysisSamplesRemaining -= 1
-      solution = None
 
 
     # First correct any errors in the game
@@ -581,10 +585,11 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0):
     startTime = time()
 
     # Setup our search
+    solution: Game = None
     q: deque["Game"] = deque()
     computed: set["Game"] = set()
     q.append(game)
-    searchBFS: bool = solveMethod != "DFS"
+    searchBFS: bool = shouldSearchBFS()
 
     numIterations = 0
     numDeadEnds = 0
@@ -615,8 +620,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0):
         if solveMethod == "MIX" and current._numMoves >= MIX_SWITCH_THRESHOLD_MOVES:
           searchBFS = False
           print("Switching to DFS search for MIX solve method")
-
-        if numIterations % QUEUE_CHECK_FREQ == 0:
+        elif numIterations % QUEUE_CHECK_FREQ == 0:
           if ENABLE_QUEUE_CHECKS and not searchBFS:
             current.requestVal(current, "This is a lot. Are you sure?")
           else:
@@ -646,8 +650,10 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0):
 
         hasNextGame = True
         if nextGame.isFinished():
-          if not solution or nextGame._numMoves < solution._numMoves:
-            solution = nextGame
+          solution = nextGame
+          if not minSolution or solution._numMoves < minSolution._numMoves:
+            minSolution = solution
+            minSolutionUpdates += 1
           solutionDepth[solution._numMoves] += 1
           timeCheck = time()
           solFindSeconds[int((timeCheck - startTime + 0.9) // 1)] += 1
@@ -720,6 +726,8 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0):
             Overall:
             {solveMethod                  }\t   Solving method
             {numResets                    }\t   Num resets
+            {minSolution._numMoves if minSolution else "--"}\t   Shortest Solution
+            {minSolutionUpdates           }\t   Min solution updates
 
             Since last reset:
             {secsSearching                }\t   Seconds searching
@@ -733,9 +741,9 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0):
             {len(computed)                }\t   Num states computed
           """)
 
-    if solution:
+    if minSolution:
       print("Found solution!")
-      solution.printMoves()
+      minSolution.printMoves()
     else:
       print("Cannot not find solution.")
 
@@ -743,6 +751,13 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0):
       saveGame(game)
 
   pass
+def shouldSearchBFS() -> bool:
+  if SOLVE_METHOD == "BFS" or SOLVE_METHOD == "MIX":
+    return True
+  elif SOLVE_METHOD == "DFS" or SOLVE_METHOD == "DFR":
+    return False
+  else:
+    raise Exception("Unrecognized solve method: " + SOLVE_METHOD)
 def testSolutionPrints(solution: "Game"):
   # Requires that the solution have at least 10 moves to solve
   solution.getNthParent(10).printMoves()
@@ -854,6 +869,7 @@ def chooseInteraction():
   userInteracting = True
   originalGame: Game = None
   analyzeSamples = ANALYZE_ATTEMPTS
+  dfrSearchAttempts = DFR_SEARCH_ATTEMPTS
 
   # Allow different forms of level override
   if FORCE_SOLVE_LEVEL:
@@ -863,12 +879,26 @@ def chooseInteraction():
     print(f"FORCING SOLVE LEVEL to {level}")
   elif len(sys.argv) > 1:
     # COMMAND LINE
-    level = sys.argv[1]
-    mode = "i"
 
-  # Read solve method from command line
-  if len(sys.argv) > 2:
-    setSolveMethod(sys.argv[2])
+    # Analyze mode
+    if sys.argv[1] == "a":
+      mode = "a"
+      if len(sys.argv) > 2:
+        level = sys.argv[2]
+      if len(sys.argv) > 3:
+        analyzeSamples = int(sys.argv[3])
+
+    # Playing a level
+    else:
+      mode = "i"
+      level = sys.argv[1]
+
+      # Read solve method
+      if len(sys.argv) > 2:
+        setSolveMethod(sys.argv[2])
+      if len(sys.argv) > 3 and SOLVE_METHOD == "DFR":
+        dfrSearchAttempts = int(sys.argv[3])
+
 
   # Request the mode
   while not mode:
@@ -878,7 +908,7 @@ def chooseInteraction():
           p                         play
           s                         solve (from new input)
           i                         interact (or resume an existing game)
-          a SAMPLES? LEVEL?         analyze
+          a LEVEL? SAMPLES?         analyze
           q                         quit
           d                         debug mode
           m METHOD                  method of solving
@@ -897,9 +927,9 @@ def chooseInteraction():
     elif firstWord == "a":
       mode = "a"
       if len(words) > 1:
-        analyzeSamples = int(words[1])
+        level = words[1]
       if len(words) > 2:
-        level = words[2]
+        analyzeSamples = int(words[2])
     elif firstWord in validModes:
       mode = firstWord
       if mode == "i":
@@ -938,7 +968,7 @@ def chooseInteraction():
   if mode == "p":
     playGame(originalGame)
   elif mode == "i" or mode == "s":
-    solveGame(originalGame, solveMethod=SOLVE_METHOD)
+    solveGame(originalGame, solveMethod=SOLVE_METHOD, randomSamplesRemaining=dfrSearchAttempts)
     saveGame(originalGame)
   elif mode == "a":
     global SHUFFLE_NEXT_MOVES
@@ -977,12 +1007,20 @@ def saveFileContents(fileName: str, contents: str) -> None:
 
 def setSolveMethod(method: str) -> bool:
   method = method.upper()
-  if method in VALID_SOLVE_METHODS:
-    global SOLVE_METHOD
-    SOLVE_METHOD = method
-    print("Set solve method to " + method)
-  else:
+  if method not in VALID_SOLVE_METHODS:
     print(f"Solve method '{method}' is not a valid input. Choose one of the following instead: " + ", ".join(VALID_SOLVE_METHODS))
+
+  global SOLVE_METHOD
+  global SHUFFLE_NEXT_MOVES
+  global DFR_SEARCH_ATTEMPTS
+  SOLVE_METHOD = method
+
+  if method == "DFR":
+    SHUFFLE_NEXT_MOVES = True
+  else:
+    DFR_SEARCH_ATTEMPTS = 0
+
+  print("Set solve method to " + method)
 
 def generateAnalysisResultsName(level: str, absolutePath = True) -> str:
   return getBasePath(absolutePath) + f"wsanalysis/{level}-{round(time())}.csv"
@@ -1030,7 +1068,7 @@ def printCounterDict(counter: defaultdict[int], title = "Counter:", indentation 
 
   print("\n".join(lines))
 def identifyExtraDataLength(partialStatesDepthDict: defaultdict[int, int]) -> int:
-  deepestGame = max(partialStatesDepthDict.keys())
+  deepestGame = max(partialStatesDepthDict.keys()) + 1 # Because we add an empty row at the end of the CSV file
   return min(round(deepestGame // 5) * 5, 50) # Round down to the nearest multiple of 5, capped at 50
 def prepareLongestSolves(targetCount: int, solSolveTimes: defaultdict[float, int]) -> defaultdict[int, int]:
   longestSolvesList = list()
@@ -1108,6 +1146,7 @@ def saveCSVFile(fileName: str, columns: list[tuple[str, defaultdict]], headers: 
 
 # Run the program!
 # Call signatures:
+# py watersory.py a LEVEL SAMPLES
 # py watersort.py LEVEL <MODE>
-# py watersort.py LEVEL MIX <Move Threshold>
+# py watersory.py LEVEL dfr SAMPLES
 chooseInteraction()
