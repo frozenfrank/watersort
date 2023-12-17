@@ -1,0 +1,10 @@
+i
+dec15
+7
+pn	pn	b	o
+b	r	m	r
+pn	m	r	m
+b	o	r	m
+o	pn	b	o
+-	-	-	-
+-	-	-	-
