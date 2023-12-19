@@ -1,0 +1,10 @@
+i
+jan15
+7
+m	b	m	o
+b	o	pn	b
+o	o	pn	r
+m	r	r	pn
+pn	m	b	r
+-	-	-	-
+-	-	-	-
