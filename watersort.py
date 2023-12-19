@@ -11,7 +11,8 @@ ANALYZER_VERSION = 2
 
 NUM_SPACES_PER_VIAL = 4
 DEBUG_ONLY = False
-FORCE_SOLVE_LEVEL = None # "100"
+FORCE_SOLVE_LEVEL = None # "263"
+FORCE_INTERACTION_MODE = None # "a"
 
 
 SOLVE_METHOD = "MIX"
@@ -23,7 +24,7 @@ DENSE_QUEUE_CHECKING = True
 
 SHUFFLE_NEXT_MOVES = False
 ANALYZE_ATTEMPTS = 100
-DFR_SEARCH_ATTEMPTS = 10
+DFR_SEARCH_ATTEMPTS = 20
 
 '''
 COLORS
@@ -545,6 +546,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, randomS
   endTime: float = None
 
   minSolutionUpdates = 0
+  numSolutionsAbandoned = 0
 
 
   # Analyzing variables
@@ -624,7 +626,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, randomS
           if ENABLE_QUEUE_CHECKS and not searchBFS:
             current.requestVal(current, "This is a lot. Are you sure?")
           else:
-            print(f"QUEUE CHECK: \titrs: {numIterations} \tmvs: {current._numMoves} \tq len: {len(q)} \tends: {numDeadEnds} \tdup games: {numDuplicateGames} \tmins: {round((time() - startTime) / 60, 1)}")
+            print(f"QUEUE CHECK: \tresets: {numResets} \titrs: {numIterations} \tmvs: {current._numMoves} \tq len: {len(q)} \tends: {numDeadEnds} \tdup games: {numDuplicateGames} \tmins: {round((time() - startTime) / 60, 1)}")
             if solveMethod == "MIX":
               rsp = current.requestVal(current, "This is a lot. Would you like to switch to a faster approach? (Yes/no)", printState=False)
               rsp.lower()
@@ -633,6 +635,11 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, randomS
                 solveMethod = "DFS"
               else:
                 pass
+
+      # Prune if we've found a cheaper solution
+      if solveMethod == "DFR" and minSolution and minSolution._numMoves <= current._numMoves:
+        numSolutionsAbandoned += 1
+        break # Quit this attempt, and try a different one
 
       # Check all next moves
       hasNextGame = False
@@ -728,6 +735,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, randomS
             {numResets                    }\t   Num resets
             {minSolution._numMoves if minSolution else "--"}\t   Shortest Solution
             {minSolutionUpdates           }\t   Min solution updates
+            {numSolutionsAbandoned        }\t   Num solutions abandoned
 
             Since last reset:
             {secsSearching                }\t   Seconds searching
@@ -875,8 +883,9 @@ def chooseInteraction():
   if FORCE_SOLVE_LEVEL:
     # DEBUG
     level = FORCE_SOLVE_LEVEL
-    mode = "i"
-    print(f"FORCING SOLVE LEVEL to {level}")
+    if FORCE_INTERACTION_MODE:
+      mode = FORCE_INTERACTION_MODE
+    print(f"FORCING SOLVE LEVEL to {level}. Mode={mode}")
   elif len(sys.argv) > 1:
     # COMMAND LINE
 
@@ -973,6 +982,7 @@ def chooseInteraction():
   elif mode == "a":
     global SHUFFLE_NEXT_MOVES
     SHUFFLE_NEXT_MOVES = True
+    setSolveMethod("DFS")
     solveGame(originalGame, solveMethod="DFS", analyzeSampleCount=analyzeSamples)
   else:
     print("Unrecognized mode: " + mode)
@@ -1013,8 +1023,8 @@ def setSolveMethod(method: str) -> bool:
   global SOLVE_METHOD
   global SHUFFLE_NEXT_MOVES
   global DFR_SEARCH_ATTEMPTS
-  SOLVE_METHOD = method
 
+  SOLVE_METHOD = method
   if method == "DFR":
     SHUFFLE_NEXT_MOVES = True
   else:
@@ -1146,7 +1156,7 @@ def saveCSVFile(fileName: str, columns: list[tuple[str, defaultdict]], headers: 
 
 # Run the program!
 # Call signatures:
-# py watersory.py a LEVEL SAMPLES
+# py watersort.py a LEVEL SAMPLES
 # py watersort.py LEVEL <MODE>
-# py watersory.py LEVEL dfr SAMPLES
+# py watersort.py LEVEL dfr SAMPLES
 chooseInteraction()
