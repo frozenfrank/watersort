@@ -7,7 +7,7 @@ import itertools;
 import sys;
 
 SOLVER_VERSION = 1
-ANALYZER_VERSION = 2
+ANALYZER_VERSION = 3
 
 NUM_SPACES_PER_VIAL = 4
 DEBUG_ONLY = False
@@ -321,14 +321,14 @@ class Game:
       result = f"({num} {color}{completeStr})"
 
     return result.ljust(Game.TOTAL_MOVE_PRINT_WIDTH)
-  def __getMoveInfo(self) -> (str, int): # (colorMoved, numMoved, isComplete) OR None
+  def __getMoveInfo(self) -> tuple[str, int]: # (colorMoved, numMoved, isComplete) OR None
     if not self.move:
       return None
     start, end = self.move
 
     colorMoved = self.getTopVialColor(end)
-    _, _, numMoved = self.prev.__countOnTop(colorMoved, start)
-    complete, _, _ = self.__countOnTop(colorMoved, end)
+    _, _, numMoved, _ = self.prev.__countOnTop(colorMoved, start)
+    complete, _, _, _ = self.__countOnTop(colorMoved, end)
 
     return (colorMoved, numMoved, complete)
   # Prints out the state of the colors, including any errors
@@ -388,8 +388,8 @@ class Game:
     return True
   def canMove(self, startVial, endVial) -> bool:
     return self.__prepareMove(startVial, endVial)[0]
-  def __prepareMove(self, startVial, endVial) -> (bool, str, str, int): # (valid, startColor, endColor, endSpace)
-    INVALID_MOVE = (False, None, None, None)
+  def __prepareMove(self, startVial, endVial) -> tuple[bool, str, str, int, bool]: # (valid, startColor, endColor, endSpace, willComplete)
+    INVALID_MOVE = (False, None, None, None, False)
     if startVial == endVial:
       return INVALID_MOVE # Can't move to the same place
     if self.move and startVial == self.move[1] and endVial == self.move[0]:
@@ -403,47 +403,50 @@ class Game:
       return INVALID_MOVE # Can only place on the same color, or an empty square
 
     # Verify the destination vial
-    endSpaces = 0
-    for i in range(NUM_SPACES_PER_VIAL):
-      if self.vials[endVial][i] == '-':
-        endSpaces += 1
-      else:
-        break
-    if endSpaces == 0:
+    endIsComplete, endOnlyColor, endNumOnTop, endEmptySpaces = self.__countOnTop(endColor, endVial)
+    if endEmptySpaces == 0:
       return INVALID_MOVE # End vial is full
 
     # Verify that this vial isn't full
-    isComplete, onlyColor, numOnTop = self.__countOnTop(startColor, startVial)
-    if isComplete:
+    startIsComplete, startOnlyColor, startNumOnTop, startEmptySpaces = self.__countOnTop(startColor, startVial)
+    if startIsComplete:
       return INVALID_MOVE # Start is fully filled
-    if onlyColor and endColor == "-":
+    if startOnlyColor and endColor == "-":
       return INVALID_MOVE # Don't needlessly switch to a different empty container
-    if numOnTop > endSpaces:
+    if startNumOnTop > endEmptySpaces:
       # CONSIDER: This may not actually be an invalid move
       return INVALID_MOVE # Only pour when it can all be received
 
+    # Compute additional fields
+    willComplete = endOnlyColor and startNumOnTop == endEmptySpaces
+
     # It's valid
-    return (True, startColor, endColor, endSpaces)
+    return (True, startColor, endColor, endEmptySpaces, willComplete)
   # topColor SHOULD NOT be "-" or "?"
-  def __countOnTop(self, topColor: str, vialIndex: int) -> (bool, bool, int): # (isComplete, isOnlyColorInColumn, numOfColorOnTop)
+  def __countOnTop(self, topColor: str, vialIndex: int) -> tuple[bool, bool, int, int]: # (isComplete, isOnlyColorInColumn, numOfColorOnTop, numEmptySpaces)
     isComplete = True
     onlyColor = True
+    emptySpaces = 0
     numOnTop = 0
 
     vial = self.vials[vialIndex]
+    emptySpaceVal = 1 # We only want to count empty spaces that appear BEFORE colors
     for i in range(NUM_SPACES_PER_VIAL):
       color = vial[i]
+      if color == "-":
+        emptySpaces += emptySpaceVal
       if color != topColor:
         isComplete = False
         if color != "-":
           onlyColor = False
+          emptySpaceVal = 0
       elif onlyColor:
         numOnTop += 1
 
-    return (isComplete, onlyColor, numOnTop)
+    return (isComplete, onlyColor, numOnTop, emptySpaces)
 
   def makeMove(self, startVial, endVial) -> bool:
-    valid, startColor, endColor, endSpaces = self.__prepareMove(startVial, endVial)
+    valid, startColor, endColor, endSpaces, willComplete = self.__prepareMove(startVial, endVial)
     if not valid:
       return False
 
@@ -484,11 +487,44 @@ class Game:
     return [self.spawn(move) for move in self.generateNextMoves()]
   def generateNextMoves(self) -> list[Move]:
     moves = list()
+
+    emptyValid = [True]*self.__numVials
+    moveValid = [True]*self.__numVials
     for start, end in itertools.product(range(self.__numVials), range(self.__numVials)):
       if Game.reset:
         return list()
-      if self.canMove(start, end):
-        moves.append((start, end))
+
+      # We hope to restrict some moves that are legally valid, but expand the search space unnecessarily
+      # Only allow each move to end up in the first empty vial, other empty vials are not allowed
+      # If there are two ways to complete a vial, only allow the first way
+      # CONSIDER: If this vial can move into a vial that already has only this color in it (but is not empty),
+      # That should be the only valid move for this vial
+
+      # We already decided that this vial doesn't have any legal moves
+      if not moveValid[start]:
+        continue
+
+      valid, startColor, endColor, endEmptySpaces, willComplete = self.__prepareMove(start, end)
+
+      # Obviously, this isn't a valid move
+      if not valid:
+        continue
+
+      # Only allow the first move into an empty vial from a given start vial
+      if endColor == "-":
+        if emptyValid[start]:
+          emptyValid[start] = False
+        else:
+          continue
+      elif willComplete:
+        # If there is a move that will complete a color in a vial, then moving from that vial
+        # is never valid. Either, it would attempt to complete the other direction OR  it would
+        # only move into an empty vial. Obviously, there are no other colors for it to land on.
+        moveValid[end] = False
+
+      # Fine, it's valid
+      moves.append((start, end))
+
     return moves
 
   def __str__(self) -> str:
