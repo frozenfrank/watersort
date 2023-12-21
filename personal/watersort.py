@@ -23,7 +23,7 @@ ENABLE_QUEUE_CHECKS = True # Disable only for temporary testing
 DENSE_QUEUE_CHECKING = True
 
 SHUFFLE_NEXT_MOVES = False
-ANALYZE_ATTEMPTS = 100
+ANALYZE_ATTEMPTS = 10000
 DFR_SEARCH_ATTEMPTS = 20
 
 '''
@@ -534,13 +534,13 @@ def playGame(game: "Game"):
     currentGame = currentGame.spawn((startVial, endVial))
 
   print("Goodbye.")
-def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, randomSamplesRemaining = 0):
+def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDFRSamples = 0):
   # Intelligent search through all the possible game states until we find a solution.
   # The game already handles asking for more information as required
 
   minSolution: Game = None
   numResets = -1
-  randomSamplesRemaining = randomSamplesRemaining if solveMethod == "DFR" else 0
+  randomSamplesRemaining = probeDFRSamples if solveMethod == "DFR" else 0
 
   startTime: float = None
   endTime: float = None
@@ -904,7 +904,12 @@ def chooseInteraction():
 
       # Read solve method
       if len(sys.argv) > 2:
-        setSolveMethod(sys.argv[2])
+        if sys.argv[2] == "a":
+          mode = "a"
+          if len(sys.argv) > 3:
+            analyzeSamples = int(sys.argv[3])
+        else:
+          setSolveMethod(sys.argv[2])
       if len(sys.argv) > 3 and SOLVE_METHOD == "DFR":
         dfrSearchAttempts = int(sys.argv[3])
 
@@ -977,7 +982,7 @@ def chooseInteraction():
   if mode == "p":
     playGame(originalGame)
   elif mode == "i" or mode == "s":
-    solveGame(originalGame, solveMethod=SOLVE_METHOD, randomSamplesRemaining=dfrSearchAttempts)
+    solveGame(originalGame, solveMethod=SOLVE_METHOD, probeDFRSamples=dfrSearchAttempts)
     saveGame(originalGame)
   elif mode == "a":
     global SHUFFLE_NEXT_MOVES
@@ -1156,7 +1161,8 @@ def saveCSVFile(fileName: str, columns: list[tuple[str, defaultdict]], headers: 
 
 # Run the program!
 # Call signatures:
-# py watersort.py a LEVEL SAMPLES
+# py watersort.py LEVEL a SAMPLES?
+# py watersort.py a LEVEL SAMPLES?
 # py watersort.py LEVEL <MODE>
-# py watersort.py LEVEL dfr SAMPLES
+# py watersort.py LEVEL dfr SAMPLES?
 chooseInteraction()
