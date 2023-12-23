@@ -24,7 +24,7 @@ DENSE_QUEUE_CHECKING = True
 
 SHUFFLE_NEXT_MOVES = False
 ANALYZE_ATTEMPTS = 10000
-DFR_SEARCH_ATTEMPTS = 20
+DFR_SEARCH_ATTEMPTS = 40
 
 '''
 COLORS
@@ -655,12 +655,12 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
         if solveMethod != "BFS":
           print(f"Checked {numIterations} iterations.")
 
-        if solveMethod == "MIX" and current._numMoves >= MIX_SWITCH_THRESHOLD_MOVES:
+        if solveMethod == "MIX" and searchBFS and current._numMoves >= MIX_SWITCH_THRESHOLD_MOVES:
           searchBFS = False
           print("Switching to DFS search for MIX solve method")
         elif numIterations % QUEUE_CHECK_FREQ == 0:
           if ENABLE_QUEUE_CHECKS and not searchBFS:
-            current.requestVal(current, "This is a lot. Are you sure?")
+            current.requestVal(current, "This is a lot. Are you sure?", printState=False)
           else:
             print(f"QUEUE CHECK: \tresets: {numResets} \titrs: {numIterations} \tmvs: {current._numMoves} \tq len: {len(q)} \tends: {numDeadEnds} \tdup games: {numDuplicateGames} \tmins: {round((time() - startTime) / 60, 1)}")
             if solveMethod == "MIX":
