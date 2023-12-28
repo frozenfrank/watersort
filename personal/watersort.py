@@ -20,7 +20,6 @@ VALID_SOLVE_METHODS = set(["MIX", "BFS", "DFS", "DFR"]) # An enum is more accura
 
 MIX_SWITCH_THRESHOLD_MOVES = 10
 ENABLE_QUEUE_CHECKS = True # Disable only for temporary testing
-DENSE_QUEUE_CHECKING = True
 
 SHUFFLE_NEXT_MOVES = False
 ANALYZE_ATTEMPTS = 10000
