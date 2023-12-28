@@ -1,9 +1,10 @@
 
-from collections import deque
+from collections import defaultdict, deque
 from enum import Enum, auto
 from random import shuffle
 from time import time
 from typing import TypedDict
+from personal.watersort.file import saveGame
 from personal.watersort.game import Game
 from personal.watersort.snippet import getTimeRunning
 
@@ -39,8 +40,6 @@ class HasTimerStats(TypedDict):
 class SolveStats(HasTimerStats): # sv
   root: Game
   numResets: int
-  allSolutions: list[Game] # Sometimes empty
-  uniqueSolutions: set[Game]
 
   minSolution: Game
   minSolutionUpdates: int
@@ -55,6 +54,17 @@ class SolutionStats(HasTimerStats): # st
   numDuplicateGames: int
   numPartialSolutionsGenerated: int
   maxQueueLength: int
+class DepthStats(TypedDict): # ds
+  partialDepth: defaultdict[int]
+  dupGameDepth: defaultdict[int]
+  deadEndDepth: defaultdict[int]
+  solutionDepth: defaultdict[int]
+  uniqueSolsDepth: defaultdict[int]
+  solFindSeconds: defaultdict[int]
+
+  allSolutions: list[Game] # Sometimes empty
+  uniqueSolutions: set[Game]
+  isUniqueList: list[bool]
 
 class Solver:
   # These apply to all instances, but can be overridden on individual instances
@@ -76,6 +86,7 @@ class Solver:
   searchBFS: bool
   solveStats: SolveStats
   lastSolutionStats: SolutionStats
+  depthStats: DepthStats
 
   def __init__(self) -> None:
     # No data structures to initialize
@@ -132,7 +143,7 @@ class Solver:
     pass
   def _printQueueCheck(self, current: Game) -> None:
     sv, st = self.getStats()
-    minsSolving = round((time() - self.solutionStartTime) / 60, 1)
+    minsSolving = round((time() - st.startTime) / 60, 1)
     print(  f"QUEUE CHECK:"
           + f"\t resets: {sv.numResets}"
           + f"\t itrs: {st.numIterations}"
@@ -160,10 +171,11 @@ class Solver:
         pass
 
     pass
+  def onEndSolution(self, solution: Game) -> None:
+    pass
   def onEndSolve(self) -> None:
     self.printSolveStats()
-    if game.level:
-      saveGame(game)
+    saveGame(self.solveStats.root)
 
     pass
   def _printSolveStats(self) -> None:
@@ -214,91 +226,32 @@ class Solver:
 
       root = game,
       numResets = -1,
-      uniqueSolutions = set(),
 
       minSolution = None,
-      allSolutions = list(),
       minSolutionUpdates = 0,
       numSolutionsAbandoned = 0,
+    )
+    ds = self.depthStats = DepthStats(
+      partialDepth = defaultdict(int),
+      dupGameDepth = defaultdict(int),
+      deadEndDepth = defaultdict(int),
+      solutionDepth = defaultdict(int),
+      uniqueSolsDepth = defaultdict(int),
+      solFindSeconds = defaultdict(int),
+
+      allSolutions = list(),
+      uniqueSolutions = set(),
+      isUniqueList = list(),
     )
     solutionsRemaining = self.findSolutionCount
 
     self.onStartSolve(game)
 
     while Game.reset or solutionsRemaining > 0:
+      solutionsRemaining -= 1
       Game.reset = False
-      self.solveStats.numResets += 1
-      self.onNewSolution()
-
-      # First correct any errors in the game
-      game.attemptCorrectErrors()
-
-      self.solutionStartTime = time()
-
-      # Setup our search
-      st = self.lastSolutionStats = SolutionStats(
-        q = deque(),
-        computed = set(),
-        solution = None,
-
-        numIterations = 0,
-        numDeadEnds = 0,
-        numDuplicateGames = 0,
-        numPartialSolutionsGenerated = 0,
-        maxQueueLength = 1, # Because we added an initial
-      )
-      st.q.append(game)
-      self.searchBFS = self.shouldSearchBFS()
-
-      # Perform the search
-      while st.q and not solution:
-        # Break out
-        if Game.reset or Game.quit:
-          break
-
-        # Taking from the front or the back makes all the difference between BFS and DFS
-        current = st.q.popleft() if self.searchBFS else st.q.pop()
-
-        # Perform some work at some checkpoints
-        st.numIterations += 1
-        self.onNextIteration(current, st.numIterations)
-
-        # Prune if we've found a cheaper solution
-        if self.solveMethod == SolveMethod.DFR and st.minSolution and st.minSolution._numMoves <= current._numMoves:
-          sv.numSolutionsAbandoned += 1
-          break # Quit this attempt, and try a different one
-
-        # Check all next moves
-        hasNextGame = False
-        nextGames = current.generateNextGames()
-        if self.shuffleMoves: shuffle(nextGames)
-        for nextGame in nextGames:
-          st.numPartialSolutionsGenerated += 1
-          partialDepth[nextGame._numMoves] += 1
-
-          if nextGame in sv.computed:
-            st.numDuplicateGames += 1
-            dupGameDepth[nextGame._numMoves] += 1
-            continue
-          st.computed.add(nextGame)
-
-          hasNextGame = True
-          if nextGame.isFinished():
-            solution = nextGame
-            if not sv.minSolution or solution._numMoves < sv.minSolution._numMoves:
-              sv.minSolution = solution
-              sv.minSolutionUpdates += 1
-
-            self.onNewSolution(solution)
-            break # Finish searching
-          else:
-            st.q.append(nextGame)
-
-        # Maintain stats
-        maxQueueLength = max(maxQueueLength, len(q))
-        if not hasNextGame:
-          numDeadEnds += 1
-          deadEndDepth[current._numMoves] += 1
+      self._findSolution(game)
+      pass
 
     # End timer
     self.solveEndTime = time()
@@ -310,4 +263,101 @@ class Solver:
       return False
     else:
       raise Exception("Unrecognized solve method: " + self.solveMethod.name)
+  def _findSolution(self, game: Game) -> None:
+    sv = self.solveStats
+    ds = self.depthStats
 
+    # First correct any errors in the game
+    sv.numResets += 1
+    game.attemptCorrectErrors()
+    self.onNewSolution()
+
+    # Setup our search
+    st = self.lastSolutionStats = SolutionStats(
+      q = deque(),
+      computed = set(),
+      solution = None,
+
+      numIterations = 0,
+      numDeadEnds = 0,
+      numDuplicateGames = 0,
+      numPartialSolutionsGenerated = 0,
+      maxQueueLength = 1, # Because we added an initial
+    )
+    st.q.append(game)
+    self.searchBFS = self.shouldSearchBFS()
+
+    # Perform the search
+    # NOTE: It would be better to organize these into separate functions for nesting purposes;
+    # however, we're keeping it nested deeply for performance issues
+    while st.q and not st.solution:
+      # Break out
+      if Game.reset or Game.quit:
+        break
+
+      # Taking from the front or the back makes all the difference between BFS and DFS
+      current: Game = st.q.popleft() if self.searchBFS else st.q.pop()
+
+      # Perform some work at some checkpoints
+      st.numIterations += 1
+      self.onNextIteration(current, st.numIterations)
+
+      # Prune if we've found a cheaper solution
+      if self.solveMethod == SolveMethod.DFR and st.minSolution and st.minSolution._numMoves <= current._numMoves:
+        sv.numSolutionsAbandoned += 1
+        break # Quit this attempt, and try a different one
+
+      # Check all next moves
+      hasNextGame = False
+      nextGames = current.generateNextGames()
+      if self.shuffleMoves: shuffle(nextGames)
+      for nextGame in nextGames:
+        st.numPartialSolutionsGenerated += 1
+        ds.partialDepth[nextGame._numMoves] += 1
+
+        if nextGame in sv.computed:
+          st.numDuplicateGames += 1
+          ds.dupGameDepth[nextGame._numMoves] += 1
+          continue
+        st.computed.add(nextGame)
+
+        hasNextGame = True
+        if nextGame.isFinished():
+          self._handleSolution(nextGame)
+        else:
+          st.q.append(nextGame)
+
+      # Maintain stats
+      maxQueueLength = max(maxQueueLength, len(q))
+      if not hasNextGame:
+        numDeadEnds += 1
+        ds.deadEndDepth[current._numMoves] += 1
+  pass
+  def _handleSolution(self, solution: Game) -> None:
+    sv, st = self.getStats()
+    ds = self.depthStats
+
+    # Save the solution
+    st.solution = solution
+    if self.preserveAllSolutions:
+      ds.allSolutions.append(solution)
+
+    # Update minimum solution
+    if not sv.minSolution or solution._numMoves < sv.minSolution._numMoves:
+      sv.minSolution = solution
+      sv.minSolutionUpdates += 1
+
+    # Update depth stats
+    timeCheck = time()
+    solveSeconds = int((timeCheck - st.startTime + 0.9) // 1)
+    ds.solutionDepth[solution._numMoves] += 1
+    ds.solFindSeconds[solveSeconds] += 1
+    if solution in ds.uniqueSolutions:
+      ds.isUniqueList.append(False)
+    else:
+      ds.uniqueSolutions.add(solution)
+      ds.uniqueSolsDepth[solution._numMoves] += 1
+      ds.isUniqueList.append(True)
+
+    # Finish this solution
+    self.onEndSolution(solution)
