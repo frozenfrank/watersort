@@ -7,7 +7,7 @@ import itertools;
 import sys;
 
 SOLVER_VERSION = 1
-ANALYZER_VERSION = 3
+ANALYZER_VERSION = 4
 
 NUM_SPACES_PER_VIAL = 4
 DEBUG_ONLY = False
@@ -54,6 +54,7 @@ class Game:
   __isRoot: bool
   prev: "Game" # Original has no root
   root: "Game" # Original has no root
+  completionOrder: list[str] # Immutable
 
   # Flags set on the static class
   reset = False
@@ -83,10 +84,12 @@ class Game:
     self.__numVials = len(vials)
     self.move = move
     self.prev = prev
+    self.modified = modified
+
     self.__isRoot = root == None
     self.root = self if self.__isRoot else root
     self._numMoves = 0 if self.__isRoot else prev._numMoves + 1
-    self.modified = modified
+    self.completionOrder = list() if self.__isRoot else prev.completionOrder
 
   # Returns the nth-parent of the game,
   # or None if n is greater than the number of parents
@@ -474,8 +477,16 @@ class Game:
         self.vials[endVial][i] = startColor
       i -= 1
 
+    # Track the completion order
+    if willComplete:
+      self.__registerCompletion(endColor)
+
     # Finish
     return True
+  def __registerCompletion(self, completingColor: str) -> None:
+    newCompletions = self.completionOrder.copy()
+    newCompletions.append(completingColor)
+    self.completionOrder = newCompletions
 
   def spawn(self, move: Move) -> "Game":
     newGame = Game(self.vials, move, self.root, self)
@@ -530,14 +541,24 @@ class Game:
     out = list()
     for vial, space in itertools.product(range(self.__numVials), range(NUM_SPACES_PER_VIAL)):
       out.append(self.vials[vial][space])
-    return "".join(out)
+    return " ".join(out)
   def __eq__(self, other: object) -> bool:
     """Overrides the default implementation"""
     if isinstance(other, Game):
-        return self.__str__() == other.__str__()
+      return self.__str__() == other.__str__()
     return False
   def __hash__(self) -> int:
     return hash(self.__str__())
+
+  def _getCompletionStr(self) -> str:
+    return " ".join(self.completionOrder)
+  def _completion_eq(self, other: object) -> bool:
+    if isinstance(other, Game):
+      return self._getCompletionStr() == other._getCompletionStr()
+    return False
+  def _completion_hash(self) -> int:
+    return hash(self._getCompletionStr())
+
 
 def playGame(game: "Game"):
   currentGame = game
@@ -594,8 +615,10 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
   solutionDepth = defaultdict(int)
   uniqueSolsDepth = defaultdict(int)
   solFindSeconds = defaultdict(int)
-  uniqueSolutions: set["Game"] = set()
+  uniqueSolutions: defaultdict[int, list["Game"]] = defaultdict(list)
   isUniqueList: list[bool] = list()
+
+  deadEndDepth[1]
   analysisSamplesRemaining = analyzeSampleCount
   lastReportTime = 0
   REPORT_SEC_FREQ = 15
@@ -699,12 +722,15 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
           solutionDepth[solution._numMoves] += 1
           timeCheck = time()
           solFindSeconds[int((timeCheck - startTime + 0.9) // 1)] += 1
-          if solution not in uniqueSolutions:
-            uniqueSolutions.add(solution)
+
+          solutionHash = solution._completion_hash()
+          hashingList = uniqueSolutions[solutionHash]
+          if not len(hashingList):
             uniqueSolsDepth[solution._numMoves] += 1
             isUniqueList.append(True)
           else:
             isUniqueList.append(False)
+          hashingList.append(solution)
           break # Finish searching
         else:
           q.append(nextGame)
@@ -723,10 +749,16 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
     secsAnalyzing, minsAnalyzing = getTimeRunning(analysisStart, endTime)
 
     # Print out interesting information to the console only
+    print("")
     minSolutionMoves, maxSolutionMoves, modeSolutionMoves, countUniqueSols = analyzeCounterDictionary(uniqueSolsDepth)
     minDeadEnd, lastDeadEnd, modeDeadEnds, _ = analyzeCounterDictionary(deadEndDepth)
     nDupSols = analyzeSampleCount - countUniqueSols
-    minFindTime, maxFindTime, modeFindTime, _ = analyzeCounterDictionary(solFindSeconds);
+    minFindTime, maxFindTime, modeFindTime, _ = analyzeCounterDictionary(solFindSeconds)
+
+    PRINT_SOL_COUNT = 15
+    print(f"Showing {PRINT_SOL_COUNT} of {len(uniqueSolutions)} unique completion orders\n  Occurrences \tOrder")
+    for uniqueSolSet, index in zip(sorted(uniqueSolutions.values(), key= lambda n: len(n), reverse=True), range(PRINT_SOL_COUNT)):
+      print(f"  {str(len(uniqueSolSet)).ljust(11)} \t{uniqueSolSet[0]._getCompletionStr()}")
 
     printCounterDict(solFindSeconds, title="Time to find Solutions:")
 
@@ -918,8 +950,7 @@ def chooseInteraction():
   if FORCE_SOLVE_LEVEL:
     # DEBUG
     level = FORCE_SOLVE_LEVEL
-    if FORCE_INTERACTION_MODE:
-      mode = FORCE_INTERACTION_MODE
+    mode = FORCE_INTERACTION_MODE or "i"
     print(f"FORCING SOLVE LEVEL to {level}. Mode={mode}")
   elif len(sys.argv) > 1:
     # COMMAND LINE
@@ -1119,7 +1150,7 @@ def printCounterDict(counter: defaultdict[int], title = "Counter:", indentation 
   print("\n".join(lines))
 def identifyExtraDataLength(partialStatesDepthDict: defaultdict[int, int]) -> int:
   deepestGame = max(partialStatesDepthDict.keys()) + 1 # Because we add an empty row at the end of the CSV file
-  return min(round(deepestGame // 5) * 5, 50) # Round down to the nearest multiple of 5, capped at 50
+  return max(min(round(deepestGame // 5) * 5, 50), 1) # Round down to the nearest multiple of 5, capped at 50, minimum 5
 def prepareLongestSolves(targetCount: int, solSolveTimes: defaultdict[float, int]) -> defaultdict[int, int]:
   longestSolvesList = list()
   for time, count in sorted(solSolveTimes.items(), reverse=True):
