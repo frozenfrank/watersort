@@ -1,7 +1,7 @@
 Level Params
 - Storage Version
   - `i`/`i0` Original
-  - `i1` Next iteratior
+  - `i1` Next iteration
 - Level
 - Num vials
 - Difficulty (user rated)
@@ -14,3 +14,7 @@ Level Params
   - 1 - Discover
   - 2 - Masked
 - Vials (the vials)
+
+Analysis Params
+- Num Vials
+- Solution representation
