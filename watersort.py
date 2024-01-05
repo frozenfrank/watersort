@@ -1,4 +1,5 @@
 from collections import deque, defaultdict
+from math import floor, log
 import random
 from time import time;
 from typing import Callable;
@@ -7,7 +8,7 @@ import itertools;
 import sys;
 
 SOLVER_VERSION = 1
-ANALYZER_VERSION = 4
+ANALYZER_VERSION = 5
 
 NUM_SPACES_PER_VIAL = 4
 DEBUG_ONLY = False
@@ -24,6 +25,8 @@ ENABLE_QUEUE_CHECKS = True # Disable only for temporary testing
 SHUFFLE_NEXT_MOVES = False
 ANALYZE_ATTEMPTS = 10000
 DFR_SEARCH_ATTEMPTS = 40
+
+RESERVED_COLORS = set(["?", "-"])
 
 '''
 COLORS
@@ -54,7 +57,7 @@ class Game:
   __isRoot: bool
   prev: "Game" # Original has no root
   root: "Game" # Original has no root
-  completionOrder: list[str] # Immutable
+  completionOrder: list[tuple[str, int]] # (color, depth)[] # Immutable
 
   # Flags set on the static class
   reset = False
@@ -485,7 +488,7 @@ class Game:
     return True
   def __registerCompletion(self, completingColor: str) -> None:
     newCompletions = self.completionOrder.copy()
-    newCompletions.append(completingColor)
+    newCompletions.append((completingColor, self._numMoves))
     self.completionOrder = newCompletions
 
   def spawn(self, move: Move) -> "Game":
@@ -551,7 +554,7 @@ class Game:
     return hash(self.__str__())
 
   def _getCompletionStr(self) -> str:
-    return " ".join(self.completionOrder)
+    return " ".join(map(lambda x: x[0], self.completionOrder))
   def _completion_eq(self, other: object) -> bool:
     if isinstance(other, Game):
       return self._getCompletionStr() == other._getCompletionStr()
@@ -559,6 +562,10 @@ class Game:
   def _completion_hash(self) -> int:
     return hash(self._getCompletionStr())
 
+  def getNumVials(self) -> int:
+    return self.__numVials
+  def getDepth(self) -> int:
+    return self._numMoves
 
 def playGame(game: "Game"):
   currentGame = game
@@ -755,16 +762,13 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
     nDupSols = analyzeSampleCount - countUniqueSols
     minFindTime, maxFindTime, modeFindTime, _ = analyzeCounterDictionary(solFindSeconds)
 
-    PRINT_SOL_COUNT = 15
-    print(f"Showing {PRINT_SOL_COUNT} of {len(uniqueSolutions)} unique completion orders\n  Occurrences \tOrder")
-    for uniqueSolSet, index in zip(sorted(uniqueSolutions.values(), key= lambda n: len(n), reverse=True), range(PRINT_SOL_COUNT)):
-      print(f"  {str(len(uniqueSolSet)).ljust(11)} \t{uniqueSolSet[0]._getCompletionStr()}")
+    # printUniqueSolutions(uniqueSolutions)
 
     printCounterDict(solFindSeconds, title="Time to find Solutions:")
 
     print(f"""
         Finished analyzing solution space:
-          * Note: These values are counted an independent occurrences. It's possible that
+          * Note: These values are counted as independent occurrences. It's possible that
             the same states from multiple distinct samples found the same sets of game states.
 
           Report:
@@ -786,11 +790,13 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
     extraDataLen = identifyExtraDataLength(partialDepth)
     longestSolvesDict = prepareLongestSolves(extraDataLen, solFindSeconds)
     uniqueDistributionDict = prepareUniqueDistribution(extraDataLen, isUniqueList)
+    completionData = prepareCompletionOrderData(game, uniqueSolutions)
 
     saveAnalysisResults(\
-      game.level, endTime - analysisStart, analyzeSampleCount, \
+      game, endTime - analysisStart, analyzeSampleCount, \
       partialDepth, dupGameDepth, deadEndDepth, solutionDepth, uniqueSolsDepth, \
-      longestSolvesDict, uniqueDistributionDict, solFindSeconds)
+      longestSolvesDict, uniqueDistributionDict, completionData, \
+      solFindSeconds)
   else:
     secsSearching, minsSearching = getTimeRunning(startTime, endTime)
 
@@ -1105,7 +1111,10 @@ def setSolveMethod(method: str) -> bool:
 
 def generateAnalysisResultsName(level: str, absolutePath = True) -> str:
   return getBasePath(absolutePath) + f"wsanalysis/{level}-{round(time())}.csv"
-def saveAnalysisResults(level, seconds, samples, partialStates, dupStates, deadStates, solStates, uniqueSolStates, longestSolves, uniqueSolsDistribution, solveTimes: defaultdict[int] = None) -> None:
+def saveAnalysisResults(rootGame: Game, seconds: float, samples: int,
+                        partialStates, dupStates, deadStates, solStates, uniqueSolStates,
+                        longestSolves, uniqueSolsDistribution, completionData: tuple[defaultdict[int, str], defaultdict[int, str]],
+                        solveTimes: defaultdict[int] = None) -> None:
   # Generates a CSV file with data
   # This spreadsheet has been setup to analyze these data exports
   # https://docs.google.com/spreadsheets/d/1HK8ic2QTs1onlG_x7o9s0yXxY1Nl9mFLO9mHtou2RcA/edit#gid=1119310589
@@ -1114,18 +1123,21 @@ def saveAnalysisResults(level, seconds, samples, partialStates, dupStates, deadS
     max(longestSolves.keys()),
     max(uniqueSolsDistribution.keys()))
 
-  fileName = generateAnalysisResultsName(level)
+  fileName = generateAnalysisResultsName(rootGame.level)
   headers = [
-    ("Level", level),
+    ("Level", rootGame.level),
+    ("Num Vials", rootGame.getNumVials()),
+    ("Num colors", len(completionData[0])),
+    # ("Secret", rootGame.secretMode), # TODO: Track this value to report here as well
+    # ("Unique Solve Orders", len(uniqueSolutions)), # TODO: Get data in here!
     ("Seconds", round(seconds, 1)),
     ("Samples", samples),
     ("Solver Version", SOLVER_VERSION),
     ("Analyzer Version", ANALYZER_VERSION),
-    ("Extra Data Length", extraDataLength)
+    ("Extra Data Length", extraDataLength),
   ]
   if solveTimes:
     headers.append(("Max Solution Seconds", max(solveTimes.keys())))
-
 
   columns = [
     ("Partial Game States", partialStates),
@@ -1135,6 +1147,8 @@ def saveAnalysisResults(level, seconds, samples, partialStates, dupStates, deadS
     ("Unique Solutions", uniqueSolStates),
     ("Longest Solves (s)", longestSolves),
     ("Unique Sol Distribution", uniqueSolsDistribution),
+    ("Color Completion Data", completionData[0]),
+    ("Depth Completion Data", completionData[1]),
   ]
   saveCSVFile(fileName, columns, headers, keyColumnName="Depth")
   print("Saved analysis results to file: " + fileName)
@@ -1173,9 +1187,83 @@ def prepareUniqueDistribution(targetCount: int, isUniqueList: list[bool]) -> def
       uniqueSolvesDistribution[int(1 + (index // divisor))] += 1
 
   return uniqueSolvesDistribution
+def printUniqueSolutions(uniqueSolutions: defaultdict[int, list[Game]]) -> None:
+  PRINT_SOL_COUNT = 15
+  out = []
 
+  out.append(f"Showing {PRINT_SOL_COUNT} of {len(uniqueSolutions)} unique completion orders\n  Occurrences \tOrder")
+  for uniqueSolSet, index in zip(sorted(uniqueSolutions.values(), key= lambda x: len(x), reverse=True), range(PRINT_SOL_COUNT)):
+    out.append(f"\n  {str(len(uniqueSolSet)).ljust(11)}")
+    for color, depth in uniqueSolSet[0].completionOrder:
+      out.append(f"\t{color} ({depth})")
 
-def saveCSVFile(fileName: str, columns: list[tuple[str, defaultdict]], headers: list[tuple[str, ...]] = None, keyColumnName = "Key") -> None:
+  print("".join(out))
+  pass
+def prepareCompletionOrderData(rootGame: Game, uniqueSolutions: defaultdict[int, list[Game]]) -> tuple[defaultdict[int, str], defaultdict[int, str]]:
+  # We're going to be creating ";" separate strings that occupy a single column,
+  # but will be expanded into multiple columns for analysis
+  # Remember that our output defaultdict's must be from range 1 to n
+
+  # PREPARE ANALYSIS
+  totalSamples = 0
+  maxDepth = 0
+  numColors, allColorsList = _initColors(rootGame)
+  colorCompletionDict: defaultdict[str, tuple] = defaultdict(lambda: [0] * (numColors + 1))
+  completionDepthDict: defaultdict[int, list[int]] = defaultdict(lambda: [0] * numColors)
+
+  # COLOR COMPLETIONS
+  # One row for each color
+  # Each row has
+  # - The color
+  # - n entries indicating how many times that color appeared in the nth completion position
+
+  # COMPLETION DEPTH
+  # Up to one row for each solution depth
+  # One column for each color
+  # The number of times the nth color was completed at each depth (regardless of color)
+
+  for solutionSet in uniqueSolutions.values():
+    for solution in solutionSet:
+      totalSamples += 1
+      maxDepth = max(maxDepth, solution.getDepth())
+      for index, (color, depth) in enumerate(solution.completionOrder):
+        colorCompletionDict[color][index + 1] += 1
+        completionDepthDict[depth][index] += 1
+
+  # COMPILE DATA
+  colorCompletions: defaultdict[int, str] = defaultdict(str)
+  completionDepth: defaultdict[int, str] = defaultdict(str)
+
+  # CONSIDER: Dividing all the numbers by a pre-calculated constant to that they are each less than 1000
+  SEPARATOR = ";"
+  for i, color in enumerate(allColorsList):
+    colorCompletionDict[color][0] = color
+    colorCompletions[i + 1] = SEPARATOR.join(map(str, colorCompletionDict[color]))
+  for depth in range(1, maxDepth+1):
+    completionDepth[depth] = SEPARATOR.join(map(str, completionDepthDict[depth]))
+
+  # RETURN
+  return (colorCompletions, completionDepth)
+def _initColors(rootGame: Game) -> tuple[int, list[str]]: # (numColors, list_of_colors)
+  colorOccurrences, _colorErrors = rootGame._analyzeColors()
+  for reservedColor in RESERVED_COLORS:
+    colorOccurrences[reservedColor] += 0
+  # We know that ALL the reserved colors exist as keys in the dictionary
+  numColors = len(colorOccurrences) - len(RESERVED_COLORS)
+
+  allColorsList = []
+  for color in sorted(colorOccurrences.keys()):
+    if color in RESERVED_COLORS:
+      continue
+    allColorsList.append(color)
+
+  return (numColors, allColorsList)
+# Given an int with any number of digits (base 10),
+# It will return at most the `digits` number of the highest order digits
+def preserveHighestOrderDigits(x: int, digits=5) -> int:
+  return x // (10 ** max(floor(log(x, 10) - digits + 1), 0))
+
+def saveCSVFile(fileName: str, columns: list[tuple[str, defaultdict[int, any]]], headers: list[tuple[str, ...]] = None, keyColumnName = "Key") -> None:
   # Creates a CSV file with the following format:
   # The first several data rows contain special STRING-VALUE pairs of special data (headers)
 
