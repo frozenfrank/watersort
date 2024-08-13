@@ -17,7 +17,7 @@ FORCE_SOLVE_LEVEL = None # "263"
 FORCE_INTERACTION_MODE = None # "a"
 
 
-SOLVE_METHOD = "MIX"
+SOLVE_METHOD = "DFR"
 VALID_SOLVE_METHODS = set(["MIX", "BFS", "DFS", "DFR"]) # An enum is more accurate, but overkill for this need
 
 MIX_SWITCH_THRESHOLD_MOVES = 10
@@ -25,7 +25,7 @@ ENABLE_QUEUE_CHECKS = True # Disable only for temporary testing
 
 SHUFFLE_NEXT_MOVES = False
 ANALYZE_ATTEMPTS = 10000
-DFR_SEARCH_ATTEMPTS = 40
+DFR_SEARCH_ATTEMPTS = 200
 
 RESERVED_COLORS = set(["?", "-"])
 
@@ -616,6 +616,7 @@ def playGame(game: "Game"):
 def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDFRSamples = 0):
   # Intelligent search through all the possible game states until we find a solution.
   # The game already handles asking for more information as required
+  setSolveMethod(solveMethod)
 
   minSolution: Game = None
   numResets = -1
@@ -839,7 +840,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
           """)
 
     if minSolution:
-      print("Found solution!")
+      print(f"Found solution{' to level ' + game.level if game.level else ''}!")
       minSolution.printMoves()
     else:
       print("Cannot not find solution.")
@@ -1080,7 +1081,6 @@ def chooseInteraction():
   elif mode == "a":
     global SHUFFLE_NEXT_MOVES
     SHUFFLE_NEXT_MOVES = True
-    setSolveMethod("DFS")
     solveGame(originalGame, solveMethod="DFS", analyzeSampleCount=analyzeSamples)
   else:
     print("Unrecognized mode: " + mode)
