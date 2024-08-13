@@ -1,0 +1,7 @@
+i
+10000
+4
+b	b	pn	pn
+r	r	pn	pn
+b	b	r	r
+-	-	-	-
