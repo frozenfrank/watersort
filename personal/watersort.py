@@ -163,6 +163,7 @@ class Game:
       Game.reset = True # Reset the search to handle this new discovery properly
       self.root.modified = True
       self.root.vials[vialIndex][spaceIndex] = val
+      saveGame(self.root)
 
     return val
   def requestVal(self, original: "Game", request: str, printState = True) -> str:
@@ -240,6 +241,7 @@ class Game:
         # They answered the original question
         break
 
+    saveGame(self.root)
     return rsp
   def saveOtherColor(self, input: str) -> None:
     flag, o_vial, o_space, color = input.split()
