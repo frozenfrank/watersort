@@ -337,7 +337,8 @@ class Game:
         extraStr = Game.VACATED_STR
       elif startedVial:
         extraStr = Game.STARTED_STR
-      result = f"({num} {color}{extraStr})"
+      numStr = Style.BRIGHT + str(num) + Style.NORMAL if num > 1 else num
+      result = f"({numStr} {color}{extraStr})"
 
     return result.ljust(Game.TOTAL_MOVE_PRINT_WIDTH)
   def __getMoveInfo(self) -> MoveInfo:
