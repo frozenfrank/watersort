@@ -71,6 +71,7 @@ class Game:
 
   # Cached for single use calculation
   COMPLETE_STR = Style.BRIGHT + " complete" + Style.NORMAL
+  EMPTY_STR = Style.DIM + " empty" + Style.NORMAL
   COLOR_WIDTH = 3             # CONSIDER: Make more direct by dynamically figuring the maximum color length
   NUMBER_WIDTH = 1            # Num is always less than NUM_SPACES_PER_VIAL (which is small)
   EXTRA_CHARS = 3             # The number of additional chars in our result string
@@ -265,8 +266,8 @@ class Game:
       print(f"No change to number of vials. Still have {numVials}")
     self.__numVials = numVials
 
-  MoveInfo = tuple[str, int, bool]
-  """ (colorMoved, numMoved, isComplete) OR None """
+  MoveInfo = tuple[str, int, bool, bool]
+  """ (colorMoved, numMoved, isComplete, emptiedVial) OR None """
 
   _prevPrintedMoves: deque[Move] = None
   def printMoves(self) -> None:
@@ -327,9 +328,13 @@ class Game:
     if info == None:
       result = ""
     else:
-      color, num, complete = info
-      completeStr = Game.COMPLETE_STR if complete else ""
-      result = f"({num} {color}{completeStr})"
+      color, num, complete, emptied = info
+      extraStr = ""
+      if complete:
+        extraStr = Game.COMPLETE_STR
+      elif emptied:
+        extraStr = Game.EMPTY_STR
+      result = f"({num} {color}{extraStr})"
 
     return result.ljust(Game.TOTAL_MOVE_PRINT_WIDTH)
   def __getMoveInfo(self) -> MoveInfo:
@@ -338,10 +343,11 @@ class Game:
     start, end = self.move
 
     colorMoved = self.getTopVialColor(end)
-    _, _, numMoved, _ = self.prev.__countOnTop(colorMoved, start)
-    complete, _, _, _ = self.__countOnTop(colorMoved, end)
+    _, _, numMoved, emptySpaces   = self.prev.__countOnTop(colorMoved, start)
+    complete, _, _, _             = self.__countOnTop(colorMoved, end)
 
-    return (colorMoved, numMoved, complete)
+    emptiedVial = numMoved + emptySpaces == NUM_SPACES_PER_VIAL
+    return (colorMoved, numMoved, complete, emptiedVial)
   # Prints out the state of the colors, including any errors
   def printColors(self, analyzedData = None) -> list[str]:
     lines = []
