@@ -1,8 +1,9 @@
 from collections import deque, defaultdict
 from math import floor, log
 import random
-from time import time;
-from typing import Callable;
+from colorama import Fore, Back, Style
+from time import time
+from typing import Callable
 import copy;
 import itertools;
 import sys;
@@ -28,24 +29,23 @@ DFR_SEARCH_ATTEMPTS = 40
 
 RESERVED_COLORS = set(["?", "-"])
 
-'''
-COLORS
-Num     Index   Code      Name
-1       0       m         Mint
-2       1       g         Gray
-3       2       o         Orange
-4       3       y         Yellow
-5       4       r         Red
-6       5       p         Purple
-7       6       pk        Puke
-8       7       pn        Pink
-9       8       br        Brown
-10      9       lb        Light Blue
-11      10      gn        Dark Green
-12      11      b         Blue
-                ?         Unknown
-                -         Empty
-'''
+COLOR_CODES = defaultdict(str, {
+  "m": Back.CYAN,                                 # Mint
+  "g": Style.DIM + Back.WHITE,                    # Gray
+  "gr": "",                                       # Green (Occasionally)
+  "o": Back.YELLOW + Fore.RED,                    # Orange
+  "y": Back.YELLOW + Fore.BLACK,                  # Yellow
+  "r": Back.RED + Fore.WHITE,                     # Red
+  "p": Back.BLACK  + Fore.MAGENTA,                # Purple
+  "pk": Back.GREEN + Fore.BLACK,                  # Puke
+  "pn": Back.MAGENTA,                             # Pink
+  "br": Back.WHITE + Fore.MAGENTA,                # Brown
+  "lb": Fore.CYAN + Back.WHITE,                   # Light Blue
+  "gn": Back.BLACK + Fore.GREEN,                  # Dark Green
+  "b": Back.BLUE + Fore.WHITE,                    # Blue
+  "?": "",                                        # Unknown
+  "-": "",                                        # Empty
+})
 
 Vials = list[list[str]]
 Move = tuple[int, int]
@@ -70,7 +70,7 @@ class Game:
   _hasUnknowns: bool
 
   # Cached for single use calculation
-  COMPLETE_STR = " complete"
+  COMPLETE_STR = Style.BRIGHT + " complete" + Style.NORMAL
   COLOR_WIDTH = 3             # CONSIDER: Make more direct by dynamically figuring the maximum color length
   NUMBER_WIDTH = 1            # Num is always less than NUM_SPACES_PER_VIAL (which is small)
   EXTRA_CHARS = 3             # The number of additional chars in our result string
@@ -265,6 +265,8 @@ class Game:
       print(f"No change to number of vials. Still have {numVials}")
     self.__numVials = numVials
 
+  MoveInfo = tuple[str, int, bool]
+  """ (colorMoved, numMoved, isComplete) OR None """
 
   _prevPrintedMoves: deque[Move] = None
   def printMoves(self) -> None:
@@ -283,8 +285,9 @@ class Game:
         start, end = curGame.move
         # CONSIDER: Color coding the displayed color
         moves.appendleft(curGame.move)
-        moveString = f"{start+1}->{end+1}".ljust(8)
-        lines.appendleft(moveString + curGame.__getMoveString())
+        info = curGame.__getMoveInfo()
+        moveString = formatVialColor(info[0], f"{start+1}->{end+1}", ljust=8)
+        lines.appendleft(moveString + curGame.__getMoveString(info))
         curGame = curGame.prev
 
       if Game._prevPrintedMoves:
@@ -309,14 +312,17 @@ class Game:
     for i in range(self.__numVials):
       lines[0].append("\t" + str(i + 1))
 
+    color: str = None
     for spaceIndex in range(NUM_SPACES_PER_VIAL):
       for vialIndex in range(self.__numVials):
-        lines[spaceIndex + 1].append("\t" + self.vials[vialIndex][spaceIndex])
+        color = self.vials[vialIndex][spaceIndex]
+        lines[spaceIndex + 1].append("\t" + formatVialColor(color, text=color))
 
     print("\n".join(["".join(line) for line in lines]))
-  def __getMoveString(self) -> str:
+  def __getMoveString(self, info: MoveInfo = None) -> str:
 
-    info = self.__getMoveInfo()
+    if not info:
+      info = self.__getMoveInfo()
     result: str
     if info == None:
       result = ""
@@ -326,7 +332,7 @@ class Game:
       result = f"({num} {color}{completeStr})"
 
     return result.ljust(Game.TOTAL_MOVE_PRINT_WIDTH)
-  def __getMoveInfo(self) -> tuple[str, int]: # (colorMoved, numMoved, isComplete) OR None
+  def __getMoveInfo(self) -> MoveInfo:
     if not self.move:
       return None
     start, end = self.move
@@ -347,7 +353,7 @@ class Game:
       label = "\t"
       if color != "?" and count != NUM_SPACES_PER_VIAL:
         label += "(too many)" if count > NUM_SPACES_PER_VIAL else "(too few)"
-      lines.append(f"  {color}: \t{count}" + label)
+      lines.append(f"  {formatVialColor(color, text=color)}: \t{count}" + label)
 
     if len(errors):
       lines.append("\nErrors:")
@@ -993,7 +999,7 @@ def chooseInteraction():
           How are we interacting?
           NAME                      level name
           p                         play
-          s                         solve (from new input)
+          n                         solve (from new input)
           i                         interact (or resume an existing game)
           a LEVEL? SAMPLES?         analyze
           q                         quit
@@ -1029,7 +1035,7 @@ def chooseInteraction():
     quit()
 
   # Read initial state
-  if (mode == "i" or mode == "s" or mode == "a") and not level:
+  if (mode == "i" or mode == "s" or mode == "a" or mode == "n") and not level:
     if userInteracting:
       print("What level is this?")
     level = input()
@@ -1038,6 +1044,10 @@ def chooseInteraction():
   if mode != "n" and level:
     gameFileName = generateFileName(level)
     originalGame = readGameFile(gameFileName, level)
+
+  if originalGame and level:
+    originalGame.level = level
+
 
   # Fallback to reading in manually
   if not originalGame:
@@ -1315,6 +1325,13 @@ def saveCSVFile(fileName: str, columns: list[tuple[str, defaultdict[int, any]]],
   # Finish
   saveFileContents(fileName, "\n".join(lines))
 
+def formatVialColor(color: str, text: str = "", ljust=0) -> str:
+  """Formats a color for printing. If text is provided, it will autoreset the style afterwards as well."""
+  out = COLOR_CODES[color]
+  if text:
+    out += text + Style.RESET_ALL
+    out += " " * (ljust - len(text))
+  return out
 
 # Run the program!
 # Call signatures:
