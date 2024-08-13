@@ -179,6 +179,7 @@ class Game:
           "   -s or -save             to save the discovered colors\n" +
           "   -r or -reset            to reset the search algorithm\n" +
           "   -m OR -moves            to print the moves to this point\n" +
+         f"   -solve METHOD           to change the solve method ({', '.join(VALID_SOLVE_METHODS)})\n" +
           "   -level NUM              to change the level of this game\n" +
           "   -vials NUM              to change the number of vials in the game\n" +
           "   -e OR -exit             to save and exit\n" +
@@ -221,6 +222,10 @@ class Game:
           root.printColors()
 
         # Special commands
+        elif rsp.startswith("-solve"):
+          setSolveMethod(rsp.split(" ")[1])
+          Game.reset = True
+          return ""
         elif rsp.startswith("-level"):
           root.saveNewLevel(rsp)
         elif rsp.startswith("-o"):
