@@ -821,7 +821,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
 
             Overall:
             {solveMethod                  }\t   Solving method
-            {numResets                    }\t   Num resets
+            {numResets + 1                }\t   Num solutions attempted
             {minSolution._numMoves if minSolution else "--"}\t   Shortest Solution
             {minSolutionUpdates           }\t   Min solution updates
             {numSolutionsAbandoned        }\t   Num solutions abandoned
