@@ -4,7 +4,7 @@ i
 m	p	m	g
 o	pn	r	b
 b	lb	lb	pn
-p	b	r	?
+p	b	r	g
 o	m	o	lb
 pk	pn	p	m
 lb	pk	g	p
