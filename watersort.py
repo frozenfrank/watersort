@@ -872,14 +872,15 @@ def readGameInput(userInteracting: bool) -> Game:
   game = _readGame(input, userInteraction=userInteracting)
   game.modified = True
   return game
-def readGameFile(gameFileName: str) -> Game:
+def readGameFile(gameFileName: str, level: str = None) -> Game:
   gameRead: Game = None
   try:
     gameFile = open(gameFileName, "r")
     nextLine = lambda: gameFile.readline().strip()
 
-    nextLine()                      # Skip mode
-    level = nextLine()              # Read level name
+    mode = nextLine()               # Read mode
+    if mode == "i":
+      level = nextLine()            # Read level name
     gameRead = _readGame(nextLine)
     gameRead.level = level
 
@@ -944,7 +945,7 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False) -> Game:
   return Game.Create(vials)
 
 def chooseInteraction():
-  validModes = set("psqi")
+  validModes = set("psqin")
   mode: str = None
   level: str = None
   userInteracting = True
@@ -1034,9 +1035,9 @@ def chooseInteraction():
     level = input()
 
   # Attempt to read the game state out of a file
-  if mode != "s" and level:
+  if mode != "n" and level:
     gameFileName = generateFileName(level)
-    originalGame = readGameFile(gameFileName)
+    originalGame = readGameFile(gameFileName, level)
 
   # Fallback to reading in manually
   if not originalGame:
@@ -1053,7 +1054,7 @@ def chooseInteraction():
   # Choose mode
   if mode == "p":
     playGame(originalGame)
-  elif mode == "i" or mode == "s":
+  elif mode == "i" or mode == "s" or mode == "n":
     solveGame(originalGame, solveMethod=SOLVE_METHOD, probeDFRSamples=dfrSearchAttempts)
     saveGame(originalGame)
   elif mode == "a":
@@ -1096,6 +1097,7 @@ def setSolveMethod(method: str) -> bool:
   method = method.upper()
   if method not in VALID_SOLVE_METHODS:
     print(f"Solve method '{method}' is not a valid input. Choose one of the following instead: " + ", ".join(VALID_SOLVE_METHODS))
+    return False
 
   global SOLVE_METHOD
   global SHUFFLE_NEXT_MOVES
@@ -1108,6 +1110,7 @@ def setSolveMethod(method: str) -> bool:
     DFR_SEARCH_ATTEMPTS = 0
 
   print("Set solve method to " + method)
+  return True
 
 def generateAnalysisResultsName(level: str, absolutePath = True) -> str:
   return getBasePath(absolutePath) + f"wsanalysis/{level}-{round(time())}.csv"
