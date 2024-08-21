@@ -60,8 +60,8 @@ class Game:
   completionOrder: list[tuple[str, int]] # (color, depth)[] # Immutable
 
   # Flags set on the static class
-  reset = False
-  quit = False
+  reset: bool = False
+  quit: bool = False
 
   # Flags set on the root game
   level: str
@@ -677,7 +677,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
     startTime = time()
 
     # Setup our search
-    solution: Game = None
+    solution: Game | None = None
     q: deque["Game"] = deque()
     computed: set["Game"] = set()
     q.append(game)
