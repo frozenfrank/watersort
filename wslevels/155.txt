@@ -1,0 +1,17 @@
+i
+155
+14
+b	pk	r	?
+gn	lb	y	?
+r	r	pn	lb
+lb	gn	pn	?
+pk	p	g	?
+gn	br	pn	?
+pk	y	m	?
+g	br	pn	?
+b	g	lb	?
+g	gn	o	o
+p	br	b	?
+m	m	o	r
+-	-	-	-
+-	-	-	-
