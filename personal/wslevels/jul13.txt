@@ -1,0 +1,14 @@
+i
+jul13
+11
+b	pn	p	pn
+p	pk	o	o
+g	pk	pn	r
+g	m	lb	r
+pn	m	lb	lb
+g	r	pk	m
+m	g	b	pk
+p	r	p	b
+b	o	o	lb
+-	-	-	-
+-	-	-	-
