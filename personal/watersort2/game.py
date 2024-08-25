@@ -5,8 +5,9 @@ import itertools
 
 from colorama import Style
 from constant import VALID_SOLVE_METHODS
-from vial_color import formatVialColor
-from watersort import saveGame, setSolveMethod
+
+import files
+from watersort2 import watersort
 
 NUM_SPACES_PER_VIAL = 4
 
@@ -79,7 +80,7 @@ class Game:
     self.requestVal(self, "The colors aren't right in this game. Fix them, and press enter to proceed.")
     self._analyzeColors()
     if self.hasError():
-      saveGame(self, forceSave=True)
+      files.saveGame(self, forceSave=True)
       print("Things still aren't right. Review the saved file, and try again.")
       quit()
       return True
@@ -126,7 +127,7 @@ class Game:
       Game.reset = True # Reset the search to handle this new discovery properly
       self.root.modified = True
       self.root.vials[vialIndex][spaceIndex] = val
-      saveGame(self.root)
+      files.saveGame(self.root)
 
     return val
   def requestVal(self, original: "Game", request: str, printState = True) -> str:
@@ -164,10 +165,10 @@ class Game:
         if rsp == "-q" or rsp == "-quit" or rsp == "quit":
           quit() # Consider terminating just to menu above us??
         elif rsp == "-e" or rsp == "-exit":
-          saveGame(root)
+          files.saveGame(root)
           quit()
         elif rsp == "-s" or rsp == "-save":
-          saveGame(root, forceSave=True)
+          files.saveGame(root, forceSave=True)
         elif rsp == "-r" or rsp == "-reset":
           Game.reset = True
           return ""
@@ -187,7 +188,7 @@ class Game:
 
         # Special commands
         elif rsp.startswith("-solve"):
-          setSolveMethod(rsp.split(" ")[1])
+          watersort.setSolveMethod(rsp.split(" ")[1])
           Game.reset = True
           return ""
         elif rsp.startswith("-level"):
@@ -204,7 +205,7 @@ class Game:
         # They answered the original question
         break
 
-    saveGame(self.root)
+    files.saveGame(self.root)
     return rsp
   def saveOtherColor(self, input: str) -> None:
     flag, o_vial, o_space, color = input.split()
