@@ -10,40 +10,11 @@ import sys
 from constant import ANALYZE_ATTEMPTS, ENABLE_QUEUE_CHECKS, FORCE_INTERACTION_MODE, FORCE_SOLVE_LEVEL, MIX_SWITCH_THRESHOLD_MOVES, RESERVED_COLORS, VALID_SOLVE_METHODS
 from files import generateFileName, getBasePath, saveFileContents, saveGame
 from game import NUM_SPACES_PER_VIAL, Game
+from watersort2.game_player import GamePlayer
 
 SOLVER_VERSION = 1
 ANALYZER_VERSION = 5
 
-def playGame(game: "Game"):
-  currentGame = game
-  print("""
-        Play the game:
-        r         reset
-        q         quit
-        NUM NUM   move from vial to vial
-        """)
-  while True:
-    currentGame.printMoves()
-    currentGame.printVials()
-    read = input()
-    if not read:
-      continue
-    elif read == "q":
-      break
-    elif read == "r":
-      currentGame = game
-      continue
-    read1, read2 = read.split()
-
-    startVial, endVial = int(read1) - 1, int(read2) - 1
-    if not currentGame.canMove(startVial, endVial):
-      print("That move is invalid")
-      continue
-
-    # Perform the move
-    currentGame = currentGame.spawn((startVial, endVial))
-
-  print("Goodbye.")
 def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDFRSamples = 0):
   # Intelligent search through all the possible game states until we find a solution.
   # The game already handles asking for more information as required
@@ -505,7 +476,7 @@ def chooseInteraction():
 
   # Choose mode
   if mode == "p":
-    playGame(originalGame)
+    GamePlayer.Play(originalGame)
   elif mode == "i" or mode == "s" or mode == "n":
     solveGame(originalGame, solveMethod=SOLVE_METHOD, probeDFRSamples=dfrSearchAttempts)
     saveGame(originalGame)
