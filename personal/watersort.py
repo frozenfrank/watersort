@@ -55,8 +55,8 @@ class Game:
   move: Move # The move applied to the parent that got us here
   _numMoves: int
   __isRoot: bool
-  prev: "Game" # Original has no root
-  root: "Game" # Original has no root
+  prev: "Game" # Original has no prev
+  root: "Game"
   completionOrder: list[tuple[str, int]] # (color, depth)[] # Immutable
 
   # Flags set on the static class
@@ -129,8 +129,7 @@ class Game:
     for i in range(NUM_SPACES_PER_VIAL):
       val = vial[i]
       if val == '?':
-        vial[i] = self.getColor(vialIndex, i)
-        return vial[i]
+        return self.getColor(vialIndex, i)
       elif val == '-':
         continue
       else:
@@ -141,14 +140,12 @@ class Game:
     val = self.vials[vialIndex][spaceIndex]
     if val != '?':
       return val
-    if self.__isRoot:
-      return self.tryAccessVal(self, vialIndex, spaceIndex)
-    else:
-      rootVal = self.root.tryAccessVal(self, vialIndex, spaceIndex)
-      if not rootVal:
-        return "?"
-      self.vials[vialIndex][spaceIndex] = rootVal
-      return rootVal
+
+    rootVal = self.root.tryAccessVal(self, vialIndex, spaceIndex)
+    if not rootVal:
+      return "?"
+    self.vials[vialIndex][spaceIndex] = rootVal
+    return rootVal
   # The following two methods to be called on `self.root` only
   def tryAccessVal(self, original: "Game", vialIndex, spaceIndex) -> str:
     val = self.vials[vialIndex][spaceIndex]
