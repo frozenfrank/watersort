@@ -1,0 +1,16 @@
+i
+jul29
+13
+pn	b	br	br
+r	pk	br	m
+r	pk	o	p
+gn	o	gn	pn
+m	pk	b	p
+g	g	pn	p
+o	gn	lb	pn
+lb	lb	b	lb
+b	g	pk	o
+r	m	br	m
+g	r	p	gn
+-	-	-	-
+-	-	-	-

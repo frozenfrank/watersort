@@ -1,0 +1,14 @@
+i
+jul20
+11
+pn	m	o	lb
+g	m	lb	m
+p	pn	m	b
+b	o	b	r
+pk	g	g	pn
+pk	r	p	r
+b	p	lb	g
+pk	p	o	pn
+lb	pk	o	r
+-	-	-	-
+-	-	-	-
