@@ -1,0 +1,12 @@
+i
+jul25
+9
+o	b	lb	g
+m	b	r	r
+b	lb	pn	lb
+o	pn	o	m
+o	lb	m	g
+b	g	r	pn
+m	r	pn	g
+-	-	-	-
+-	-	-	-

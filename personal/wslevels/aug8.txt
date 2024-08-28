@@ -1,0 +1,10 @@
+i
+aug8
+7
+o	r	b	b
+pn	b	r	pn
+o	o	r	m
+m	m	r	pn
+m	b	pn	o
+-	-	-	-
+-	-	-	-

@@ -1,11 +1,11 @@
 i
 jul11
 9
-m	lb	b	?
-m	r	pn	?
-o	r	g	?
-b	o	pn	?
-o	g	lb	?
+m	lb	b	g
+m	r	pn	o
+o	r	g	r
+b	o	pn	b
+o	g	lb	g
 lb	lb	b	r
 m	m	pn	pn
 -	-	-	-
