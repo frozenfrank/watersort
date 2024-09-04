@@ -62,6 +62,7 @@ class Game:
   # Flags set on the static class
   reset: bool = False
   quit: bool = False
+  latest: bool = False # "Game" | None
 
   # Flags set on the root game
   level: str
@@ -163,6 +164,7 @@ class Game:
     val = self.requestVal(original, request)
     if val:
       Game.reset = True # Reset the search to handle this new discovery properly
+      Game.latest = self
       self.root.modified = True
       self.root.vials[vialIndex][spaceIndex] = val
       saveGame(self.root)
@@ -209,6 +211,7 @@ class Game:
           saveGame(root, forceSave=True)
         elif rsp == "-r" or rsp == "-reset":
           Game.reset = True
+          Game.latest = None
           return ""
 
         # Printing status
@@ -682,8 +685,14 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
     solution: Game | None = None
     q: deque["Game"] = deque()
     computed: set["Game"] = set()
-    q.append(game)
-    searchBFS: bool = shouldSearchBFS()
+    searchBFS: bool = False
+    if Game.latest:
+      q.append(Game.latest)
+      Game.latest = None
+      searchBFS = True
+    else:
+      q.append(game)
+      searchBFS = shouldSearchBFS()
 
     numIterations = 0
     numDeadEnds = 0
@@ -729,7 +738,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
                 pass
 
       # Prune if we've found a cheaper solution
-      if solveMethod == "DFR" and minSolution and minSolution._numMoves <= current._numMoves:
+      if not searchBFS and minSolution and minSolution._numMoves <= current._numMoves:
         numSolutionsAbandoned += 1
         break # Quit this attempt, and try a different one
 
