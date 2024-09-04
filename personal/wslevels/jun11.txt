@@ -1,0 +1,12 @@
+i
+jun11
+9
+g	r	pn	lb
+r	g	b	g
+o	m	lb	pn
+pn	o	lb	r
+pn	b	b	o
+b	lb	o	m
+r	m	m	g
+-	-	-	-
+-	-	-	-

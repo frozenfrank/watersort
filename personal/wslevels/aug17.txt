@@ -1,0 +1,12 @@
+i
+aug17
+9
+b	o	b	g
+r	b	pn	lb
+o	r	pn	b
+m	lb	m	r
+o	g	lb	g
+m	lb	pn	o
+m	pn	r	g
+-	-	-	-
+-	-	-	-

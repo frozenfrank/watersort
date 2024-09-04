@@ -1,0 +1,16 @@
+i
+aug14
+13
+r	r	pk	pk
+b	p	p	gn
+m	r	lb	b
+pn	pn	gn	o
+g	o	r	pk
+g	br	br	p
+b	p	m	b
+br	g	m	lb
+lb	gn	pk	o
+pn	lb	br	g
+o	gn	m	pn
+-	-	-	-
+-	-	-	-
