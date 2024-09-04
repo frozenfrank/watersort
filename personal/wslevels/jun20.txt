@@ -1,0 +1,14 @@
+i
+jun20
+11
+lb	m	p	m
+m	r	b	pn
+o	lb	g	b
+o	pn	g	r
+pn	b	pn	o
+pk	pk	p	lb
+p	o	m	b
+pk	p	g	g
+r	pk	r	lb
+-	-	-	-
+-	-	-	-
