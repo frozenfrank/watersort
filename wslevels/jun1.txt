@@ -1,0 +1,10 @@
+i
+jun1
+7
+pn	o	pn	b
+m	r	r	m
+r	o	b	r
+o	b	m	b
+o	pn	m	pn
+-	-	-	-
+-	-	-	-

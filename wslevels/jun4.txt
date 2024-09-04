@@ -1,0 +1,12 @@
+i
+jun4
+9
+o	r	r	g
+r	pn	o	m
+g	m	b	pn
+m	o	r	lb
+b	o	lb	b
+pn	m	lb	g
+g	lb	pn	b
+-	-	-	-
+-	-	-	-
