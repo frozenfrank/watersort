@@ -157,7 +157,8 @@ class Game:
     request = f"What's the new value in the {startVial} vial?"
     colorDist, colorErrors = self._analyzeColors()
     if colorDist["?"] > 0:
-      request += f" ({colorDist['?']} remaining unknowns)"
+      fewColors = sorted([formatVialColor(color, color) for color, count in colorDist.items() if count < NUM_SPACES_PER_VIAL and color != "?"])
+      request += f" ({colorDist['?']} remaining unknowns: {', '.join(fewColors)})"
 
     val = self.requestVal(original, request)
     if val:
