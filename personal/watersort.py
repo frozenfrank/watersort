@@ -1,3 +1,4 @@
+import signal
 from collections import deque, defaultdict
 from math import floor, log
 import random
@@ -1107,7 +1108,7 @@ def chooseInteraction():
   quit(0)
 
 def saveGame(game: "Game", forceSave = False) -> None:
-  if not forceSave and not game.modified:
+  if not game or (not forceSave and not game.modified):
     return None # No saving necessary
   fileName = generateFileName(game.level)
   result = generateFileContents(game)
@@ -1361,6 +1362,14 @@ def formatVialColor(color: str, text: str = "", ljust=0) -> str:
     out += text + Style.RESET_ALL
     out += " " * (ljust - len(text))
   return out
+
+
+GLOBAL_GAME_IN_PROGRESS: Game | None = None
+def signalHandler(signum, frame):
+  print(f" Emergency quitting for signal ({signal.strsignal(signum)})")
+  saveGame(GLOBAL_GAME_IN_PROGRESS)
+  exit(0)
+signal.signal(signal.SIGINT, signalHandler)
 
 # Run the program!
 # Call signatures:
