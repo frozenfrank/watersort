@@ -1,0 +1,16 @@
+i
+jun7
+13
+pn	o	b	m
+p	m	m	gn
+lb	pk	r	o
+b	gn	o	br
+o	r	g	p
+pn	pk	g	g
+lb	g	pn	pk
+r	r	br	p
+gn	pn	p	lb
+b	b	m	br
+gn	br	lb	pk
+-	-	-	-
+-	-	-	-

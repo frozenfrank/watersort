@@ -1,0 +1,17 @@
+i
+327
+14
+br	lb	b	m
+r	g	pk	r
+br	y	pn	o
+br	lb	g	y
+pk	r	gn	r
+pn	g	b	p
+pk	pk	y	p
+y	pn	o	p
+lb	b	o	g
+br	gn	m	pn
+gn	gn	m	m
+b	p	lb	o
+-	-	-	-
+-	-	-	-

@@ -1,3 +1,4 @@
+import signal
 from collections import deque, defaultdict
 from math import floor, log
 import random
@@ -62,6 +63,7 @@ class Game:
   # Flags set on the static class
   reset: bool = False
   quit: bool = False
+  latest: bool = False # "Game" | None
 
   # Flags set on the root game
   level: str
@@ -157,11 +159,13 @@ class Game:
     request = f"What's the new value in the {startVial} vial?"
     colorDist, colorErrors = self._analyzeColors()
     if colorDist["?"] > 0:
-      request += f" ({colorDist['?']} remaining unknowns)"
+      fewColors = sorted([formatVialColor(color, color) for color, count in colorDist.items() if count < NUM_SPACES_PER_VIAL and color != "?"])
+      request += f" ({colorDist['?']} remaining unknowns: {', '.join(fewColors)})"
 
     val = self.requestVal(original, request)
     if val:
       Game.reset = True # Reset the search to handle this new discovery properly
+      Game.latest = self
       self.root.modified = True
       self.root.vials[vialIndex][spaceIndex] = val
       saveGame(self.root)
@@ -208,6 +212,7 @@ class Game:
           saveGame(root, forceSave=True)
         elif rsp == "-r" or rsp == "-reset":
           Game.reset = True
+          Game.latest = None
           return ""
 
         # Printing status
@@ -681,8 +686,14 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
     solution: Game | None = None
     q: deque["Game"] = deque()
     computed: set["Game"] = set()
-    q.append(game)
-    searchBFS: bool = shouldSearchBFS()
+    searchBFS: bool = False
+    if Game.latest:
+      q.append(Game.latest)
+      Game.latest = None
+      searchBFS = True
+    else:
+      q.append(game)
+      searchBFS = shouldSearchBFS()
 
     numIterations = 0
     numDeadEnds = 0
@@ -728,7 +739,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
                 pass
 
       # Prune if we've found a cheaper solution
-      if solveMethod == "DFR" and minSolution and minSolution._numMoves <= current._numMoves:
+      if not searchBFS and minSolution and minSolution._numMoves <= current._numMoves:
         numSolutionsAbandoned += 1
         break # Quit this attempt, and try a different one
 
@@ -1097,7 +1108,7 @@ def chooseInteraction():
   quit(0)
 
 def saveGame(game: "Game", forceSave = False) -> None:
-  if not forceSave and not game.modified:
+  if not game or (not forceSave and not game.modified):
     return None # No saving necessary
   fileName = generateFileName(game.level)
   result = generateFileContents(game)
@@ -1351,6 +1362,14 @@ def formatVialColor(color: str, text: str = "", ljust=0) -> str:
     out += text + Style.RESET_ALL
     out += " " * (ljust - len(text))
   return out
+
+
+GLOBAL_GAME_IN_PROGRESS: Game | None = None
+def signalHandler(signum, frame):
+  print(f" Emergency quitting for signal ({signal.strsignal(signum)})")
+  saveGame(GLOBAL_GAME_IN_PROGRESS)
+  exit(0)
+signal.signal(signal.SIGINT, signalHandler)
 
 # Run the program!
 # Call signatures:

@@ -1,9 +1,9 @@
 i
 263
 14
-p	g	pk	lb
+p	g	pk	br
 y	br	pk	b
-b	o	br	br
+b	o	br	lb
 p	m	r	r
 g	m	o	m
 y	b	gn	r

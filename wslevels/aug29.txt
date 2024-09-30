@@ -1,0 +1,16 @@
+i
+aug29
+13
+g	p	pn	lb
+r	p	lb	br
+lb	gn	g	pk
+o	b	pn	gn
+r	pk	o	gn
+br	gn	g	lb
+g	b	o	m
+b	p	r	br
+pn	m	m	pk
+p	pn	o	m
+r	br	pk	b
+-	-	-	-
+-	-	-	-

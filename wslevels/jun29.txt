@@ -1,0 +1,16 @@
+i
+jun29
+13
+b	b	gn	m
+o	o	m	gn
+r	pn	lb	pk
+br	pk	pk	p
+pk	g	m	r
+lb	gn	g	p
+gn	pn	b	g
+p	lb	m	o
+g	lb	br	pn
+r	o	p	br
+b	r	br	pn
+-	-	-	-
+-	-	-	-

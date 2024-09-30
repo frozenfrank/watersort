@@ -1,0 +1,12 @@
+i
+aug11
+9
+lb	o	m	o
+o	b	m	b
+pn	lb	pn	g
+r	r	o	g
+g	lb	m	pn
+m	b	b	g
+r	r	pn	lb
+-	-	-	-
+-	-	-	-

@@ -1,0 +1,14 @@
+i
+aug19
+11
+o	pn	m	b
+pn	lb	b	p
+pk	g	lb	p
+o	m	r	r
+lb	m	pn	b
+g	r	o	pk
+pn	b	lb	m
+g	g	r	p
+o	pk	p	pk
+-	-	-	-
+-	-	-	-
