@@ -1,0 +1,17 @@
+i
+389
+14
+r	b	b	pk
+gn	o	gn	pk
+y	pn	r	p
+lb	lb	m	p
+lb	b	gn	g
+o	pk	g	gn
+g	br	o	r
+pn	br	m	p
+pk	m	r	br
+pn	b	pn	br
+o	y	g	y
+m	y	p	lb
+-	-	-	-
+-	-	-	-
