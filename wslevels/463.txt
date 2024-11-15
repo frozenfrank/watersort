@@ -1,0 +1,17 @@
+i
+463
+14
+b	gn	lb	y
+g	r	o	lb
+pk	y	m	pn
+gn	y	pk	br
+y	p	p	lb
+m	o	pn	lb
+r	o	g	gn
+p	br	pn	o
+m	gn	p	r
+br	g	g	b
+r	br	pn	pk
+b	pk	m	b
+-	-	-	-
+-	-	-	-
