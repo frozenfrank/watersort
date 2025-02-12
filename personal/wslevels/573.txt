@@ -1,0 +1,17 @@
+i
+573
+14
+pk	pk	o	pk
+o	y	p	pn
+g	r	gn	pk
+br	b	g	br
+gn	b	pn	r
+o	pn	p	gn
+lb	m	br	lb
+lb	b	m	r
+gn	pn	br	y
+o	y	b	y
+m	r	m	lb
+p	g	p	g
+-	-	-	-
+-	-	-	-
