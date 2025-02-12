@@ -166,6 +166,7 @@ class Game:
     val = self.requestVal(original, request)
     if val:
       rootChanged = True
+      Game.latest = self
       self.root.vials[vialIndex][spaceIndex] = val
 
     colorDist, colorErrors = self.root._analyzeColors()
@@ -181,12 +182,12 @@ class Game:
       rsp = self.requestVal(original, request, printState=False, disableAutoSave=True, printOptions=False)
       if (rsp or "y")[0].strip().lower() == "y":
         self.root.vials[lastVialIndex][lastVialSpace] = lastColor
+        Game.latest = None # Prevent the solver from attempting BFS on this solved state
         rootChanged = True
 
 
     if rootChanged:
       Game.reset = True # Reset the search to handle this new discovery properly
-      Game.latest = self
       self.root.modified = True
       saveGame(self.root)
 
