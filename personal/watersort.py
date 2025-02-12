@@ -162,12 +162,33 @@ class Game:
       fewColors = sorted([formatVialColor(color, color) for color, count in colorDist.items() if count < NUM_SPACES_PER_VIAL and color != "?"])
       request += f" ({colorDist['?']} remaining unknowns: {', '.join(fewColors)})"
 
+    rootChanged = False
     val = self.requestVal(original, request)
     if val:
+      rootChanged = True
+      self.root.vials[vialIndex][spaceIndex] = val
+
+    colorDist, colorErrors = self.root._analyzeColors()
+    if colorDist["?"] == 1:
+      lastColor = next((k for k, v in colorDist.items() if (v < 4 and k != "?")), None)
+      lastVialIndex, lastVialSpace = self.root._findFirstSpaceWithColor("?")
+      lastSpace = formatSpaceRef(lastVialIndex, lastVialSpace)
+
+      request =   "There is only one remaining unknown value. "
+      request += f" Would you like to save {formatVialColor(lastColor, lastColor)} into space {lastSpace}?"
+      request +=  " [y]/n:"
+      print(request)
+
+      rsp = input() or "y"
+      if rsp[0].lower() == "y":
+        self.root.vials[lastVialIndex][lastVialSpace] = lastColor
+        rootChanged = True
+
+
+    if rootChanged:
       Game.reset = True # Reset the search to handle this new discovery properly
       Game.latest = self
       self.root.modified = True
-      self.root.vials[vialIndex][spaceIndex] = val
       saveGame(self.root)
 
     return val
@@ -279,6 +300,12 @@ class Game:
     else:
       print(f"No change to number of vials. Still have {numVials}")
     self.__numVials = numVials
+
+  def _findFirstSpaceWithColor(self, color: str) -> tuple[int, int]:
+    """
+    Returns the vial index and space index of the first occurrence of a particular color.
+    """
+    return next(((vialIndex, spaceIndex) for vialIndex, vial in enumerate(self.vials) for spaceIndex, val in enumerate(vial) if val == color), None)
 
   MoveInfo = tuple[str, int, bool, bool, bool]
   """ (colorMoved, numMoved, isComplete, vacatedVial, startedVial) OR None """
@@ -1363,6 +1390,8 @@ def formatVialColor(color: str, text: str = "", ljust=0) -> str:
     out += " " * (ljust - len(text))
   return out
 
+def formatSpaceRef(vialIndex: int, spaceIndex: int) -> str:
+  return f"{vialIndex+1}:{spaceIndex+1}"
 
 GLOBAL_GAME_IN_PROGRESS: Game | None = None
 def signalHandler(signum, frame):
