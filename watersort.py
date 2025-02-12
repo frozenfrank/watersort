@@ -177,10 +177,9 @@ class Game:
       request =   "There is only one remaining unknown value. "
       request += f" Would you like to save {formatVialColor(lastColor, lastColor)} into space {lastSpace}?"
       request +=  " [y]/n:"
-      print(request)
 
-      rsp = input() or "y"
-      if rsp[0].lower() == "y":
+      rsp = self.requestVal(original, request, printState=False, disableAutoSave=True, printOptions=False)
+      if (rsp or "y")[0].strip().lower() == "y":
         self.root.vials[lastVialIndex][lastVialSpace] = lastColor
         rootChanged = True
 
@@ -192,13 +191,13 @@ class Game:
       saveGame(self.root)
 
     return val
-  def requestVal(self, original: "Game", request: str, printState = True) -> str:
+  def requestVal(self, original: "Game", request: str, printState=True, disableAutoSave=False, printOptions=True) -> str:
     if printState:
       original.printVials()
       original.printMoves()
 
     # Other options start with a dash
-    print("Other options:\n" +
+    if printOptions: print("Other options:\n" +
           "   -o VIAL SPACE COLOR     to provide other values\n" +
           "   -p or -print            to print the ROOT board\n" +
           "   -pc                     to print the CURRENT board\n" +
@@ -214,7 +213,8 @@ class Game:
           "   -d OR -debug            to see debug info")
     rsp: str
     while True:
-      print(request + " (Or see other options above.)")
+      optionPrompt = "(Or see other options above.)" if printOptions else "(Or use advanced options.)"
+      print(request + " " + optionPrompt)
 
       rsp = input()
       if not rsp:
@@ -268,7 +268,7 @@ class Game:
         # They answered the original question
         break
 
-    saveGame(self.root)
+    if not disableAutoSave: saveGame(self.root)
     return rsp
   def saveOtherColor(self, input: str) -> None:
     flag, o_vial, o_space, color = input.split()
