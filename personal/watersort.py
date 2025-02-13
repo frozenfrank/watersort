@@ -20,6 +20,7 @@ FORCE_INTERACTION_MODE = None # "a"
 
 SOLVE_METHOD = "DFR"
 VALID_SOLVE_METHODS = set(["MIX", "BFS", "DFS", "DFR"]) # An enum is more accurate, but overkill for this need
+AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD = None
 
 MIX_SWITCH_THRESHOLD_MOVES = 10
 ENABLE_QUEUE_CHECKS = True # Disable only for temporary testing
@@ -159,7 +160,7 @@ class Game:
     if SOLVE_METHOD == "DFR":
       resolveWithMethod = "MIX"
       print(f"Unknown value detected with {SOLVE_METHOD} solve method. Re-solving with {resolveWithMethod} to detect unknown values.")
-      setSolveMethod(resolveWithMethod)
+      autoSwitchForUnknownsApply(newState=resolveWithMethod)
       Game.reset = True
       return None # No value requested
 
@@ -193,6 +194,13 @@ class Game:
         self.root.vials[lastVialIndex][lastVialSpace] = lastColor
         Game.latest = None # Prevent the solver from attempting BFS on this solved state
         rootChanged = True
+
+
+    colorDist, colorErrors = self.root._analyzeColors()
+    if colorDist["?"] == 0:
+      rootChanged = True
+      print("Reverting to original solve method now that all discovered values are found.")
+      autoSwitchForUnknownsRevert()
 
 
     if rootChanged:
@@ -1176,6 +1184,19 @@ def saveFileContents(fileName: str, contents: str) -> None:
   print(contents, file = sourceFile)
   sourceFile.close()
 
+def autoSwitchForUnknownsApply(newState="MIX") -> None:
+  return _autoSwitchForUnknowns(True, newState)
+def autoSwitchForUnknownsRevert() -> None:
+  return _autoSwitchForUnknowns(False)
+def _autoSwitchForUnknowns(applyState: bool, newState="MIX") -> None:
+  global AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD
+
+  if applyState:
+    AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD = SOLVE_METHOD
+    setSolveMethod(newState)
+  else:
+    setSolveMethod(AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD)
+    AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD = None
 def setSolveMethod(method: str) -> bool:
   method = method.upper()
   if method not in VALID_SOLVE_METHODS:
