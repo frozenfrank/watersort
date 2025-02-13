@@ -155,7 +155,15 @@ class Game:
     if val != "?":
       return val
 
-    print("\n\nDiscovering new value:")
+    print("\n\n", end="")
+    if SOLVE_METHOD == "DFR":
+      resolveWithMethod = "MIX"
+      print(f"Unknown value detected with {SOLVE_METHOD} solve method. Re-solving with {resolveWithMethod} to detect unknown values.")
+      setSolveMethod(resolveWithMethod)
+      Game.reset = True
+      return None # No value requested
+
+    print("Discovering new value:")
     startVial = vialIndex + 1
     request = f"What's the new value in the {startVial} vial?"
     colorDist, colorErrors = self._analyzeColors()
