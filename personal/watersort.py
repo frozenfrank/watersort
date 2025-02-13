@@ -29,6 +29,7 @@ ANALYZE_ATTEMPTS = 10000
 DFR_SEARCH_ATTEMPTS = 200
 
 RESERVED_COLORS = set(["?", "-"])
+FEW_VIALS_THRESHOLD = 7 # I'm not actually sure if this is the right threshold, but it appears correct
 
 COLOR_CODES = defaultdict(str, {
   "m": Back.CYAN,                                 # Mint
@@ -974,9 +975,7 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False) -> Game:
   # Automatically detect the last empty vials
   numEmpty = 0
   if userInteraction:
-    numEmpty = 2
-    if numVials < 7: # I actually don't know if this is the threshold. There may other thresholds at higher counts
-      numEmpty = 1
+    numEmpty = _determineNumEmpty(numVials)
 
   # Read in the colors
   if userInteraction: print(f"On the next {numVials} lines, please type {NUM_SPACES_PER_VIAL} words representing the colors in each vial from top to bottom.\n"+
@@ -1008,6 +1007,8 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False) -> Game:
     vials.append(spaces)
 
   return Game.Create(vials)
+def _determineNumEmpty(vialsWithColors: int) -> int:
+  return 1 if vialsWithColors < FEW_VIALS_THRESHOLD else 2
 
 def chooseInteraction():
   validModes = set("psqin")
