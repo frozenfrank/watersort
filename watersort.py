@@ -987,9 +987,9 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False) -> Game:
                             "  Type a blank line signal that all vials with colors have been represented (all remaining vials are empty).\n")
   emptyRest = False
   i = 0
-  while i < numVials or i == -1:
+  while i < numVials or numVials == -1:
     i += 1
-    if emptyRest or i > numVials - numEmpty:
+    if numVials != -1 and (emptyRest or i > numVials - numEmpty):
       vials.append(["-"] * NUM_SPACES_PER_VIAL)
       continue
 
@@ -998,6 +998,9 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False) -> Game:
     if response == "" or not response:
       emptyRest = True
       i -= 1 # Place an empty value for this row
+      if userInteraction:
+        numVials = len(vials)
+        numVials += _determineNumEmpty(numVials)
       continue
 
     if response == ".":
