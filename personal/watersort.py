@@ -587,6 +587,15 @@ class Game:
 
     emptyValid = [True]*self.__numVials
     moveValid = [True]*self.__numVials
+
+    if self.move:
+      # TODO: this only evaluates the most recent move,
+      # but the algorithm could have inserted another move in between.
+      # More generically, we need to ensure that we never make a move from
+      # a vial, if the vial it would move into hasn't changed since the
+      # starting vial was filled. (That's a lot more complicated.)
+      moveValid[self.move[1]] = False
+
     for start, end in itertools.product(range(self.__numVials), range(self.__numVials)):
       if Game.reset:
         return list()
