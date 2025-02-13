@@ -171,7 +171,7 @@ class Game:
 
     colorDist, colorErrors = self.root._analyzeColors()
     if colorDist["?"] == 1:
-      lastColor = next((k for k, v in colorDist.items() if (v < 4 and k != "?")), None)
+      lastColor = next((k for k, v in colorDist.items() if (v < NUM_SPACES_PER_VIAL and k != "?")), None)
       lastVialIndex, lastVialSpace = self.root._findFirstSpaceWithColor("?")
       lastSpace = formatSpaceRef(lastVialIndex, lastVialSpace)
 
