@@ -959,16 +959,19 @@ def readGameFile(gameFileName: str, level: str = None) -> Game:
   finally:
     return gameRead
 def _readGame(nextLine: Callable[[], str], userInteraction = False) -> Game:
-  if userInteraction: print("How many vials are in this game?")
-  numVials = None
-  while not numVials:
-    rsp = nextLine()  # Read num vials
-    if rsp.isnumeric():
-      numVials = int(rsp)
-    elif rsp == "quit" or rsp == "q" or rsp == "-q":
-      quit()
-    else:
-      print("We asked for the number of vials. That's not a number.")
+  """
+  Reads the game one line at a time by invoking a configurable `nextLine()` method.
+
+  Users are presented with nice prompts asking for each piece of information.
+  With users, the number of vials is determined based on when an empty line is parsed.
+
+  When reading from files, the prompts are suppressed and the number of vials is
+  explicitly read as the first line of input.
+  """
+  numVials = -1
+  if not userInteraction:
+    rsp = nextLine()  # Read num vials from input file
+    numVials = int(rsp)
 
   vials = []
 
@@ -978,13 +981,13 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False) -> Game:
     numEmpty = _determineNumEmpty(numVials)
 
   # Read in the colors
-  if userInteraction: print(f"On the next {numVials} lines, please type {NUM_SPACES_PER_VIAL} words representing the colors in each vial from top to bottom.\n"+
+  if userInteraction: print(f"On the next lines, please type {NUM_SPACES_PER_VIAL} words representing the colors in each vial from top to bottom.\n"+
                             "  Stopping short of the depth of a vial will fill the remaining spaces with question marks.\n" +
                             "  Type a . (period) to insert a whole row of question marks.\n" +
-                            "  Type a blank line to mark the remaining vials as empty.\n")
+                            "  Type a blank line signal that all vials with colors have been represented (all remaining vials are empty).\n")
   emptyRest = False
   i = 0
-  while i < numVials:
+  while i < numVials or i == -1:
     i += 1
     if emptyRest or i > numVials - numEmpty:
       vials.append(["-"] * NUM_SPACES_PER_VIAL)
