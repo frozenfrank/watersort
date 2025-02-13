@@ -20,7 +20,6 @@ FORCE_INTERACTION_MODE = None # "a"
 
 SOLVE_METHOD = "DFR"
 VALID_SOLVE_METHODS = set(["MIX", "BFS", "DFS", "DFR"]) # An enum is more accurate, but overkill for this need
-AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD = None
 
 MIX_SWITCH_THRESHOLD_MOVES = 10
 ENABLE_QUEUE_CHECKS = True # Disable only for temporary testing
@@ -28,6 +27,9 @@ ENABLE_QUEUE_CHECKS = True # Disable only for temporary testing
 SHUFFLE_NEXT_MOVES = False
 ANALYZE_ATTEMPTS = 10000
 DFR_SEARCH_ATTEMPTS = 200
+
+CONFIRM_APPLY_LAST_UNKNOWN = False
+AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD = None
 
 RESERVED_COLORS = set(["?", "-"])
 FEW_VIALS_THRESHOLD = 7 # I'm not actually sure if this is the right threshold, but it appears correct
@@ -185,12 +187,19 @@ class Game:
       lastVialIndex, lastVialSpace = self.root._findFirstSpaceWithColor("?")
       lastSpace = formatSpaceRef(lastVialIndex, lastVialSpace)
 
-      request =   "There is only one remaining unknown value. "
-      request += f" Would you like to save {formatVialColor(lastColor, lastColor)} into space {lastSpace}?"
-      request +=  " [y]/n:"
+      request =   "There is only one remaining unknown value."
 
-      rsp = self.requestVal(original, request, printState=False, disableAutoSave=True, printOptions=False)
-      if (rsp or "y")[0].strip().lower() == "y":
+      if CONFIRM_APPLY_LAST_UNKNOWN:
+        request += f" Would you like to save {formatVialColor(lastColor, lastColor)} into space {lastSpace}?"
+        request +=  " [y]/n:"
+        rsp = self.requestVal(original, request, printState=False, disableAutoSave=True, printOptions=False)
+        rsp = (rsp or "y")[0].strip().lower()
+      else:
+        request += f" Saving color {formatVialColor(lastColor, lastColor)} into space {lastSpace}."
+        print(request)
+        rsp = "y"
+
+      if rsp == "y":
         self.root.vials[lastVialIndex][lastVialSpace] = lastColor
         Game.latest = None # Prevent the solver from attempting BFS on this solved state
         rootChanged = True
