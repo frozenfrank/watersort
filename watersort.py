@@ -162,22 +162,43 @@ class Game:
       fewColors = sorted([formatVialColor(color, color) for color, count in colorDist.items() if count < NUM_SPACES_PER_VIAL and color != "?"])
       request += f" ({colorDist['?']} remaining unknowns: {', '.join(fewColors)})"
 
+    rootChanged = False
     val = self.requestVal(original, request)
     if val:
-      Game.reset = True # Reset the search to handle this new discovery properly
+      rootChanged = True
       Game.latest = self
-      self.root.modified = True
       self.root.vials[vialIndex][spaceIndex] = val
+
+    colorDist, colorErrors = self.root._analyzeColors()
+    if colorDist["?"] == 1:
+      lastColor = next((k for k, v in colorDist.items() if (v < NUM_SPACES_PER_VIAL and k != "?")), None)
+      lastVialIndex, lastVialSpace = self.root._findFirstSpaceWithColor("?")
+      lastSpace = formatSpaceRef(lastVialIndex, lastVialSpace)
+
+      request =   "There is only one remaining unknown value. "
+      request += f" Would you like to save {formatVialColor(lastColor, lastColor)} into space {lastSpace}?"
+      request +=  " [y]/n:"
+
+      rsp = self.requestVal(original, request, printState=False, disableAutoSave=True, printOptions=False)
+      if (rsp or "y")[0].strip().lower() == "y":
+        self.root.vials[lastVialIndex][lastVialSpace] = lastColor
+        Game.latest = None # Prevent the solver from attempting BFS on this solved state
+        rootChanged = True
+
+
+    if rootChanged:
+      Game.reset = True # Reset the search to handle this new discovery properly
+      self.root.modified = True
       saveGame(self.root)
 
     return val
-  def requestVal(self, original: "Game", request: str, printState = True) -> str:
+  def requestVal(self, original: "Game", request: str, printState=True, disableAutoSave=False, printOptions=True) -> str:
     if printState:
       original.printVials()
       original.printMoves()
 
     # Other options start with a dash
-    print("Other options:\n" +
+    if printOptions: print("Other options:\n" +
           "   -o VIAL SPACE COLOR     to provide other values\n" +
           "   -p or -print            to print the ROOT board\n" +
           "   -pc                     to print the CURRENT board\n" +
@@ -193,7 +214,8 @@ class Game:
           "   -d OR -debug            to see debug info")
     rsp: str
     while True:
-      print(request + " (Or see other options above.)")
+      optionPrompt = "(Or see other options above.)" if printOptions else "(Or use advanced options.)"
+      print(request + " " + optionPrompt)
 
       rsp = input()
       if not rsp:
@@ -247,7 +269,7 @@ class Game:
         # They answered the original question
         break
 
-    saveGame(self.root)
+    if not disableAutoSave: saveGame(self.root)
     return rsp
   def saveOtherColor(self, input: str) -> None:
     flag, o_vial, o_space, color = input.split()
@@ -279,6 +301,12 @@ class Game:
     else:
       print(f"No change to number of vials. Still have {numVials}")
     self.__numVials = numVials
+
+  def _findFirstSpaceWithColor(self, color: str) -> tuple[int, int]:
+    """
+    Returns the vial index and space index of the first occurrence of a particular color.
+    """
+    return next(((vialIndex, spaceIndex) for vialIndex, vial in enumerate(self.vials) for spaceIndex, val in enumerate(vial) if val == color), None)
 
   MoveInfo = tuple[str, int, bool, bool, bool]
   """ (colorMoved, numMoved, isComplete, vacatedVial, startedVial) OR None """
@@ -1363,6 +1391,8 @@ def formatVialColor(color: str, text: str = "", ljust=0) -> str:
     out += " " * (ljust - len(text))
   return out
 
+def formatSpaceRef(vialIndex: int, spaceIndex: int) -> str:
+  return f"{vialIndex+1}:{spaceIndex+1}"
 
 GLOBAL_GAME_IN_PROGRESS: Game | None = None
 def signalHandler(signum, frame):
