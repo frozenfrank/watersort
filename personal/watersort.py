@@ -28,6 +28,9 @@ SHUFFLE_NEXT_MOVES = False
 ANALYZE_ATTEMPTS = 10000
 DFR_SEARCH_ATTEMPTS = 200
 
+CONFIRM_APPLY_LAST_UNKNOWN = False
+AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD = None
+
 RESERVED_COLORS = set(["?", "-"])
 FEW_VIALS_THRESHOLD = 7 # I'm not actually sure if this is the right threshold, but it appears correct
 
@@ -155,7 +158,15 @@ class Game:
     if val != "?":
       return val
 
-    print("\n\nDiscovering new value:")
+    print("\n\n", end="")
+    if SOLVE_METHOD == "DFR":
+      resolveWithMethod = "MIX"
+      print(f"Unknown value detected with {SOLVE_METHOD} solve method. Re-solving with {resolveWithMethod} to detect unknown values.")
+      autoSwitchForUnknownsApply(newState=resolveWithMethod)
+      Game.reset = True
+      return None # No value requested
+
+    print("Discovering new value:")
     startVial = vialIndex + 1
     request = f"What's the new value in the {startVial} vial?"
     colorDist, colorErrors = self._analyzeColors()
@@ -176,15 +187,29 @@ class Game:
       lastVialIndex, lastVialSpace = self.root._findFirstSpaceWithColor("?")
       lastSpace = formatSpaceRef(lastVialIndex, lastVialSpace)
 
-      request =   "There is only one remaining unknown value. "
-      request += f" Would you like to save {formatVialColor(lastColor, lastColor)} into space {lastSpace}?"
-      request +=  " [y]/n:"
+      request =   "There is only one remaining unknown value."
 
-      rsp = self.requestVal(original, request, printState=False, disableAutoSave=True, printOptions=False)
-      if (rsp or "y")[0].strip().lower() == "y":
+      if CONFIRM_APPLY_LAST_UNKNOWN:
+        request += f" Would you like to save {formatVialColor(lastColor, lastColor)} into space {lastSpace}?"
+        request +=  " [y]/n:"
+        rsp = self.requestVal(original, request, printState=False, disableAutoSave=True, printOptions=False)
+        rsp = (rsp or "y")[0].strip().lower()
+      else:
+        request += f" Saving color {formatVialColor(lastColor, lastColor)} into space {lastSpace}."
+        print(request)
+        rsp = "y"
+
+      if rsp == "y":
         self.root.vials[lastVialIndex][lastVialSpace] = lastColor
         Game.latest = None # Prevent the solver from attempting BFS on this solved state
         rootChanged = True
+
+
+    colorDist, colorErrors = self.root._analyzeColors()
+    if colorDist["?"] == 0:
+      rootChanged = True
+      print("Reverting to original solve method now that all discovered values are found.")
+      autoSwitchForUnknownsRevert()
 
 
     if rootChanged:
@@ -1168,6 +1193,19 @@ def saveFileContents(fileName: str, contents: str) -> None:
   print(contents, file = sourceFile)
   sourceFile.close()
 
+def autoSwitchForUnknownsApply(newState="MIX") -> None:
+  return _autoSwitchForUnknowns(True, newState)
+def autoSwitchForUnknownsRevert() -> None:
+  return _autoSwitchForUnknowns(False)
+def _autoSwitchForUnknowns(applyState: bool, newState="MIX") -> None:
+  global AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD
+
+  if applyState:
+    AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD = SOLVE_METHOD
+    setSolveMethod(newState)
+  else:
+    setSolveMethod(AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD)
+    AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD = None
 def setSolveMethod(method: str) -> bool:
   method = method.upper()
   if method not in VALID_SOLVE_METHODS:
