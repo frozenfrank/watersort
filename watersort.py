@@ -29,6 +29,7 @@ ANALYZE_ATTEMPTS = 10000
 DFR_SEARCH_ATTEMPTS = 200
 
 CONFIRM_APPLY_LAST_UNKNOWN = False
+CONFIRM_APPLY_LAST_BATCH_COLOR = False
 AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD = None
 
 RESERVED_COLORS = set(["?", "-"])
@@ -171,7 +172,7 @@ class Game:
     request = f"What's the new value in the {startVial} vial?"
     colorDist, colorErrors = self._analyzeColors()
     if colorDist["?"] > 0:
-      fewColors = sorted([formatVialColor(color, color) for color, count in colorDist.items() if count < NUM_SPACES_PER_VIAL and color != "?"])
+      fewColors = sorted([formatVialColor(color, color) for color in self._identifyUnderusedColors(colorDist)])
       request += f" ({colorDist['?']} remaining unknowns: {', '.join(fewColors)})"
 
     rootChanged = False
@@ -182,6 +183,8 @@ class Game:
       self.root.vials[vialIndex][spaceIndex] = val
 
     colorDist, colorErrors = self.root._analyzeColors()
+    underusedColors = self._identifyUnderusedColors(colorDist)
+
     if colorDist["?"] == 1:
       lastColor = next((k for k, v in colorDist.items() if (v < NUM_SPACES_PER_VIAL and k != "?")), None)
       lastVialIndex, lastVialSpace = self.root._findFirstSpaceWithColor("?")
@@ -189,20 +192,35 @@ class Game:
 
       request =   "There is only one remaining unknown value."
 
+      proceed = True
       if CONFIRM_APPLY_LAST_UNKNOWN:
         request += f" Would you like to save {formatVialColor(lastColor, lastColor)} into space {lastSpace}?"
-        request +=  " [y]/n:"
-        rsp = self.requestVal(original, request, printState=False, disableAutoSave=True, printOptions=False)
-        rsp = (rsp or "y")[0].strip().lower()
+        proceed = self.confirmPrompt(original, request)
       else:
         request += f" Saving color {formatVialColor(lastColor, lastColor)} into space {lastSpace}."
         print(request)
-        rsp = "y"
 
-      if rsp == "y":
+      if proceed:
         self.root.vials[lastVialIndex][lastVialSpace] = lastColor
         Game.latest = None # Prevent the solver from attempting BFS on this solved state
         rootChanged = True
+    elif colorDist["?"] <= NUM_SPACES_PER_VIAL and len(underusedColors) == 1:
+      lastColor = underusedColors[0]
+      request = "Only one potential color remains to fill the unknowns."
+
+      proceed = True
+      if CONFIRM_APPLY_LAST_BATCH_COLOR:
+        request += f" Would you like to save {formatVialColor(lastColor, lastColor)} in *all* {colorDist['?']} spaces?"
+        proceed = self.confirmPrompt(original, request)
+      else:
+        request += f" Saving color {formatVialColor(lastColor, lastColor)} into {colorDist['?']} remaining spaces."
+        print(request)
+
+      if proceed:
+        Game.latest = None
+        for vialIdx, spaceIdx in itertools.product(range(self.__numVials), range(NUM_SPACES_PER_VIAL)):
+          if self.root.vials[vialIdx][spaceIdx] == "?":
+            self.root.vials[vialIdx][spaceIdx] = lastColor
 
 
     colorDist, colorErrors = self.root._analyzeColors()
@@ -218,6 +236,10 @@ class Game:
       saveGame(self.root)
 
     return val
+  def confirmPrompt(self, original: "Game", question: str) -> bool:
+    question += " [y]/n:"
+    rsp = self.requestVal(original, question, printState=False, disableAutoSave=True, printOptions=False)
+    return (rsp or "y").strip()[0].lower()
   def requestVal(self, original: "Game", request: str, printState=True, disableAutoSave=False, printOptions=True) -> str:
     if printState:
       original.printVials()
@@ -328,6 +350,8 @@ class Game:
       print(f"No change to number of vials. Still have {numVials}")
     self.__numVials = numVials
 
+  def _identifyUnderusedColors(self, colorDist: dict[str, int]) -> list[str]:
+    return [color for color, count in colorDist.items() if count < NUM_SPACES_PER_VIAL and color != "?"]
   def _findFirstSpaceWithColor(self, color: str) -> tuple[int, int]:
     """
     Returns the vial index and space index of the first occurrence of a particular color.
