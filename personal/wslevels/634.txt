@@ -1,0 +1,14 @@
+i
+634
+11
+b	r	pn	r
+p	b	b	o
+r	lb	g	pk
+p	pn	o	m
+lb	pn	g	p
+pk	o	lb	g
+g	m	m	r
+o	pk	pk	p
+lb	b	m	pn
+-	-	-	-
+-	-	-	-
