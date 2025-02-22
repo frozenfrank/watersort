@@ -9,6 +9,9 @@ import copy;
 import itertools;
 import sys;
 
+INSTALLED_BASE_PATH = ""
+WRITE_FILES_TO_ABSOLUTE_PATH = False
+
 SOLVER_VERSION = 1
 ANALYZER_VERSION = 5
 
@@ -1209,9 +1212,9 @@ def saveGame(game: "Game", forceSave = False) -> None:
   saveFileContents(fileName, result)
   game.modified = False
   print(f"Saved discovered game state to file: {fileName}")
-def getBasePath(absolutePath = True) -> str:
-  return "/Users/frozenfrank/Documents/College/Fall 2023/CPC/personal/" if absolutePath else ""
-def generateFileName(levelNum: str, absolutePath = True) -> str:
+def getBasePath(absolutePath = WRITE_FILES_TO_ABSOLUTE_PATH) -> str:
+  return INSTALLED_BASE_PATH if absolutePath else ""
+def generateFileName(levelNum: str, absolutePath: bool = None) -> str:
   return getBasePath(absolutePath) + f"wslevels/{levelNum}.txt"
 def generateFileContents(game: "Game") -> str:
   lines = list()
@@ -1259,7 +1262,7 @@ def setSolveMethod(method: str) -> bool:
   print("Set solve method to " + method)
   return True
 
-def generateAnalysisResultsName(level: str, absolutePath = True) -> str:
+def generateAnalysisResultsName(level: str, absolutePath: bool = None) -> str:
   return getBasePath(absolutePath) + f"wsanalysis/{level}-{round(time())}.csv"
 def saveAnalysisResults(rootGame: Game, seconds: float, samples: int,
                         partialStates, dupStates, deadStates, solStates, uniqueSolStates,
