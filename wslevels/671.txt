@@ -1,0 +1,17 @@
+i
+671
+14
+br	br	y	gn
+y	p	b	g
+gn	pn	m	o
+lb	g	p	r
+pk	r	y	gn
+m	p	r	pk
+o	b	b	gn
+lb	g	pn	m
+pn	pk	o	r
+lb	br	pn	pk
+lb	y	o	p
+g	b	m	br
+-	-	-	-
+-	-	-	-
