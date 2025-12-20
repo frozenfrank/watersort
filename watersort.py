@@ -72,6 +72,7 @@ class Game:
   reset: bool = False
   quit: bool = False
   latest: bool = False # "Game" | None
+  pourMode: bool = True
 
   # Flags set on the root game
   level: str
@@ -134,9 +135,11 @@ class Game:
       print("Issues resolved. Proceeding.")
       return False
 
-  def getTopVialColor(self, vialIndex) -> str:
+  def getTopVialColor(self, vialIndex, bottom = False) -> str:
     vial = self.vials[vialIndex]
-    for i in range(NUM_SPACES_PER_VIAL):
+    iterator = range(NUM_SPACES_PER_VIAL)
+    if bottom: iterator = reversed(iterator)
+    for i in iterator:
       val = vial[i]
       if val == '?':
         return self.getColor(vialIndex, i)
@@ -509,10 +512,10 @@ class Game:
     INVALID_MOVE = (False, None, None, None, False)
     if startVial == endVial:
       return INVALID_MOVE # Can't move to the same place
-    if self.move and startVial == self.move[1] and endVial == self.move[0]:
+    if not Game.pourMode and self.move and startVial == self.move[1] and endVial == self.move[0]:
       return INVALID_MOVE # Can't simply undo the previous move
 
-    startColor = self.getTopVialColor(startVial)
+    startColor = self.getTopVialColor(startVial, bottom=Game.pourMode)
     if startColor == "-" or startColor == "?":
       return INVALID_MOVE # Can only move an active color
     endColor = self.getTopVialColor(endVial)
@@ -525,7 +528,7 @@ class Game:
       return INVALID_MOVE # End vial is full
 
     # Verify that this vial isn't full
-    startIsComplete, startOnlyColor, startNumOnTop, startEmptySpaces = self.__countOnTop(startColor, startVial)
+    startIsComplete, startOnlyColor, startNumOnTop, startEmptySpaces = self.__countOnTop(startColor, startVial, bottom=Game.pourMode)
     if startIsComplete:
       return INVALID_MOVE # Start is fully filled
     if startOnlyColor and endColor == "-":
@@ -540,7 +543,7 @@ class Game:
     # It's valid
     return (True, startColor, endColor, endEmptySpaces, willComplete)
   # topColor SHOULD NOT be "-" or "?"
-  def __countOnTop(self, topColor: str, vialIndex: int) -> tuple[bool, bool, int, int]: # (isComplete, isOnlyColorInColumn, numOfColorOnTop, numEmptySpaces)
+  def __countOnTop(self, topColor: str, vialIndex: int, bottom=False) -> tuple[bool, bool, int, int]: # (isComplete, isOnlyColorInColumn, numOfColorOnTop, numEmptySpaces)
     isComplete = True
     onlyColor = True
     emptySpaces = 0
@@ -548,7 +551,10 @@ class Game:
 
     vial = self.vials[vialIndex]
     emptySpaceVal = 1 # We only want to count empty spaces that appear BEFORE colors
-    for i in range(NUM_SPACES_PER_VIAL):
+
+    iterator=range(NUM_SPACES_PER_VIAL)
+    if bottom: iterator=reversed(iterator)
+    for i in iterator:
       color = vial[i]
       if color == "-":
         emptySpaces += emptySpaceVal
@@ -572,12 +578,13 @@ class Game:
     moveRange = endSpaces
     startColors = 0
     while i < moveRange and i < NUM_SPACES_PER_VIAL:
-      color = self.vials[startVial][i]
+      idx = NUM_SPACES_PER_VIAL-i-1 if Game.pourMode else i
+      color = self.vials[startVial][idx]
       if color == '-':
         moveRange += 1
       elif color == startColor:
         startColors += 1
-        self.vials[startVial][i] = "-"
+        self.vials[startVial][idx] = "-"
       else:
         break
       i += 1
