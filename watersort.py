@@ -444,8 +444,8 @@ class Game:
       return None
     start, end = self.move
 
-    colorMoved = self.getTopVialColor(end)
-    _, _, numMoved, startEmptySpaces   = self.prev.__countOnTop(colorMoved, start)
+    colorMoved = self.getTopVialColor(end, bottom=Game.pourMode)
+    _, _, numMoved, startEmptySpaces   = self.prev.__countOnTop(colorMoved, start, bottom=Game.pourMode)
     complete, _, _, endEmptySpaces     = self.__countOnTop(colorMoved, end)
 
     vacatedVial = numMoved + startEmptySpaces == NUM_SPACES_PER_VIAL
