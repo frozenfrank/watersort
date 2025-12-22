@@ -573,30 +573,40 @@ class Game:
     if not valid:
       return False
 
+    fromVial = self.vials[startVial]
+    toVial = self.vials[endVial]
+
     # Remove up to that many colors from start
-    i = 0
+    piecesMoved = 0
     moveRange = endSpaces
     startColors = 0
-    while i < moveRange and i < NUM_SPACES_PER_VIAL:
-      idx = NUM_SPACES_PER_VIAL-i-1 if Game.pourMode else i
-      color = self.vials[startVial][idx]
+    while piecesMoved < moveRange and piecesMoved < NUM_SPACES_PER_VIAL:
+      idx = NUM_SPACES_PER_VIAL-piecesMoved-1 if Game.pourMode else piecesMoved
+      color = fromVial[idx]
       if color == '-':
         moveRange += 1
       elif color == startColor:
         startColors += 1
-        self.vials[startVial][idx] = "-"
+        fromVial[idx] = "-"
       else:
         break
-      i += 1
+      piecesMoved += 1
+
+    # Shift down moved colors in pour mode
+    if Game.pourMode:
+      for i in range(NUM_SPACES_PER_VIAL-1,-1,-1):
+        shiftFrom = i - piecesMoved
+        shiftColor = "-" if shiftFrom < 0 else fromVial[shiftFrom]
+        fromVial[i] = shiftColor
 
     # Add the values back to endVial, from the bottom
     i = NUM_SPACES_PER_VIAL - 1
     moveRange = startColors
     while i >= 0 and moveRange > 0:
-      color = self.vials[endVial][i]
+      color = toVial[i]
       if color == '-':
         moveRange -= 1
-        self.vials[endVial][i] = startColor
+        toVial[i] = startColor
       i -= 1
 
     # Track the completion order
