@@ -1210,6 +1210,12 @@ def chooseInteraction():
     print("Unrecognized mode: " + mode)
 
   quit(0)
+def debugLevel(level,dfrSearchAttempts=DFR_SEARCH_ATTEMPTS):
+  gameFileName = generateFileName(level)
+  originalGame = readGameFile(gameFileName, level)
+  originalGame.level = level
+  solveGame(originalGame, solveMethod=SOLVE_METHOD, probeDFRSamples=dfrSearchAttempts)
+  saveGame(originalGame)
 
 def saveGame(game: "Game", forceSave = False) -> None:
   if not game or (not forceSave and not game.modified):
@@ -1497,3 +1503,5 @@ signal.signal(signal.SIGINT, signalHandler)
 # py watersort.py LEVEL <MODE>
 # py watersort.py LEVEL dfr SAMPLES?
 chooseInteraction()
+
+# debugLevel("dec15", dfrSearchAttempts=1)
