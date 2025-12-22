@@ -1,0 +1,15 @@
+i
+dec15
+12
+r	lb	b	lb
+p	m	g	b
+pk	o	g	r
+p	lb	p	pn
+m	pk	lb	o
+pk	br	br	pn
+g	b	br	pn
+pk	pn	p	b
+m	r	m	br
+o	g	r	o
+-	-	-	-
+-	-	-	-
