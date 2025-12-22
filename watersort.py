@@ -1133,7 +1133,7 @@ def chooseInteraction():
     print("""
           How are we interacting?
           NAME                      level name
-          p                         play
+          p LEVEL?                  play
           n                         solve (from new input)
           i                         interact (or resume an existing game)
           a LEVEL? SAMPLES?         analyze
@@ -1158,6 +1158,10 @@ def chooseInteraction():
         level = words[1]
       if len(words) > 2:
         analyzeSamples = int(words[2])
+    elif firstWord == "p":
+      mode = "p"
+      if len(words) > 1:
+        level = words[1]
     elif firstWord in validModes:
       mode = firstWord
       if mode == "i":
