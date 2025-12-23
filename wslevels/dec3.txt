@@ -1,5 +1,5 @@
 i
-dec3
+dec3 pour
 11
 o	o	p	lb
 p	pn	lb	b

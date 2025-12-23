@@ -90,8 +90,9 @@ class Game:
   TOTAL_MOVE_PRINT_WIDTH = COLOR_WIDTH + NUMBER_WIDTH + EXTRA_CHARS + len(COMPLETE_STR)
 
   @staticmethod
-  def Create(vials) -> "Game":
+  def Create(vials, pourMode=False) -> "Game":
     newGame = Game(vials, None, None)
+    newGame.pourMode = bool(pourMode)
     newGame._analyzeColors()
     return newGame
 
@@ -405,7 +406,10 @@ class Game:
       Game._prevPrintedMoves = moves
 
     NEW_LINE = "\n  "
-    print(f"Moves ({len(lines)}):" + NEW_LINE + NEW_LINE.join(lines))
+    introduction = f"Moves ({len(lines)})"
+    if self.root.pourMode:
+      introduction += " [Pour Mode]"
+    print(introduction + ":" + NEW_LINE + NEW_LINE.join(lines))
   def printVials(self) -> None:
     lines = [list() for _ in range(NUM_SPACES_PER_VIAL + 1)]
 
@@ -1013,8 +1017,8 @@ def fPercent(num: float, den: float, roundDigits=1) -> str:
   return str(round(num/den*100, roundDigits)) + "%"
 
 
-def readGameInput(userInteracting: bool) -> Game:
-  game = _readGame(input, userInteraction=userInteracting)
+def readGameInput(userInteracting: bool, pourMode: bool = None) -> Game:
+  game = _readGame(input, userInteraction=userInteracting, pourMode=pourMode)
   game.modified = True
   return game
 def readGameFile(gameFileName: str, level: str = None) -> Game:
@@ -1022,11 +1026,14 @@ def readGameFile(gameFileName: str, level: str = None) -> Game:
   try:
     gameFile = open(gameFileName, "r")
     nextLine = lambda: gameFile.readline().strip()
+    pourMode: bool = False
 
-    mode = nextLine()               # Read mode
+    mode = nextLine()                       # Read mode
     if mode == "i":
-      level = nextLine()            # Read level name
-    gameRead = _readGame(nextLine)
+      levelLine = nextLine().split()        # Read level name
+      level = levelLine[0]
+      pourMode = "pour" in levelLine
+    gameRead = _readGame(nextLine, pourMode=pourMode)
     gameRead.level = level
 
     gameFile.close()
@@ -1037,7 +1044,7 @@ def readGameFile(gameFileName: str, level: str = None) -> Game:
     print("Resumed game progress from saved file " + gameFileName)
   finally:
     return gameRead
-def _readGame(nextLine: Callable[[], str], userInteraction = False) -> Game:
+def _readGame(nextLine: Callable[[], str], userInteraction = False, pourMode: bool = None) -> Game:
   """
   Reads the game one line at a time by invoking a configurable `nextLine()` method.
 
@@ -1047,6 +1054,13 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False) -> Game:
   When reading from files, the prompts are suppressed and the number of vials is
   explicitly read as the first line of input.
   """
+  if pourMode is None:
+    pourMode = False
+    if userInteraction:
+      rsp = input("Is this a pour-mode game? (y/n): ").strip().lower()
+      if rsp and rsp[0] == "y":
+        pourMode = True
+
   numVials = -1
   if not userInteraction:
     rsp = nextLine()  # Read num vials from input file
@@ -1091,7 +1105,7 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False) -> Game:
       spaces.append("?")
     vials.append(spaces)
 
-  return Game.Create(vials)
+  return Game.Create(vials, pourMode=pourMode)
 def _determineNumEmpty(vialsWithColors: int) -> int:
   return 1 if vialsWithColors < FEW_VIALS_THRESHOLD else 2
 
@@ -1099,6 +1113,7 @@ def chooseInteraction():
   validModes = set("psqin")
   mode: str = None
   level: str = None
+  pourMode: bool = None  # None means ask the user; otherwise, True/False
   userInteracting = True
   originalGame: Game = None
   analyzeSamples = ANALYZE_ATTEMPTS
@@ -1125,6 +1140,11 @@ def chooseInteraction():
     else:
       mode = "i"
       level = sys.argv[1]
+
+      # Determine pour mode
+      if "pour" in sys.argv:
+        pourMode = True
+        sys.argv.remove("pour")
 
       # Read solve method
       if len(sys.argv) > 2:
@@ -1246,7 +1266,12 @@ def generateFileName(levelNum: str, absolutePath: bool = None) -> str:
 def generateFileContents(game: "Game") -> str:
   lines = list()
   lines.append("i")
-  lines.append(str(game.level))
+
+  levelLine = str(game.level)
+  if game.root.pourMode:
+    levelLine += " pour"
+
+  lines.append(levelLine)
   lines.append(str(len(game.vials)))
   for vial in game.vials:
     lines.append("\t".join(vial))
@@ -1514,8 +1539,11 @@ signal.signal(signal.SIGINT, signalHandler)
 # Call signatures:
 # py watersort.py LEVEL a SAMPLES?
 # py watersort.py a LEVEL SAMPLES?
-# py watersort.py LEVEL <MODE>
-# py watersort.py LEVEL dfr SAMPLES?
+
+# py watersort.py <pour?> LEVEL <MODE>  # "pour" can appear anywhere in the arguments list
+# py watersort.py LEVEL <pour?> <MODE>  # "pour" can appear anywhere in the arguments list
+# py watersort.py LEVEL <MODE> <pour?>  # "pour" can appear anywhere in the arguments list
+# py watersort.py <pour?> LEVEL dfr SAMPLES?
 chooseInteraction()
 
 # debugLevel("dec15", dfrSearchAttempts=1)
