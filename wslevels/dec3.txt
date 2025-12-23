@@ -1,12 +1,14 @@
 i
-dec3
-9
-lb	lb	o	o
-pn	b	o	pn
-m	b	m	g
-b	g	r	b
-r	g	lb	pn
-r	m	o	g
-pn	r	m	lb
+dec3 pour
+11
+o	o	p	lb
+p	pn	lb	b
+b	b	o	r
+pn	pk	lb	r
+pn	pk	m	lb
+r	m	p	b
+g	g	pk	m
+pn	g	o	pk
+m	r	g	p
 -	-	-	-
 -	-	-	-

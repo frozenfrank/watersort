@@ -1,10 +1,15 @@
 i
-dec15
-7
-pn	pn	b	o
-b	r	m	r
-pn	m	r	m
-b	o	r	m
-o	pn	b	o
+dec15 pour
+12
+r	lb	b	lb
+p	m	g	b
+pk	o	g	r
+p	lb	p	pn
+m	pk	lb	o
+pk	br	br	pn
+g	b	br	pn
+pk	pn	p	b
+m	r	m	br
+o	g	r	o
 -	-	-	-
 -	-	-	-

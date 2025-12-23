@@ -23,6 +23,7 @@ FORCE_INTERACTION_MODE = None # "a"
 
 SOLVE_METHOD = "DFR"
 VALID_SOLVE_METHODS = set(["MIX", "BFS", "DFS", "DFR"]) # An enum is more accurate, but overkill for this need
+VALID_GAMEPLAY_MODES = set(["normal", "pour"])
 
 MIX_SWITCH_THRESHOLD_MOVES = 10
 ENABLE_QUEUE_CHECKS = True # Disable only for temporary testing
@@ -78,6 +79,7 @@ class Game:
   modified: bool # Indicates it's changed from the last read in state
   _colorError: bool
   _hasUnknowns: bool
+  pourMode: bool = None
 
   # Cached for single use calculation
   COMPLETE_STR = Style.BRIGHT + " complete" + Style.NORMAL
@@ -89,20 +91,21 @@ class Game:
   TOTAL_MOVE_PRINT_WIDTH = COLOR_WIDTH + NUMBER_WIDTH + EXTRA_CHARS + len(COMPLETE_STR)
 
   @staticmethod
-  def Create(vials) -> "Game":
-    newGame = Game(vials, None, None, None)
+  def Create(vials, pourMode=False) -> "Game":
+    newGame = Game(vials, None, None)
+    newGame.pourMode = bool(pourMode)
     newGame._analyzeColors()
     return newGame
 
-  def __init__(self, vials: "Vials", move: "Move", root: "Game", prev: "Game", modified = False):
+  def __init__(self, vials: "Vials", move: "Move", prev: "Game", modified = False):
     self.vials = copy.deepcopy(vials)
     self.__numVials = len(vials)
     self.move = move
     self.prev = prev
     self.modified = modified
 
-    self.__isRoot = root == None
-    self.root = self if self.__isRoot else root
+    self.__isRoot = prev == None
+    self.root = self if self.__isRoot else prev.root
     self._numMoves = 0 if self.__isRoot else prev._numMoves + 1
     self.completionOrder = list() if self.__isRoot else prev.completionOrder
 
@@ -134,9 +137,11 @@ class Game:
       print("Issues resolved. Proceeding.")
       return False
 
-  def getTopVialColor(self, vialIndex) -> str:
+  def getTopVialColor(self, vialIndex, bottom = False) -> str:
     vial = self.vials[vialIndex]
-    for i in range(NUM_SPACES_PER_VIAL):
+    iterator = range(NUM_SPACES_PER_VIAL)
+    if bottom: iterator = reversed(iterator)
+    for i in iterator:
       val = vial[i]
       if val == '?':
         return self.getColor(vialIndex, i)
@@ -258,6 +263,7 @@ class Game:
           "   -s or -save             to save the discovered colors\n" +
           "   -r or -reset            to reset the search algorithm\n" +
           "   -m OR -moves            to print the moves to this point\n" +
+         f"   -gameplay MODE          to switch to pour gameplay ({', '.join(VALID_GAMEPLAY_MODES)})\n" +
          f"   -solve METHOD           to change the solve method ({', '.join(VALID_SOLVE_METHODS)})\n" +
           "   -level NUM              to change the level of this game\n" +
           "   -vials NUM              to change the number of vials in the game\n" +
@@ -306,7 +312,9 @@ class Game:
         elif rsp.startswith("-solve"):
           setSolveMethod(rsp.split(" ")[1])
           Game.reset = True
-          return ""
+          return ""  # Immediately return to re-solve
+        elif rsp.startswith("-gameplay"):
+          root.saveNewGameplayMode(rsp)
         elif rsp.startswith("-level"):
           root.saveNewLevel(rsp)
         elif rsp.startswith("-o"):
@@ -323,6 +331,22 @@ class Game:
 
     if not disableAutoSave: saveGame(self.root)
     return rsp
+  def saveNewGameplayMode(self, input: str) -> None:
+    flag, mode = input.split()
+    mode = mode.strip().lower()
+    if mode not in VALID_GAMEPLAY_MODES:
+      print(f"Unrecognized gameplay mode: {mode}. Valid modes are: {', '.join(VALID_GAMEPLAY_MODES)}")
+      return
+
+    isPour = mode == "pour"
+    if self.root.pourMode == isPour:
+      print(f"Gameplay mode is already set to: {mode}. No change made.")
+      return
+
+    Game.reset = True
+    self.root.pourMode = isPour
+    self.root.modified = True
+    print(f"Set gameplay mode to: {mode}. Continue on.")
   def saveOtherColor(self, input: str) -> None:
     flag, o_vial, o_space, color = input.split()
     vial = int(o_vial) - 1
@@ -402,7 +426,10 @@ class Game:
       Game._prevPrintedMoves = moves
 
     NEW_LINE = "\n  "
-    print(f"Moves ({len(lines)}):" + NEW_LINE + NEW_LINE.join(lines))
+    introduction = f"Moves ({len(lines)})"
+    if self.root.pourMode:
+      introduction += " [Pour Gameplay]"
+    print(introduction + ":" + NEW_LINE + NEW_LINE.join(lines))
   def printVials(self) -> None:
     lines = [list() for _ in range(NUM_SPACES_PER_VIAL + 1)]
 
@@ -442,7 +469,7 @@ class Game:
     start, end = self.move
 
     colorMoved = self.getTopVialColor(end)
-    _, _, numMoved, startEmptySpaces   = self.prev.__countOnTop(colorMoved, start)
+    _, _, numMoved, startEmptySpaces   = self.prev.__countOnTop(colorMoved, start, bottom=self.root.pourMode)
     complete, _, _, endEmptySpaces     = self.__countOnTop(colorMoved, end)
 
     vacatedVial = numMoved + startEmptySpaces == NUM_SPACES_PER_VIAL
@@ -509,10 +536,10 @@ class Game:
     INVALID_MOVE = (False, None, None, None, False)
     if startVial == endVial:
       return INVALID_MOVE # Can't move to the same place
-    if self.move and startVial == self.move[1] and endVial == self.move[0]:
+    if not self.root.pourMode and self.move and startVial == self.move[1] and endVial == self.move[0]:
       return INVALID_MOVE # Can't simply undo the previous move
 
-    startColor = self.getTopVialColor(startVial)
+    startColor = self.getTopVialColor(startVial, bottom=self.root.pourMode)
     if startColor == "-" or startColor == "?":
       return INVALID_MOVE # Can only move an active color
     endColor = self.getTopVialColor(endVial)
@@ -525,7 +552,7 @@ class Game:
       return INVALID_MOVE # End vial is full
 
     # Verify that this vial isn't full
-    startIsComplete, startOnlyColor, startNumOnTop, startEmptySpaces = self.__countOnTop(startColor, startVial)
+    startIsComplete, startOnlyColor, startNumOnTop, startEmptySpaces = self.__countOnTop(startColor, startVial, bottom=self.root.pourMode)
     if startIsComplete:
       return INVALID_MOVE # Start is fully filled
     if startOnlyColor and endColor == "-":
@@ -540,7 +567,7 @@ class Game:
     # It's valid
     return (True, startColor, endColor, endEmptySpaces, willComplete)
   # topColor SHOULD NOT be "-" or "?"
-  def __countOnTop(self, topColor: str, vialIndex: int) -> tuple[bool, bool, int, int]: # (isComplete, isOnlyColorInColumn, numOfColorOnTop, numEmptySpaces)
+  def __countOnTop(self, topColor: str, vialIndex: int, bottom=False) -> tuple[bool, bool, int, int]: # (isComplete, isOnlyColorInColumn, numOfColorOnTop, numEmptySpaces)
     isComplete = True
     onlyColor = True
     emptySpaces = 0
@@ -548,7 +575,10 @@ class Game:
 
     vial = self.vials[vialIndex]
     emptySpaceVal = 1 # We only want to count empty spaces that appear BEFORE colors
-    for i in range(NUM_SPACES_PER_VIAL):
+
+    iterator=range(NUM_SPACES_PER_VIAL)
+    if bottom: iterator=reversed(iterator)
+    for i in iterator:
       color = vial[i]
       if color == "-":
         emptySpaces += emptySpaceVal
@@ -567,29 +597,40 @@ class Game:
     if not valid:
       return False
 
+    fromVial = self.vials[startVial]
+    toVial = self.vials[endVial]
+
     # Remove up to that many colors from start
-    i = 0
+    piecesMoved = 0
     moveRange = endSpaces
     startColors = 0
-    while i < moveRange and i < NUM_SPACES_PER_VIAL:
-      color = self.vials[startVial][i]
+    while piecesMoved < moveRange and piecesMoved < NUM_SPACES_PER_VIAL:
+      idx = NUM_SPACES_PER_VIAL-piecesMoved-1 if self.root.pourMode else piecesMoved
+      color = fromVial[idx]
       if color == '-':
         moveRange += 1
       elif color == startColor:
         startColors += 1
-        self.vials[startVial][i] = "-"
+        fromVial[idx] = "-"
       else:
         break
-      i += 1
+      piecesMoved += 1
+
+    # Shift down moved colors in pour mode
+    if self.root.pourMode:
+      for i in range(NUM_SPACES_PER_VIAL-1,-1,-1):
+        shiftFrom = i - piecesMoved
+        shiftColor = "-" if shiftFrom < 0 else fromVial[shiftFrom]
+        fromVial[i] = shiftColor
 
     # Add the values back to endVial, from the bottom
     i = NUM_SPACES_PER_VIAL - 1
     moveRange = startColors
     while i >= 0 and moveRange > 0:
-      color = self.vials[endVial][i]
+      color = toVial[i]
       if color == '-':
         moveRange -= 1
-        self.vials[endVial][i] = startColor
+        toVial[i] = startColor
       i -= 1
 
     # Track the completion order
@@ -604,7 +645,7 @@ class Game:
     self.completionOrder = newCompletions
 
   def spawn(self, move: Move) -> "Game":
-    newGame = Game(self.vials, move, self.root, self)
+    newGame = Game(self.vials, move, self)
     newGame.makeMove(move[0], move[1])
     return newGame
 
@@ -996,20 +1037,22 @@ def fPercent(num: float, den: float, roundDigits=1) -> str:
   return str(round(num/den*100, roundDigits)) + "%"
 
 
-def readGameInput(userInteracting: bool) -> Game:
-  game = _readGame(input, userInteraction=userInteracting)
+def readGameInput(userInteracting: bool, pourMode: bool = None) -> Game:
+  game = _readGame(input, userInteraction=userInteracting, pourMode=pourMode)
   game.modified = True
   return game
-def readGameFile(gameFileName: str, level: str = None) -> Game:
+def readGameFile(gameFileName: str, level: str = None, pourMode: bool = None) -> Game:
   gameRead: Game = None
   try:
     gameFile = open(gameFileName, "r")
     nextLine = lambda: gameFile.readline().strip()
 
-    mode = nextLine()               # Read mode
+    mode = nextLine()                       # Read mode
     if mode == "i":
-      level = nextLine()            # Read level name
-    gameRead = _readGame(nextLine)
+      levelLine = nextLine().split()        # Read level name
+      level = levelLine[0]
+      pourMode = "pour" in levelLine
+    gameRead = _readGame(nextLine, pourMode=pourMode)
     gameRead.level = level
 
     gameFile.close()
@@ -1020,7 +1063,7 @@ def readGameFile(gameFileName: str, level: str = None) -> Game:
     print("Resumed game progress from saved file " + gameFileName)
   finally:
     return gameRead
-def _readGame(nextLine: Callable[[], str], userInteraction = False) -> Game:
+def _readGame(nextLine: Callable[[], str], userInteraction = False, pourMode: bool = None) -> Game:
   """
   Reads the game one line at a time by invoking a configurable `nextLine()` method.
 
@@ -1030,6 +1073,15 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False) -> Game:
   When reading from files, the prompts are suppressed and the number of vials is
   explicitly read as the first line of input.
   """
+  if pourMode is None:
+    pourMode = False
+    if userInteraction:
+      rsp = input("Level uses pour gameplay? (y/n): ").strip().lower()
+      if rsp and rsp[0] == "y":
+        pourMode = True
+  if pourMode and userInteraction:
+    print("Reading a pour gameplay.")
+
   numVials = -1
   if not userInteraction:
     rsp = nextLine()  # Read num vials from input file
@@ -1074,7 +1126,7 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False) -> Game:
       spaces.append("?")
     vials.append(spaces)
 
-  return Game.Create(vials)
+  return Game.Create(vials, pourMode=pourMode)
 def _determineNumEmpty(vialsWithColors: int) -> int:
   return 1 if vialsWithColors < FEW_VIALS_THRESHOLD else 2
 
@@ -1082,6 +1134,7 @@ def chooseInteraction():
   validModes = set("psqin")
   mode: str = None
   level: str = None
+  pourMode: bool = False  # None means ask the user; otherwise, True/False
   userInteracting = True
   originalGame: Game = None
   analyzeSamples = ANALYZE_ATTEMPTS
@@ -1109,6 +1162,11 @@ def chooseInteraction():
       mode = "i"
       level = sys.argv[1]
 
+      # Determine pour mode
+      if "pour" in sys.argv:
+        pourMode = True
+        sys.argv.remove("pour")
+
       # Read solve method
       if len(sys.argv) > 2:
         if sys.argv[2] == "a":
@@ -1126,7 +1184,7 @@ def chooseInteraction():
     print("""
           How are we interacting?
           NAME                      level name
-          p                         play
+          p LEVEL?                  play
           n                         solve (from new input)
           i                         interact (or resume an existing game)
           a LEVEL? SAMPLES?         analyze
@@ -1151,6 +1209,10 @@ def chooseInteraction():
         level = words[1]
       if len(words) > 2:
         analyzeSamples = int(words[2])
+    elif firstWord == "p":
+      mode = "p"
+      if len(words) > 1:
+        level = words[1]
     elif firstWord in validModes:
       mode = firstWord
       if mode == "i":
@@ -1171,7 +1233,7 @@ def chooseInteraction():
   # Attempt to read the game state out of a file
   if mode != "n" and level:
     gameFileName = generateFileName(level)
-    originalGame = readGameFile(gameFileName, level)
+    originalGame = readGameFile(gameFileName, level, pourMode=pourMode)
 
   if originalGame and level:
     originalGame.level = level
@@ -1179,7 +1241,7 @@ def chooseInteraction():
 
   # Fallback to reading in manually
   if not originalGame:
-    originalGame = readGameInput(userInteracting)
+    originalGame = readGameInput(userInteracting, pourMode=pourMode)
     if level != None:
       originalGame.level = level
     saveGame(originalGame)
@@ -1203,6 +1265,12 @@ def chooseInteraction():
     print("Unrecognized mode: " + mode)
 
   quit(0)
+def debugLevel(level,dfrSearchAttempts=DFR_SEARCH_ATTEMPTS):
+  gameFileName = generateFileName(level)
+  originalGame = readGameFile(gameFileName, level)
+  originalGame.level = level
+  solveGame(originalGame, solveMethod=SOLVE_METHOD, probeDFRSamples=dfrSearchAttempts)
+  saveGame(originalGame)
 
 def saveGame(game: "Game", forceSave = False) -> None:
   if not game or (not forceSave and not game.modified):
@@ -1219,7 +1287,12 @@ def generateFileName(levelNum: str, absolutePath: bool = None) -> str:
 def generateFileContents(game: "Game") -> str:
   lines = list()
   lines.append("i")
-  lines.append(str(game.level))
+
+  levelLine = str(game.level)
+  if game.root.pourMode:
+    levelLine += " pour"
+
+  lines.append(levelLine)
   lines.append(str(len(game.vials)))
   for vial in game.vials:
     lines.append("\t".join(vial))
@@ -1487,6 +1560,11 @@ signal.signal(signal.SIGINT, signalHandler)
 # Call signatures:
 # py watersort.py LEVEL a SAMPLES?
 # py watersort.py a LEVEL SAMPLES?
-# py watersort.py LEVEL <MODE>
-# py watersort.py LEVEL dfr SAMPLES?
+
+# py watersort.py <pour?> LEVEL <MODE>  # "pour" can appear anywhere in the arguments list
+# py watersort.py LEVEL <pour?> <MODE>  # "pour" can appear anywhere in the arguments list
+# py watersort.py LEVEL <MODE> <pour?>  # "pour" can appear anywhere in the arguments list
+# py watersort.py <pour?> LEVEL dfr SAMPLES?
 chooseInteraction()
+
+# debugLevel("dec15", dfrSearchAttempts=1)
