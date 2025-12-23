@@ -1021,12 +1021,11 @@ def readGameInput(userInteracting: bool, pourMode: bool = None) -> Game:
   game = _readGame(input, userInteraction=userInteracting, pourMode=pourMode)
   game.modified = True
   return game
-def readGameFile(gameFileName: str, level: str = None) -> Game:
+def readGameFile(gameFileName: str, level: str = None, pourMode: bool = None) -> Game:
   gameRead: Game = None
   try:
     gameFile = open(gameFileName, "r")
     nextLine = lambda: gameFile.readline().strip()
-    pourMode: bool = False
 
     mode = nextLine()                       # Read mode
     if mode == "i":
@@ -1060,6 +1059,8 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False, pourMode: bo
       rsp = input("Is this a pour-mode game? (y/n): ").strip().lower()
       if rsp and rsp[0] == "y":
         pourMode = True
+  if pourMode and userInteraction:
+    print("Reading a pour-mode game.")
 
   numVials = -1
   if not userInteraction:
@@ -1113,7 +1114,7 @@ def chooseInteraction():
   validModes = set("psqin")
   mode: str = None
   level: str = None
-  pourMode: bool = None  # None means ask the user; otherwise, True/False
+  pourMode: bool = False  # None means ask the user; otherwise, True/False
   userInteracting = True
   originalGame: Game = None
   analyzeSamples = ANALYZE_ATTEMPTS
@@ -1212,7 +1213,7 @@ def chooseInteraction():
   # Attempt to read the game state out of a file
   if mode != "n" and level:
     gameFileName = generateFileName(level)
-    originalGame = readGameFile(gameFileName, level)
+    originalGame = readGameFile(gameFileName, level, pourMode=pourMode)
 
   if originalGame and level:
     originalGame.level = level
@@ -1220,7 +1221,7 @@ def chooseInteraction():
 
   # Fallback to reading in manually
   if not originalGame:
-    originalGame = readGameInput(userInteracting)
+    originalGame = readGameInput(userInteracting, pourMode=pourMode)
     if level != None:
       originalGame.level = level
     saveGame(originalGame)
