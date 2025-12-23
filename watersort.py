@@ -91,19 +91,19 @@ class Game:
 
   @staticmethod
   def Create(vials) -> "Game":
-    newGame = Game(vials, None, None, None)
+    newGame = Game(vials, None, None)
     newGame._analyzeColors()
     return newGame
 
-  def __init__(self, vials: "Vials", move: "Move", root: "Game", prev: "Game", modified = False):
+  def __init__(self, vials: "Vials", move: "Move", prev: "Game", modified = False):
     self.vials = copy.deepcopy(vials)
     self.__numVials = len(vials)
     self.move = move
     self.prev = prev
     self.modified = modified
 
-    self.__isRoot = root == None
-    self.root = self if self.__isRoot else root
+    self.__isRoot = prev == None
+    self.root = self if self.__isRoot else prev.root
     self._numMoves = 0 if self.__isRoot else prev._numMoves + 1
     self.completionOrder = list() if self.__isRoot else prev.completionOrder
 
@@ -621,7 +621,7 @@ class Game:
     self.completionOrder = newCompletions
 
   def spawn(self, move: Move) -> "Game":
-    newGame = Game(self.vials, move, self.root, self)
+    newGame = Game(self.vials, move, self)
     newGame.makeMove(move[0], move[1])
     return newGame
 
