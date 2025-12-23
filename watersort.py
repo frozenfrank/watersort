@@ -23,6 +23,7 @@ FORCE_INTERACTION_MODE = None # "a"
 
 SOLVE_METHOD = "DFR"
 VALID_SOLVE_METHODS = set(["MIX", "BFS", "DFS", "DFR"]) # An enum is more accurate, but overkill for this need
+VALID_GAMEPLAY_MODES = set(["normal", "pour"])
 
 MIX_SWITCH_THRESHOLD_MOVES = 10
 ENABLE_QUEUE_CHECKS = True # Disable only for temporary testing
@@ -262,6 +263,7 @@ class Game:
           "   -s or -save             to save the discovered colors\n" +
           "   -r or -reset            to reset the search algorithm\n" +
           "   -m OR -moves            to print the moves to this point\n" +
+         f"   -gameplay MODE          to switch to pour gameplay ({', '.join(VALID_GAMEPLAY_MODES)})\n" +
          f"   -solve METHOD           to change the solve method ({', '.join(VALID_SOLVE_METHODS)})\n" +
           "   -level NUM              to change the level of this game\n" +
           "   -vials NUM              to change the number of vials in the game\n" +
@@ -310,7 +312,9 @@ class Game:
         elif rsp.startswith("-solve"):
           setSolveMethod(rsp.split(" ")[1])
           Game.reset = True
-          return ""
+          return ""  # Immediately return to re-solve
+        elif rsp.startswith("-gameplay"):
+          root.saveNewGameplayMode(rsp)
         elif rsp.startswith("-level"):
           root.saveNewLevel(rsp)
         elif rsp.startswith("-o"):
@@ -327,6 +331,22 @@ class Game:
 
     if not disableAutoSave: saveGame(self.root)
     return rsp
+  def saveNewGameplayMode(self, input: str) -> None:
+    flag, mode = input.split()
+    mode = mode.strip().lower()
+    if mode not in VALID_GAMEPLAY_MODES:
+      print(f"Unrecognized gameplay mode: {mode}. Valid modes are: {', '.join(VALID_GAMEPLAY_MODES)}")
+      return
+
+    isPour = mode == "pour"
+    if self.root.pourMode == isPour:
+      print(f"Gameplay mode is already set to: {mode}. No change made.")
+      return
+
+    Game.reset = True
+    self.root.pourMode = isPour
+    self.root.modified = True
+    print(f"Set gameplay mode to: {mode}. Continue on.")
   def saveOtherColor(self, input: str) -> None:
     flag, o_vial, o_space, color = input.split()
     vial = int(o_vial) - 1
@@ -408,7 +428,7 @@ class Game:
     NEW_LINE = "\n  "
     introduction = f"Moves ({len(lines)})"
     if self.root.pourMode:
-      introduction += " [Pour Mode]"
+      introduction += " [Pour Gameplay]"
     print(introduction + ":" + NEW_LINE + NEW_LINE.join(lines))
   def printVials(self) -> None:
     lines = [list() for _ in range(NUM_SPACES_PER_VIAL + 1)]
@@ -1056,11 +1076,11 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False, pourMode: bo
   if pourMode is None:
     pourMode = False
     if userInteraction:
-      rsp = input("Is this a pour-mode game? (y/n): ").strip().lower()
+      rsp = input("Level uses pour gameplay? (y/n): ").strip().lower()
       if rsp and rsp[0] == "y":
         pourMode = True
   if pourMode and userInteraction:
-    print("Reading a pour-mode game.")
+    print("Reading a pour gameplay.")
 
   numVials = -1
   if not userInteraction:
