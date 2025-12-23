@@ -72,13 +72,13 @@ class Game:
   reset: bool = False
   quit: bool = False
   latest: bool = False # "Game" | None
-  pourMode: bool = True
 
   # Flags set on the root game
   level: str
   modified: bool # Indicates it's changed from the last read in state
   _colorError: bool
   _hasUnknowns: bool
+  pourMode: bool = None
 
   # Cached for single use calculation
   COMPLETE_STR = Style.BRIGHT + " complete" + Style.NORMAL
@@ -444,8 +444,8 @@ class Game:
       return None
     start, end = self.move
 
-    colorMoved = self.getTopVialColor(end, bottom=Game.pourMode)
-    _, _, numMoved, startEmptySpaces   = self.prev.__countOnTop(colorMoved, start, bottom=Game.pourMode)
+    colorMoved = self.getTopVialColor(end, bottom=self.root.pourMode)
+    _, _, numMoved, startEmptySpaces   = self.prev.__countOnTop(colorMoved, start, bottom=self.root.pourMode)
     complete, _, _, endEmptySpaces     = self.__countOnTop(colorMoved, end)
 
     vacatedVial = numMoved + startEmptySpaces == NUM_SPACES_PER_VIAL
@@ -512,10 +512,10 @@ class Game:
     INVALID_MOVE = (False, None, None, None, False)
     if startVial == endVial:
       return INVALID_MOVE # Can't move to the same place
-    if not Game.pourMode and self.move and startVial == self.move[1] and endVial == self.move[0]:
+    if not self.root.pourMode and self.move and startVial == self.move[1] and endVial == self.move[0]:
       return INVALID_MOVE # Can't simply undo the previous move
 
-    startColor = self.getTopVialColor(startVial, bottom=Game.pourMode)
+    startColor = self.getTopVialColor(startVial, bottom=self.root.pourMode)
     if startColor == "-" or startColor == "?":
       return INVALID_MOVE # Can only move an active color
     endColor = self.getTopVialColor(endVial)
@@ -528,7 +528,7 @@ class Game:
       return INVALID_MOVE # End vial is full
 
     # Verify that this vial isn't full
-    startIsComplete, startOnlyColor, startNumOnTop, startEmptySpaces = self.__countOnTop(startColor, startVial, bottom=Game.pourMode)
+    startIsComplete, startOnlyColor, startNumOnTop, startEmptySpaces = self.__countOnTop(startColor, startVial, bottom=self.root.pourMode)
     if startIsComplete:
       return INVALID_MOVE # Start is fully filled
     if startOnlyColor and endColor == "-":
@@ -581,7 +581,7 @@ class Game:
     moveRange = endSpaces
     startColors = 0
     while piecesMoved < moveRange and piecesMoved < NUM_SPACES_PER_VIAL:
-      idx = NUM_SPACES_PER_VIAL-piecesMoved-1 if Game.pourMode else piecesMoved
+      idx = NUM_SPACES_PER_VIAL-piecesMoved-1 if self.root.pourMode else piecesMoved
       color = fromVial[idx]
       if color == '-':
         moveRange += 1
@@ -593,7 +593,7 @@ class Game:
       piecesMoved += 1
 
     # Shift down moved colors in pour mode
-    if Game.pourMode:
+    if self.root.pourMode:
       for i in range(NUM_SPACES_PER_VIAL-1,-1,-1):
         shiftFrom = i - piecesMoved
         shiftColor = "-" if shiftFrom < 0 else fromVial[shiftFrom]
