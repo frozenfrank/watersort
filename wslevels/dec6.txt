@@ -1,0 +1,15 @@
+i
+dec6 pour
+12
+b	p	g	pn
+r	o	br	m
+pn	b	g	b
+br	br	o	pk
+pn	pk	br	lb
+p	m	p	m
+p	pk	r	r
+g	pk	lb	o
+o	r	lb	g
+b	m	lb	pn
+-	-	-	-
+-	-	-	-

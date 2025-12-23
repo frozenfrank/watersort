@@ -1,0 +1,16 @@
+i
+dec14
+13
+m	gn	pn	br
+r	pn	o	r
+pn	br	b	lb
+gn	r	m	p
+pk	g	b	p
+gn	p	pk	g
+pk	o	gn	b
+r	m	m	g
+b	lb	lb	br
+o	p	g	pn
+pk	o	br	lb
+-	-	-	-
+-	-	-	-

@@ -1,0 +1,14 @@
+i
+dec19
+11
+pk	lb	pk	lb
+lb	r	lb	o
+p	pn	pn	o
+pk	g	b	g
+g	m	m	b
+r	g	pk	b
+p	r	r	p
+pn	o	o	m
+p	m	pn	b
+-	-	-	-
+-	-	-	-
