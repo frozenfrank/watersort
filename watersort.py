@@ -1159,13 +1159,13 @@ def chooseInteraction():
 
     # Playing a level
     else:
-      mode = "i"
-      level = sys.argv[1]
-
       # Determine pour mode
       if "pour" in sys.argv:
         pourMode = True
         sys.argv.remove("pour")
+
+      mode = "i"
+      level = sys.argv[1]
 
       # Read solve method
       if len(sys.argv) > 2:
