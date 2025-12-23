@@ -468,7 +468,7 @@ class Game:
       return None
     start, end = self.move
 
-    colorMoved = self.getTopVialColor(end, bottom=self.root.pourMode)
+    colorMoved = self.getTopVialColor(end)
     _, _, numMoved, startEmptySpaces   = self.prev.__countOnTop(colorMoved, start, bottom=self.root.pourMode)
     complete, _, _, endEmptySpaces     = self.__countOnTop(colorMoved, end)
 
