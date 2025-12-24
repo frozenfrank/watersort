@@ -198,8 +198,8 @@ BIG_SYMBOLS = defaultdict(lambda: BIG_SYMBOLS["□"], map(parseCharText, [
 
 """,
 ]))
+
+# Populate BIG_SYMBOLS with digit mappings
 for digit in range(10):
   BIG_SYMBOLS[       digit ]=BIG_DIGITS[digit]
   BIG_SYMBOLS[""+str(digit)]=BIG_DIGITS[digit]
-
-print("\n".join(BigChar.FormatSingleLine(*BigChar.FromSymbols("^0.12→7"))))

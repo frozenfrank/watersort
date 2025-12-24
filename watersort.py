@@ -1,4 +1,5 @@
 import signal
+from readchar import readkey, key
 from collections import deque, defaultdict
 from resources import COLOR_CODES, COLOR_NAMES, BigChar
 from math import floor, log
@@ -783,19 +784,31 @@ class BigSolutionDisplay:
     self.currentIndex = 0
 
   def start(self):
+    running = True
     self.displayCurrent()
 
     # Main loop
     # When any key is pressed, move forward
-    while self.currentIndex < len(self.steps) - 1:
+    while running and self.currentIndex < len(self.steps) - 1:
       # Clear the screen
-      print("Press Enter to advance, or 'b' + Enter to go back.")
-      rsp = input()
+      self.printCenteredLines(["Press Space to advance. Use arrow keys to navigate. Press 'q' to quit."])
 
-      if rsp.lower() == 'b':
-        self.previous()
-      else:
-        self.next()
+      while True:
+        k = readkey()
+
+        if k == 'q' or k == 'Q':
+          running = False
+        elif k == 'p' or k == 'b' or k == key.UP or k == key.LEFT:
+          self.previous()
+        elif k == 'n' or k == 'f' or k == key.DOWN or k == key.RIGHT or k == ' ' or k == key.ENTER:
+          self.next()
+        else:
+          self.printCenteredLines([f"Unrecognized key ({k})"])
+          continue  # Keep waiting for a valid key
+
+        break  # We handled a keypress, break out to the main loop
+
+      pass
 
   def displayCurrent(self) -> None:
     lines = []
