@@ -1,5 +1,5 @@
 from colorama import Fore, Back
-from collections import   defaultdict
+from collections import defaultdict
 
 COLOR_CODES = defaultdict(str, {
   "m": Back.CYAN,                                 # Mint
@@ -19,16 +19,25 @@ COLOR_CODES = defaultdict(str, {
   "-": "",                                        # Empty
 })
 
-class BigDigit:
+class BigChar:
   _width: int
   _height = 7
   _lines: str
 
+
   @staticmethod
-  def FormatSingleLine(*digits: list["BigDigit"], spacing = 2) -> list[str]:
+  def FromNumber(number: int) -> list["BigChar"]:
+    return list(map(lambda char: BIG_DIGITS[int(char)], str(number)))
+
+  @staticmethod
+  def FromSymbols(symbols: str) -> list["BigChar"]:
+    return list(map(lambda char: BIG_SYMBOLS[char], symbols))
+
+  @staticmethod
+  def FormatSingleLine(*digits: list["BigChar"], spacing = 2) -> list[str]:
     separator = " " * spacing
-    resultLines = [""] * BigDigit._height
-    for i in range(BigDigit._height):
+    resultLines = [""] * BigChar._height
+    for i in range(BigChar._height):
       resultLines[i] += separator.join(map(lambda digit: digit._lines[i], digits))
     return resultLines
 
@@ -39,7 +48,7 @@ class BigDigit:
       del lines[8]
       del lines[0]
     if len(lines) != self._height:
-      raise ValueError("BigDigit must be initialized with exactly 7 lines")
+      raise ValueError("BigChar must be initialized with exactly 7 lines")
 
     self._width = width if width else max(map(lambda line: len(line), lines))
     self._lines = list(map(lambda line: line.ljust(self._width), lines))
@@ -47,7 +56,7 @@ class BigDigit:
   def __str__(self):
     return "\n".join(self._lines)
 
-BIG_DIGITS = list(map(BigDigit, [
+BIG_DIGITS = list(map(BigChar, [
 """
 #######
 ##   ##
@@ -140,7 +149,10 @@ BIG_DIGITS = list(map(BigDigit, [
 """,
 ]))
 
-LEFT_ARROW = BigDigit("""
+def parseCharText(text: str) -> tuple[str, "BigChar"]:
+  return text[0], BigChar(text[1:])
+BIG_SYMBOLS = defaultdict(lambda: BIG_SYMBOLS["□"], map(parseCharText, [
+"""→
 
            @
            @@
@@ -148,8 +160,28 @@ LEFT_ARROW = BigDigit("""
            @@
            @
 
-""")
+""",
+""".
 
-print("\n".join(BigDigit.FormatSingleLine(BIG_DIGITS[9],BIG_DIGITS[7],LEFT_ARROW,BIG_DIGITS[8],spacing=3)))
-print("\n".join(BigDigit.FormatSingleLine(*[BIG_DIGITS[9],BIG_DIGITS[7],LEFT_ARROW,BIG_DIGITS[8]],spacing=3)))
-print(" hello ".center(50,"-"))
+
+
+
+
+##
+##
+""",
+"""□
+
+######
+#    #
+#    #
+#    #
+######
+
+""",
+]))
+for digit in range(9):
+  BIG_SYMBOLS[       digit ]=BIG_DIGITS[digit]
+  BIG_SYMBOLS[""+str(digit)]=BIG_DIGITS[digit]
+
+print("\n".join(BigChar.FormatSingleLine(*BigChar.FromSymbols("^0.12→7"))))
