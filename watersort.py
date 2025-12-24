@@ -103,9 +103,12 @@ class Game:
   pourMode: bool = None
 
   # Cached for single use calculation
-  COMPLETE_STR = Style.BRIGHT + "complete" + Style.NORMAL
-  VACATED_STR = Style.DIM + "vacated" + Style.NORMAL
-  STARTED_STR = Style.DIM + "occupied" + Style.NORMAL
+  _COMPLETE_TERM = "complete"
+  _VACATED_TERM = "vacated"
+  _STARTED_TERM = "occupied"
+  COMPLETE_STR = Style.BRIGHT + _COMPLETE_TERM + Style.NORMAL
+  VACATED_STR = Style.DIM + _VACATED_TERM + Style.NORMAL
+  STARTED_STR = Style.DIM + _STARTED_TERM + Style.NORMAL
   COLOR_WIDTH = 3             # CONSIDER: Make more direct by dynamically figuring the maximum color length
   NUMBER_WIDTH = 1            # Num is always less than NUM_SPACES_PER_VIAL (which is small)
   EXTRA_CHARS = 4             # The number of additional chars in our result string
