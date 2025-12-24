@@ -4,6 +4,7 @@ from resources import COLOR_CODES, BigChar
 from math import floor, log
 import random
 from colorama import Style
+from colorama.ansi import clear_screen
 from time import time
 from typing import Callable
 import copy;
@@ -788,10 +789,25 @@ class BigSolutionDisplay:
   def start(self):
     self.displayCurrent()
 
+    # Main loop
+    # When any key is pressed, move forward
+    while self.currentIndex < len(self.steps) - 1:
+      # Clear the screen
+      print("Press Enter to advance, or 'b' + Enter to go back.")
+      rsp = input()
+
+      if rsp.lower() == 'b':
+        self.previous()
+      else:
+        self.next()
+
   def displayCurrent(self) -> None:
     lines = []
     step = self.steps[self.currentIndex]
     addlInfo = []
+
+    lines.append("")
+    lines.append("")
 
     moveDescriptor = Game._getMoveDescriptor(step.info)
     if moveDescriptor:
@@ -803,7 +819,9 @@ class BigSolutionDisplay:
     lines.extend(self._prepareBigMoveLines(step.move))
     if addlInfo: lines.append("; ".join(addlInfo))
 
+    print(clear_screen() + formatVialColor(step.colorMoved))
     self.printCenteredLines(lines)
+    print(Style.RESET_ALL)
 
 
   def _prepareBigMoveLines(self, move: Move) -> None:
