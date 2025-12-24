@@ -103,6 +103,7 @@ class Game:
   _colorError: bool
   _hasUnknowns: bool
   pourMode: bool = None
+  preferBigMoves: bool = True
 
   # Cached for single use calculation
   _COMPLETE_TERM = "complete"
@@ -277,8 +278,11 @@ class Game:
     return (rsp or "y").strip()[0].lower()
   def requestVal(self, original: "Game", request: str, printState=True, disableAutoSave=False, printOptions=True) -> str:
     if printState:
-      original.printVials()
-      original.printMoves()
+      if Game.preferBigMoves:
+        BigSolutionDisplay(original).start()
+      else:
+        original.printVials()
+        original.printMoves()
 
     # Other options start with a dash
     if printOptions: print("Other options:\n" +
@@ -289,6 +293,8 @@ class Game:
           "   -s or -save             to save the discovered colors\n" +
           "   -r or -reset            to reset the search algorithm\n" +
           "   -m OR -moves            to print the moves to this point\n" +
+          "   -b                      to view Big Moves up to this point\n" +
+          "   -b on|off|ON            Enable/disable Big Moves by default. Specify ON (all-caps) to skip launching routine.\n" +
          f"   -gameplay MODE          to switch to pour gameplay ({', '.join(VALID_GAMEPLAY_MODES)})\n" +
          f"   -solve METHOD           to change the solve method ({', '.join(VALID_SOLVE_METHODS)})\n" +
           "   -level NUM              to change the level of this game\n" +
@@ -328,6 +334,8 @@ class Game:
           original.printVials()
         elif rsp == "-m" or rsp == "-moves":
           original.printMoves()
+        elif rsp == "-b":
+          BigSolutionDisplay(original).start()
         elif rsp == "-d" or rsp == "-debug":
           print("Printing debug info... (None)")
           # TODO: Print the queue length, and other search related stats
@@ -335,6 +343,8 @@ class Game:
           root.printColors()
 
         # Special commands
+        elif rsp.startswith("-b "):
+          self.saveNewBigMovesSetting(rsp, original)
         elif rsp.startswith("-solve"):
           setSolveMethod(rsp.split(" ")[1])
           Game.reset = True
@@ -357,6 +367,20 @@ class Game:
 
     if not disableAutoSave: saveGame(self.root)
     return rsp
+  def saveNewBigMovesSetting(self, input: str, originalGame: "Game") -> None:
+    setting = input.split()[1]
+    settingLower = setting.lower()
+
+    if settingLower == "on":
+      Game.preferBigMoves = True
+      print("Big Moves enabled by default.")
+      if setting != "ON":
+        BigSolutionDisplay(originalGame).start()
+    elif settingLower == "off":
+      Game.preferBigMoves = False
+      print("Big Moves disabled by default.")
+    else:
+      print(f"Unrecognized option for -b: {setting}")
   def saveNewGameplayMode(self, input: str) -> None:
     flag, mode = input.split()
     mode = mode.strip().lower()
@@ -434,7 +458,7 @@ class Game:
           moveString += SEPARATOR + ("(same)" if step.isSameAsPrevious else "(different)")
         lines.append(moveString)
 
-    introduction = f"Moves ({len(lines)})"
+    introduction = f"Moves ({len(steps)})"
     if self.root.pourMode:
       introduction += " [Pour Gameplay]"
     print(introduction + ":" + NEW_LINE + NEW_LINE.join(lines))
@@ -776,6 +800,7 @@ class Game:
 class BigSolutionDisplay:
   steps: deque[SolutionStep]
   currentIndex: int
+  hasDisplayedStep: bool = False
 
   SCREEN_WIDTH = 80
 
@@ -830,9 +855,12 @@ class BigSolutionDisplay:
     lines.append("")
     lines.append("")
 
-    print(clear_screen() + formatVialColor(step.colorMoved))
+    if self.hasDisplayedStep: print(clear_screen())
+    print(formatVialColor(step.colorMoved))
     self.printCenteredLines(lines)
     print(Style.RESET_ALL)
+
+    self.hasDisplayedStep = True
 
   @staticmethod
   def _getMoveDescriptor(step: SolutionStep) -> str:
