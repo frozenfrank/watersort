@@ -41,7 +41,7 @@ FEW_VIALS_THRESHOLD = 7 # I'm not actually sure if this is the right threshold, 
 
 COLOR_CODES = defaultdict(str, {
   "m": Back.CYAN,                                 # Mint
-  "g": Style.DIM + Back.WHITE,                    # Gray
+  "g": Back.LIGHTBLACK_EX + Fore.WHITE,           # Gray
   "gr": "",                                       # Green (Occasionally)
   "o": Back.YELLOW + Fore.RED,                    # Orange
   "y": Back.YELLOW + Fore.BLACK,                  # Yellow
