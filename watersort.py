@@ -1,7 +1,8 @@
+from datetime import datetime
 import signal
 from readchar import readkey, key
 from collections import deque, defaultdict
-from resources import COLOR_CODES, COLOR_NAMES, RESERVED_COLORS, BigChar
+from resources import COLOR_CODES, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar
 from math import floor, log
 import random
 from colorama import Style
@@ -1466,8 +1467,14 @@ def saveGame(game: "Game", forceSave = False) -> None:
   print(f"Saved discovered game state to file: {fileName}")
 def getBasePath(absolutePath = WRITE_FILES_TO_ABSOLUTE_PATH) -> str:
   return INSTALLED_BASE_PATH if absolutePath else ""
+def annualizeDailyPuzzleFileName(levelNum: str) -> str:
+  if levelNum[0:3].lower() in MONTH_ABBRS:
+    year = datetime.now().year
+    return f"{year}/{levelNum}"
+  return levelNum
 def generateFileName(levelNum: str, absolutePath: bool = None) -> str:
-  return getBasePath(absolutePath) + f"wslevels/{levelNum}.txt"
+  annualizedName = annualizeDailyPuzzleFileName(levelNum)
+  return getBasePath(absolutePath) + f"wslevels/{annualizedName}.txt"
 def generateFileContents(game: "Game") -> str:
   lines = list()
   lines.append("i")
@@ -1520,7 +1527,8 @@ def setSolveMethod(method: str) -> bool:
   return True
 
 def generateAnalysisResultsName(level: str, absolutePath: bool = None) -> str:
-  return getBasePath(absolutePath) + f"wsanalysis/{level}-{round(time())}.csv"
+  annualizedName = annualizeDailyPuzzleFileName(level)
+  return getBasePath(absolutePath) + f"wsanalysis/{annualizedName}-{round(time())}.csv"
 def saveAnalysisResults(rootGame: Game, seconds: float, samples: int,
                         partialStates, dupStates, deadStates, solStates, uniqueSolStates,
                         longestSolves, uniqueSolsDistribution, completionData: tuple[defaultdict[int, str], defaultdict[int, str]],
