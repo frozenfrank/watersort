@@ -96,6 +96,7 @@ class Game:
   reset: bool = False
   quit: bool = False
   latest: bool = False # "Game" | None
+  preferBigMoves: bool = True
 
   # Flags set on the root game
   level: str
@@ -103,7 +104,6 @@ class Game:
   _colorError: bool
   _hasUnknowns: bool
   pourMode: bool = None
-  preferBigMoves: bool = True
 
   # Cached for single use calculation
   _COMPLETE_TERM = "complete"
@@ -276,7 +276,7 @@ class Game:
     question += " [y]/n:"
     rsp = self.requestVal(original, question, printState=False, disableAutoSave=True, printOptions=False)
     return (rsp or "y").strip()[0].lower()
-  def requestVal(self, original: "Game", request: str, printState=True, disableAutoSave=False, printOptions=True) -> str:
+  def requestVal(self, original: "Game", request: str, printState=True, disableAutoSave=False, printOptions:bool=None) -> str:
     if printState:
       if Game.preferBigMoves and original.move:
         BigSolutionDisplay(original).start()
@@ -285,23 +285,8 @@ class Game:
         original.printMoves()
 
     # Other options start with a dash
-    if printOptions: print("Other options:\n" +
-          "   -o VIAL SPACE COLOR     to provide other values\n" +
-          "   -p or -print            to print the ROOT board\n" +
-          "   -pc                     to print the CURRENT board\n" +
-          "   -c or -colors           to print the distribution of colors in the vials\n" +
-          "   -s or -save             to save the discovered colors\n" +
-          "   -r or -reset            to reset the search algorithm\n" +
-          "   -m OR -moves            to print the moves to this point\n" +
-          "   -b                      to view Big Moves up to this point\n" +
-          "   -b on|off|ON            Enable/disable Big Moves by default. Specify ON (all-caps) to skip launching routine.\n" +
-         f"   -gameplay MODE          to switch to pour gameplay ({', '.join(VALID_GAMEPLAY_MODES)})\n" +
-         f"   -solve METHOD           to change the solve method ({', '.join(VALID_SOLVE_METHODS)})\n" +
-          "   -level NUM              to change the level of this game\n" +
-          "   -vials NUM              to change the number of vials in the game\n" +
-          "   -e OR -exit             to save and exit\n" +
-          "   -q OR quit              to quit\n" +
-          "   -d OR -debug            to see debug info")
+    if printOptions != False:
+      self.__requestValHelp(abbreviated=(printOptions == None))
     rsp: str
     while True:
       optionPrompt = "(Or see other options above.)" if printOptions else "(Or use advanced options.)"
@@ -328,6 +313,8 @@ class Game:
           return ""
 
         # Printing status
+        elif rsp == "-h" or rsp == "-help":
+          self.__requestValHelp()
         elif rsp == "-p" or rsp == "-print":
           root.printVials()
         elif rsp == "-pc":
@@ -367,6 +354,32 @@ class Game:
 
     if not disableAutoSave: saveGame(self.root)
     return rsp
+  def __requestValHelp(self, abbreviated = False) -> None:
+    if abbreviated:
+      print("Other options (basic):\n" +
+            "   -h or -help             to view detailed help screen\n" +
+            "   -o VIAL SPACE COLOR     to provide other values\n" +
+            "   -b                      to view Big Moves up to this point\n" +
+            "   -e or -exit             to save and exit")
+    else:
+      print("Other options (advanced):\n" +
+            "   -h or -help             to view this help screen\n" +
+            "   -o VIAL SPACE COLOR     to provide other values\n" +
+            "   -p or -print            to print the ROOT board\n" +
+            "   -pc                     to print the CURRENT board\n" +
+            "   -c or -colors           to print the distribution of colors in the vials\n" +
+            "   -s or -save             to save the discovered colors\n" +
+            "   -r or -reset            to reset the search algorithm\n" +
+            "   -m or -moves            to print the moves to this point\n" +
+            "   -b                      to view Big Moves up to this point\n" +
+            "   -b on|off|ON            Enable/disable Big Moves by default. Specify ON (all-caps) to skip launching routine.\n" +
+           f"   -gameplay MODE          to switch to pour gameplay ({', '.join(VALID_GAMEPLAY_MODES)})\n" +
+           f"   -solve METHOD           to change the solve method ({', '.join(VALID_SOLVE_METHODS)})\n" +
+            "   -level NUM              to change the level of this game\n" +
+            "   -vials NUM              to change the number of vials in the game\n" +
+            "   -e or -exit             to save and exit\n" +
+            "   -q or quit              to quit\n" +
+            "   -d or -debug            to see debug info")
   def saveNewBigMovesSetting(self, input: str, originalGame: "Game") -> None:
     setting = input.split()[1]
     settingLower = setting.lower()
