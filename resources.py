@@ -34,7 +34,7 @@ class BigChar:
     return list(map(lambda char: BIG_SYMBOLS[char], symbols))
 
   @staticmethod
-  def FormatSingleLine(*digits: list["BigChar"], spacing = 2) -> list[str]:
+  def FormatSingleLine(*digits: list["BigChar"], spacing = 3) -> list[str]:
     separator = " " * spacing
     resultLines = [""] * BigChar._height
     for i in range(BigChar._height):
@@ -172,11 +172,11 @@ BIG_SYMBOLS = defaultdict(lambda: BIG_SYMBOLS["□"], map(parseCharText, [
 """,
 """□
 
-######
-#    #
-#    #
-#    #
-######
+┌─────┐
+│     │
+│  ╳  │
+│     │
+└─────┘
 
 """,
 ]))
