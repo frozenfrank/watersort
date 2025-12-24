@@ -19,6 +19,24 @@ COLOR_CODES = defaultdict(str, {
   "-": "",                                        # Empty
 })
 
+COLOR_NAMES = defaultdict(lambda: "Unrecognized", {
+  "m": "Mint",
+  "g": "Gray",
+  "gr": "Green",
+  "o": "Orange",
+  "y": "Yellow",
+  "r": "Red",
+  "p": "Purple",
+  "pk": "Puke",
+  "pn": "Pink",
+  "br": "Brown",
+  "lb": "Blue",
+  "gn": "Green",
+  "b": "Blue",
+  "?": "Unknown",
+  "-": "Empty",
+})
+
 class BigChar:
   _width: int
   _height = 7

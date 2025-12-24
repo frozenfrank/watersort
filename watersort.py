@@ -1,6 +1,6 @@
 import signal
 from collections import deque, defaultdict
-from resources import COLOR_CODES, BigChar
+from resources import COLOR_CODES, COLOR_NAMES, BigChar
 from math import floor, log
 import random
 from colorama import Style
@@ -478,24 +478,20 @@ class Game:
     if info == None:
       result = ""
     else:
-      color, num, _, _, _ = info
-      extraStr = self._getMoveDescriptor(info)
-      if extraStr: extraStr = " " + extraStr
+      color, num, complete, vacated, startedVial = info
+      extraStr = ""
+      if complete:
+        extraStr = Game.COMPLETE_STR
+      elif vacated:
+        extraStr = Game.VACATED_STR
+      elif startedVial:
+        extraStr = Game.STARTED_STR
+
       numStr = Style.BRIGHT + str(num) + Style.NORMAL if num > 1 else num
+      if extraStr: extraStr = " " + extraStr
       result = f"({numStr} {color}{extraStr})"
 
     return result.ljust(Game.TOTAL_MOVE_PRINT_WIDTH)
-  @staticmethod
-  def _getMoveDescriptor(info: MoveInfo) -> str:
-    _, _, complete, vacated, startedVial = info
-    if complete:
-      return Game.COMPLETE_STR
-    elif vacated:
-      return Game.VACATED_STR
-    elif startedVial:
-      return Game.STARTED_STR
-
-    return ""
   def __getMoveInfo(self) -> MoveInfo:
     if not self.move:
       return None
@@ -804,25 +800,37 @@ class BigSolutionDisplay:
   def displayCurrent(self) -> None:
     lines = []
     step = self.steps[self.currentIndex]
+
+    lines.append("")
+    lines.append("")
+    lines.append(f"Step {self.currentIndex + 1} of {len(self.steps)}:")
+
     addlInfo = []
-
-    lines.append("")
-    lines.append("")
-
-    moveDescriptor = Game._getMoveDescriptor(step.info)
-    if moveDescriptor:
-      addlInfo.append(moveDescriptor + " vial")
+    addlInfo.append(COLOR_NAMES[step.colorMoved])
+    addlInfo.append(f'{step.numMoved} space{"" if step.numMoved == 1 else "s"}')
+    addlInfo.append(BigSolutionDisplay._getMoveDescriptor(step))
     if step.isSameAsPrevious != None:
       addlInfo.append("Repeated path" if step.isSameAsPrevious else "New path")
+    lines.append(" | ".join(addlInfo))
 
-    lines.append(f"Step {self.currentIndex + 1} of {len(self.steps)}:")
     lines.extend(self._prepareBigMoveLines(step.move))
-    if addlInfo: lines.append("; ".join(addlInfo))
+    lines.append("")
+    lines.append("")
 
     print(clear_screen() + formatVialColor(step.colorMoved))
     self.printCenteredLines(lines)
     print(Style.RESET_ALL)
 
+  @staticmethod
+  def _getMoveDescriptor(step: SolutionStep) -> str:
+    if step.isComplete:
+      return "Complete"
+    elif step.vacatedVial:
+      return "Vacate"
+    elif step.startedVial:
+      return "Occupy"
+    else:
+      return "Move"
 
   def _prepareBigMoveLines(self, move: Move) -> None:
     start, end = move
