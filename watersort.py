@@ -424,7 +424,7 @@ class Game:
       for step in steps:
         start, end = step.move
         moveString = formatVialColor(step.colorMoved, f"{start+1}->{end+1}", ljust=8)
-        moveString += self.__getMoveString(step.info)
+        moveString += self._getMoveString(step.info)
         if step.isSameAsPrevious != None:
           moveString += SEPARATOR + ("(same)" if step.isSameAsPrevious else "(different)")
         lines.append(moveString)
@@ -466,7 +466,7 @@ class Game:
     Game.__prevPrintedMoves = moves
     return steps
 
-  def __getMoveString(self, info: MoveInfo = None) -> str:
+  def _getMoveString(self, info: MoveInfo = None) -> str:
 
     if not info:
       info = self.__getMoveInfo()
@@ -766,6 +766,38 @@ class Game:
   def getDepth(self) -> int:
     return self._numMoves
 
+class BigSolutionDisplay:
+  def __init__(self, game: Game):
+    self.steps: deque[SolutionStep] = game._prepareSolutionSteps()
+    self.currentIndex: int = 0
+
+  def start(self):
+    self.displayCurrent()
+
+  def displayCurrent(self) -> None:
+    step = self.steps[self.currentIndex]
+    print(f"Step {self.currentIndex + 1} of {len(self.steps)}:")
+    # step.game.printVials()
+    start, end = step.move
+    moveStr = f"Move: {start + 1} -> {end + 1}" if step.move else "Initial State"
+    print(moveStr)
+    print(step.game._getMoveString(step.info))
+    if step.isSameAsPrevious != None:
+      print("This move is " + ("the same as" if step.isSameAsPrevious else "different from") + " the previous printed move.")
+
+  def next(self) -> None:
+    if self.currentIndex < len(self.steps) - 1:
+      self.currentIndex += 1
+      self.displayCurrent()
+    else:
+      print("Already at the last step.")
+  def previous(self) -> None:
+    if self.currentIndex > 0:
+      self.currentIndex -= 1
+      self.displayCurrent()
+    else:
+      print("Already at the first step.")
+
 def playGame(game: "Game"):
   currentGame = game
   print("""
@@ -1029,8 +1061,9 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
           """)
 
     if minSolution:
-      print(f"Found solution{' to level ' + game.level if game.level else ''}!")
-      minSolution.printMoves()
+      BigSolutionDisplay(minSolution).start()
+      # print(f"Found solution{' to level ' + game.level if game.level else ''}!")
+      # minSolution.printMoves()
     else:
       print("Cannot not find solution.")
 
