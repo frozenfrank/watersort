@@ -216,7 +216,7 @@ class Game:
     if val:
       rootChanged = True
       Game.latest = self
-      self.root.vials[vialIndex][spaceIndex] = val
+      self.root.vials[vialIndex][spaceIndex] = val.strip()
 
     colorDist, colorErrors = self.root._analyzeColors()
     underusedColors = self._identifyUnderusedColors(colorDist)
