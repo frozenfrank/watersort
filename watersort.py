@@ -59,6 +59,44 @@ COLOR_CODES = defaultdict(str, {
 
 Vials = list[list[str]]
 Move = tuple[int, int]
+""" (startVialIndex, endVialIndex) """
+
+class SolutionStep:
+  game: "Game"
+  move: Move
+
+  # Fields received from MoveInfo
+  info: "Game.MoveInfo"
+  colorMoved: str
+  numMoved: int
+  isComplete: bool
+  vacatedVial: bool
+  startedVial: bool
+
+  # Comparison to previously reported solution
+  isSameAsPrevious: bool|None
+
+  def __init__(self, game: "Game"=None, info: "Game.MoveInfo"=None):
+    self.game = game
+    self.move = game.move if game else None
+
+    if info:
+      self.info = info
+      self.colorMoved = info[0]
+      self.numMoved = info[1]
+      self.isComplete = info[2]
+      self.vacatedVial = info[3]
+      self.startedVial = info[4]
+    else:
+      self.info = None
+      self.colorMoved = None
+      self.numMoved = 0
+      self.isComplete = False
+      self.vacatedVial = False
+      self.startedVial = False
+
+    self.isSameAsPrevious = None
+
 class Game:
   vials: Vials
   __numVials: int
@@ -389,60 +427,62 @@ class Game:
   MoveInfo = tuple[str, int, bool, bool, bool]
   """ (colorMoved, numMoved, isComplete, vacatedVial, startedVial) OR None """
 
-  _prevPrintedMoves: deque[Move] = None
   def printMoves(self) -> None:
-    # Print all the moves that lead to this game
-    lines = deque()
-
-    if not self.move:
-      lines.append("None")
-      Game._prevPrintedMoves = None
-    else:
-      curGame = self
-      SEPARATOR = "\t "
-
-      moves = deque()
-      while curGame and curGame.move:
-        start, end = curGame.move
-        # CONSIDER: Color coding the displayed color
-        moves.appendleft(curGame.move)
-        info = curGame.__getMoveInfo()
-        moveString = formatVialColor(info[0], f"{start+1}->{end+1}", ljust=8)
-        lines.appendleft(moveString + curGame.__getMoveString(info))
-        curGame = curGame.prev
-
-      if Game._prevPrintedMoves:
-        prevMoves = Game._prevPrintedMoves
-        i = 0
-
-        while i < len(prevMoves) and i < len(moves):
-          if moves[i] == prevMoves[i]:
-            lines[i] += SEPARATOR + "(same)"
-          else:
-            lines[i] += SEPARATOR + "(different)"
-            break
-          i += 1
-
-      Game._prevPrintedMoves = moves
+    """Prints out the moves taken to reach this game state."""
+    steps: deque[SolutionStep] = self._prepareSolutionSteps()
 
     NEW_LINE = "\n  "
+    SEPARATOR = "\t "
+
+    lines = []
+    if not steps:
+      lines.append("None")
+    else:
+      for step in steps:
+        start, end = step.move
+        moveString = formatVialColor(step.colorMoved, f"{start+1}->{end+1}", ljust=8)
+        moveString += self.__getMoveString(step.info)
+        if step.isSameAsPrevious != None:
+          moveString += SEPARATOR + ("(same)" if step.isSameAsPrevious else "(different)")
+        lines.append(moveString)
+
     introduction = f"Moves ({len(lines)})"
     if self.root.pourMode:
       introduction += " [Pour Gameplay]"
     print(introduction + ":" + NEW_LINE + NEW_LINE.join(lines))
-  def printVials(self) -> None:
-    lines = [list() for _ in range(NUM_SPACES_PER_VIAL + 1)]
 
-    for i in range(self.__numVials):
-      lines[0].append("\t" + str(i + 1))
+  __prevPrintedMoves: deque[Move] = None
+  def _prepareSolutionSteps(self) -> deque[SolutionStep]:
+    """Prepares the solution steps to be printed, including comparison to previous printed solution."""
+    steps = deque()
+    if not self.move:
+      Game.__prevPrintedMoves = None
+      return steps
 
-    color: str = None
-    for spaceIndex in range(NUM_SPACES_PER_VIAL):
-      for vialIndex in range(self.__numVials):
-        color = self.vials[vialIndex][spaceIndex]
-        lines[spaceIndex + 1].append("\t" + formatVialColor(color, text=color))
+    # Collect moves
+    curGame = self
+    moves = deque()
+    while curGame and curGame.move:
+      info = curGame.__getMoveInfo()
+      moves.appendleft(curGame.move)
+      steps.appendleft(SolutionStep(curGame, info))
+      curGame = curGame.prev
 
-    print("\n".join(["".join(line) for line in lines]))
+    # Compare to previous printed moves
+    if Game.__prevPrintedMoves:
+      prevMoves = Game.__prevPrintedMoves
+      i = 0
+      while i < len(prevMoves) and i < len(moves):
+        if moves[i] == prevMoves[i]:
+          steps[i].isSameAsPrevious = True
+        else:
+          steps[i].isSameAsPrevious = False
+          break  # All subsequent moves are different
+        i += 1
+
+    Game.__prevPrintedMoves = moves
+    return steps
+
   def __getMoveString(self, info: MoveInfo = None) -> str:
 
     if not info:
@@ -475,8 +515,22 @@ class Game:
     vacatedVial = numMoved + startEmptySpaces == NUM_SPACES_PER_VIAL
     startedVial = NUM_SPACES_PER_VIAL - numMoved == endEmptySpaces
     return (colorMoved, numMoved, complete, vacatedVial, startedVial)
-  # Prints out the state of the colors, including any errors
+  def printVials(self) -> None:
+    lines = [list() for _ in range(NUM_SPACES_PER_VIAL + 1)]
+
+    for i in range(self.__numVials):
+      lines[0].append("\t" + str(i + 1))
+
+    color: str = None
+    for spaceIndex in range(NUM_SPACES_PER_VIAL):
+      for vialIndex in range(self.__numVials):
+        color = self.vials[vialIndex][spaceIndex]
+        lines[spaceIndex + 1].append("\t" + formatVialColor(color, text=color))
+
+    print("\n".join(["".join(line) for line in lines]))
+
   def printColors(self, analyzedData = None) -> list[str]:
+    """Prints out the state of the colors, including any errors"""
     lines = []
     countColors, errors = analyzedData if analyzedData else self._analyzeColors()
 
