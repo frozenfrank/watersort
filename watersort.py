@@ -1,7 +1,7 @@
 import signal
 from readchar import readkey, key
 from collections import deque, defaultdict
-from resources import COLOR_CODES, COLOR_NAMES, BigChar
+from resources import COLOR_CODES, COLOR_NAMES, RESERVED_COLORS, BigChar
 from math import floor, log
 import random
 from colorama import Style
@@ -39,7 +39,6 @@ CONFIRM_APPLY_LAST_UNKNOWN = False
 CONFIRM_APPLY_LAST_BATCH_COLOR = False
 AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD = None
 
-RESERVED_COLORS = set(["?", "-"])
 FEW_VIALS_THRESHOLD = 7 # I'm not actually sure if this is the right threshold, but it appears correct
 
 Vials = list[list[str]]

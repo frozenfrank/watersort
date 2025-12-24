@@ -1,6 +1,8 @@
 from colorama import Fore, Back
 from collections import defaultdict
 
+RESERVED_COLORS = set(["?", "-"])
+
 COLOR_CODES = defaultdict(str, {
   "m": Back.CYAN,                                 # Mint
   "g": Back.LIGHTBLACK_EX + Fore.WHITE,           # Gray
