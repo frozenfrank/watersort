@@ -1471,11 +1471,11 @@ def getBasePath(absolutePath = WRITE_FILES_TO_ABSOLUTE_PATH) -> str:
 def annualizeDailyPuzzleFileName(levelNum: str) -> str:
   if levelNum[0:3].lower() in MONTH_ABBRS:
     year = datetime.now().year
-    return f"{year}/{levelNum}"
+    return os.path.join(str(year),levelNum)
   return levelNum
 def generateFileName(levelNum: str, absolutePath: bool = None) -> str:
   annualizedName = annualizeDailyPuzzleFileName(levelNum)
-  return getBasePath(absolutePath) + f"wslevels/{annualizedName}.txt"
+  return os.path.join(getBasePath(absolutePath),"wslevels",f"{annualizedName}.txt")
 def generateFileContents(game: "Game") -> str:
   lines = list()
   lines.append("i")
@@ -1534,7 +1534,7 @@ def setSolveMethod(method: str) -> bool:
 
 def generateAnalysisResultsName(level: str, absolutePath: bool = None) -> str:
   annualizedName = annualizeDailyPuzzleFileName(level)
-  return getBasePath(absolutePath) + f"wsanalysis/{annualizedName}-{round(time())}.csv"
+  return os.path.join(getBasePath(absolutePath), "wsanalysis", f"{annualizedName}-{round(time())}.csv")
 def saveAnalysisResults(rootGame: Game, seconds: float, samples: int,
                         partialStates, dupStates, deadStates, solStates, uniqueSolStates,
                         longestSolves, uniqueSolsDistribution, completionData: tuple[defaultdict[int, str], defaultdict[int, str]],
