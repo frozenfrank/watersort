@@ -1,0 +1,14 @@
+i
+728
+11
+r	b	m	?
+lb	pn	p	?
+r	p	lb	?
+o	pn	o	m
+lb	b	pk	?
+pk	m	pn	?
+o	lb	r	?
+pk	pk	g	pn
+g	p	b	?
+-	-	-	-
+-	-	-	-
