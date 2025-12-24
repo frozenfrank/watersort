@@ -1,0 +1,15 @@
+i
+jan3 pour
+12
+pn	o	lb	m
+pk	pn	g	m
+r	p	b	g
+pn	br	pk	p
+o	pk	p	b
+r	m	br	g
+lb	o	o	m
+lb	pn	br	br
+p	r	b	lb
+b	pk	g	r
+-	-	-	-
+-	-	-	-

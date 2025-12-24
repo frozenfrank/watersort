@@ -1,0 +1,14 @@
+i
+jan6 pour
+11
+r	m	pk	b
+p	o	b	pn
+r	lb	pn	pk
+o	o	lb	r
+r	pn	lb	b
+m	b	g	g
+o	m	p	pk
+pn	m	g	p
+g	pk	lb	p
+-	-	-	-
+-	-	-	-
