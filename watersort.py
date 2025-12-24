@@ -1,5 +1,6 @@
 from datetime import datetime
 import signal
+import os
 from readchar import readkey, key
 from collections import deque, defaultdict
 from resources import COLOR_CODES, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar
@@ -1490,6 +1491,11 @@ def generateFileContents(game: "Game") -> str:
   # lines.append("")
   return "\n".join(lines)
 def saveFileContents(fileName: str, contents: str) -> None:
+  # Ensure parent folders exist
+  directory_path = os.path.dirname(fileName)
+  if not os.path.exists(directory_path):
+      os.makedirs(directory_path, exist_ok=True)
+
   sourceFile = open(fileName, 'w')
   print(contents, file = sourceFile)
   sourceFile.close()
