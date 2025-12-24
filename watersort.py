@@ -278,7 +278,7 @@ class Game:
     return (rsp or "y").strip()[0].lower()
   def requestVal(self, original: "Game", request: str, printState=True, disableAutoSave=False, printOptions=True) -> str:
     if printState:
-      if Game.preferBigMoves:
+      if Game.preferBigMoves and original.move:
         BigSolutionDisplay(original).start()
       else:
         original.printVials()
@@ -809,6 +809,10 @@ class BigSolutionDisplay:
     self.currentIndex = 0
 
   def start(self):
+    if not self.steps:
+      print("No steps to display.")
+      return
+
     running = True
     self.displayCurrent()
 
