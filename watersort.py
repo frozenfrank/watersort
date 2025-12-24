@@ -1,7 +1,9 @@
+from datetime import datetime
 import signal
+import os
 from readchar import readkey, key
 from collections import deque, defaultdict
-from resources import COLOR_CODES, COLOR_NAMES, BigChar
+from resources import COLOR_CODES, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar
 from math import floor, log
 import random
 from colorama import Style
@@ -39,7 +41,6 @@ CONFIRM_APPLY_LAST_UNKNOWN = False
 CONFIRM_APPLY_LAST_BATCH_COLOR = False
 AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD = None
 
-RESERVED_COLORS = set(["?", "-"])
 FEW_VIALS_THRESHOLD = 7 # I'm not actually sure if this is the right threshold, but it appears correct
 
 Vials = list[list[str]]
@@ -1467,8 +1468,14 @@ def saveGame(game: "Game", forceSave = False) -> None:
   print(f"Saved discovered game state to file: {fileName}")
 def getBasePath(absolutePath = WRITE_FILES_TO_ABSOLUTE_PATH) -> str:
   return INSTALLED_BASE_PATH if absolutePath else ""
+def annualizeDailyPuzzleFileName(levelNum: str) -> str:
+  if levelNum[0:3].lower() in MONTH_ABBRS:
+    year = datetime.now().year
+    return os.path.join(str(year),levelNum)
+  return levelNum
 def generateFileName(levelNum: str, absolutePath: bool = None) -> str:
-  return getBasePath(absolutePath) + f"wslevels/{levelNum}.txt"
+  annualizedName = annualizeDailyPuzzleFileName(levelNum)
+  return os.path.join(getBasePath(absolutePath),"wslevels",f"{annualizedName}.txt")
 def generateFileContents(game: "Game") -> str:
   lines = list()
   lines.append("i")
@@ -1484,6 +1491,11 @@ def generateFileContents(game: "Game") -> str:
   # lines.append("")
   return "\n".join(lines)
 def saveFileContents(fileName: str, contents: str) -> None:
+  # Ensure parent folders exist
+  directory_path = os.path.dirname(fileName)
+  if not os.path.exists(directory_path):
+      os.makedirs(directory_path, exist_ok=True)
+
   sourceFile = open(fileName, 'w')
   print(contents, file = sourceFile)
   sourceFile.close()
@@ -1521,7 +1533,8 @@ def setSolveMethod(method: str) -> bool:
   return True
 
 def generateAnalysisResultsName(level: str, absolutePath: bool = None) -> str:
-  return getBasePath(absolutePath) + f"wsanalysis/{level}-{round(time())}.csv"
+  annualizedName = annualizeDailyPuzzleFileName(level)
+  return os.path.join(getBasePath(absolutePath), "wsanalysis", f"{annualizedName}-{round(time())}.csv")
 def saveAnalysisResults(rootGame: Game, seconds: float, samples: int,
                         partialStates, dupStates, deadStates, solStates, uniqueSolStates,
                         longestSolves, uniqueSolsDistribution, completionData: tuple[defaultdict[int, str], defaultdict[int, str]],

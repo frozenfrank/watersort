@@ -1,0 +1,14 @@
+i
+dec24 pour
+11
+pk	pn	b	lb
+r	pn	o	o
+b	m	r	p
+g	lb	r	lb
+pn	b	m	p
+lb	pk	m	m
+g	p	pk	b
+o	r	pn	g
+pk	o	p	g
+-	-	-	-
+-	-	-	-

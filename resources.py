@@ -1,6 +1,11 @@
 from colorama import Fore, Back
 from collections import defaultdict
 
+MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"]
+MONTH_ABBRS = [month[0:3].lower() for month in MONTHS]
+
+RESERVED_COLORS = set(["?", "-"])
+
 COLOR_CODES = defaultdict(str, {
   "m": Back.CYAN,                                 # Mint
   "g": Back.LIGHTBLACK_EX + Fore.WHITE,           # Gray
