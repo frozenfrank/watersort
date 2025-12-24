@@ -1554,9 +1554,11 @@ def _initColors(rootGame: Game) -> tuple[int, list[str]]: # (numColors, list_of_
     allColorsList.append(color)
 
   return (numColors, allColorsList)
-# Given an int with any number of digits (base 10),
-# It will return at most the `digits` number of the highest order digits
 def preserveHighestOrderDigits(x: int, digits=5) -> int:
+  """
+  Given an int with any number of digits (base 10),
+  It will return at most the `digits` number of the highest order digits
+  """
   return x // (10 ** max(floor(log(x, 10) - digits + 1), 0))
 
 def saveCSVFile(fileName: str, columns: list[tuple[str, defaultdict[int, any]]], headers: list[tuple[str, ...]] = None, keyColumnName = "Key") -> None:
