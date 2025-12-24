@@ -58,13 +58,13 @@ class BigChar:
 
 BIG_DIGITS = list(map(BigChar, [
 """
-#######
+ #####
 ##   ##
 ##   ##
 ##   ##
 ##   ##
 ##   ##
-#######
+ #####
 """,
 """
    ##
@@ -76,19 +76,19 @@ BIG_DIGITS = list(map(BigChar, [
  #####
 """,
 """
-######
-     ##
+ #####
+ #   ##
      ##
  #####
 ##
 ##
-######
+ #####
 """,
 """
 ######
      ##
      ##
-  #####
+  ####
      ##
      ##
 ######
@@ -112,8 +112,8 @@ BIG_DIGITS = list(map(BigChar, [
 ######
 """,
 """
-  #####
- ##
+  ####
+ ##   #
 ##
 ######
 ##   ##
@@ -180,7 +180,7 @@ BIG_SYMBOLS = defaultdict(lambda: BIG_SYMBOLS["□"], map(parseCharText, [
 
 """,
 ]))
-for digit in range(9):
+for digit in range(10):
   BIG_SYMBOLS[       digit ]=BIG_DIGITS[digit]
   BIG_SYMBOLS[""+str(digit)]=BIG_DIGITS[digit]
 
