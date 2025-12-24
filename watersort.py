@@ -1,8 +1,11 @@
 import signal
+from readchar import readkey, key
 from collections import deque, defaultdict
+from resources import COLOR_CODES, COLOR_NAMES, BigChar
 from math import floor, log
 import random
-from colorama import Fore, Back, Style
+from colorama import Style
+from colorama.ansi import clear_screen
 from time import time
 from typing import Callable
 import copy;
@@ -39,26 +42,46 @@ AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD = None
 RESERVED_COLORS = set(["?", "-"])
 FEW_VIALS_THRESHOLD = 7 # I'm not actually sure if this is the right threshold, but it appears correct
 
-COLOR_CODES = defaultdict(str, {
-  "m": Back.CYAN,                                 # Mint
-  "g": Style.DIM + Back.WHITE,                    # Gray
-  "gr": "",                                       # Green (Occasionally)
-  "o": Back.YELLOW + Fore.RED,                    # Orange
-  "y": Back.YELLOW + Fore.BLACK,                  # Yellow
-  "r": Back.RED + Fore.WHITE,                     # Red
-  "p": Back.BLACK  + Fore.MAGENTA,                # Purple
-  "pk": Back.GREEN + Fore.BLACK,                  # Puke
-  "pn": Back.MAGENTA,                             # Pink
-  "br": Back.WHITE + Fore.MAGENTA,                # Brown
-  "lb": Fore.CYAN + Back.WHITE,                   # Light Blue
-  "gn": Back.BLACK + Fore.GREEN,                  # Dark Green
-  "b": Back.BLUE + Fore.WHITE,                    # Blue
-  "?": "",                                        # Unknown
-  "-": "",                                        # Empty
-})
-
 Vials = list[list[str]]
 Move = tuple[int, int]
+""" (startVialIndex, endVialIndex) """
+
+class SolutionStep:
+  game: "Game"
+  move: Move
+
+  # Fields received from MoveInfo
+  info: "Game.MoveInfo"
+  colorMoved: str
+  numMoved: int
+  isComplete: bool
+  vacatedVial: bool
+  startedVial: bool
+
+  # Comparison to previously reported solution
+  isSameAsPrevious: bool|None
+
+  def __init__(self, game: "Game"=None, info: "Game.MoveInfo"=None):
+    self.game = game
+    self.move = game.move if game else None
+
+    if info:
+      self.info = info
+      self.colorMoved = info[0]
+      self.numMoved = info[1]
+      self.isComplete = info[2]
+      self.vacatedVial = info[3]
+      self.startedVial = info[4]
+    else:
+      self.info = None
+      self.colorMoved = None
+      self.numMoved = 0
+      self.isComplete = False
+      self.vacatedVial = False
+      self.startedVial = False
+
+    self.isSameAsPrevious = None
+
 class Game:
   vials: Vials
   __numVials: int
@@ -73,6 +96,7 @@ class Game:
   reset: bool = False
   quit: bool = False
   latest: bool = False # "Game" | None
+  preferBigMoves: bool = True
 
   # Flags set on the root game
   level: str
@@ -82,12 +106,15 @@ class Game:
   pourMode: bool = None
 
   # Cached for single use calculation
-  COMPLETE_STR = Style.BRIGHT + " complete" + Style.NORMAL
-  VACATED_STR = Style.DIM + " vacated" + Style.NORMAL
-  STARTED_STR = Style.DIM + " occupied" + Style.NORMAL
+  _COMPLETE_TERM = "complete"
+  _VACATED_TERM = "vacated"
+  _STARTED_TERM = "occupied"
+  COMPLETE_STR = Style.BRIGHT + _COMPLETE_TERM + Style.NORMAL
+  VACATED_STR = Style.DIM + _VACATED_TERM + Style.NORMAL
+  STARTED_STR = Style.DIM + _STARTED_TERM + Style.NORMAL
   COLOR_WIDTH = 3             # CONSIDER: Make more direct by dynamically figuring the maximum color length
   NUMBER_WIDTH = 1            # Num is always less than NUM_SPACES_PER_VIAL (which is small)
-  EXTRA_CHARS = 3             # The number of additional chars in our result string
+  EXTRA_CHARS = 4             # The number of additional chars in our result string
   TOTAL_MOVE_PRINT_WIDTH = COLOR_WIDTH + NUMBER_WIDTH + EXTRA_CHARS + len(COMPLETE_STR)
 
   @staticmethod
@@ -189,7 +216,7 @@ class Game:
     if val:
       rootChanged = True
       Game.latest = self
-      self.root.vials[vialIndex][spaceIndex] = val
+      self.root.vials[vialIndex][spaceIndex] = val.strip()
 
     colorDist, colorErrors = self.root._analyzeColors()
     underusedColors = self._identifyUnderusedColors(colorDist)
@@ -249,27 +276,17 @@ class Game:
     question += " [y]/n:"
     rsp = self.requestVal(original, question, printState=False, disableAutoSave=True, printOptions=False)
     return (rsp or "y").strip()[0].lower()
-  def requestVal(self, original: "Game", request: str, printState=True, disableAutoSave=False, printOptions=True) -> str:
+  def requestVal(self, original: "Game", request: str, printState=True, disableAutoSave=False, printOptions:bool=None) -> str:
     if printState:
-      original.printVials()
-      original.printMoves()
+      if Game.preferBigMoves and original.move:
+        BigSolutionDisplay(original).start()
+      else:
+        original.printVials()
+        original.printMoves()
 
     # Other options start with a dash
-    if printOptions: print("Other options:\n" +
-          "   -o VIAL SPACE COLOR     to provide other values\n" +
-          "   -p or -print            to print the ROOT board\n" +
-          "   -pc                     to print the CURRENT board\n" +
-          "   -c or -colors           to print the distribution of colors in the vials\n" +
-          "   -s or -save             to save the discovered colors\n" +
-          "   -r or -reset            to reset the search algorithm\n" +
-          "   -m OR -moves            to print the moves to this point\n" +
-         f"   -gameplay MODE          to switch to pour gameplay ({', '.join(VALID_GAMEPLAY_MODES)})\n" +
-         f"   -solve METHOD           to change the solve method ({', '.join(VALID_SOLVE_METHODS)})\n" +
-          "   -level NUM              to change the level of this game\n" +
-          "   -vials NUM              to change the number of vials in the game\n" +
-          "   -e OR -exit             to save and exit\n" +
-          "   -q OR quit              to quit\n" +
-          "   -d OR -debug            to see debug info")
+    if printOptions != False:
+      self.__requestValHelp(abbreviated=(printOptions == None))
     rsp: str
     while True:
       optionPrompt = "(Or see other options above.)" if printOptions else "(Or use advanced options.)"
@@ -296,12 +313,16 @@ class Game:
           return ""
 
         # Printing status
+        elif rsp == "-h" or rsp == "-help":
+          self.__requestValHelp()
         elif rsp == "-p" or rsp == "-print":
           root.printVials()
         elif rsp == "-pc":
           original.printVials()
         elif rsp == "-m" or rsp == "-moves":
           original.printMoves()
+        elif rsp == "-b":
+          BigSolutionDisplay(original).start()
         elif rsp == "-d" or rsp == "-debug":
           print("Printing debug info... (None)")
           # TODO: Print the queue length, and other search related stats
@@ -309,6 +330,8 @@ class Game:
           root.printColors()
 
         # Special commands
+        elif rsp.startswith("-b "):
+          self.saveNewBigMovesSetting(rsp, original)
         elif rsp.startswith("-solve"):
           setSolveMethod(rsp.split(" ")[1])
           Game.reset = True
@@ -331,6 +354,46 @@ class Game:
 
     if not disableAutoSave: saveGame(self.root)
     return rsp
+  def __requestValHelp(self, abbreviated = False) -> None:
+    if abbreviated:
+      print("Other options (basic):\n" +
+            "   -h or -help             to view detailed help screen\n" +
+            "   -o VIAL SPACE COLOR     to provide other values\n" +
+            "   -b                      to view Big Moves up to this point\n" +
+            "   -e or -exit             to save and exit")
+    else:
+      print("Other options (advanced):\n" +
+            "   -h or -help             to view this help screen\n" +
+            "   -o VIAL SPACE COLOR     to provide other values\n" +
+            "   -p or -print            to print the ROOT board\n" +
+            "   -pc                     to print the CURRENT board\n" +
+            "   -c or -colors           to print the distribution of colors in the vials\n" +
+            "   -s or -save             to save the discovered colors\n" +
+            "   -r or -reset            to reset the search algorithm\n" +
+            "   -m or -moves            to print the moves to this point\n" +
+            "   -b                      to view Big Moves up to this point\n" +
+            "   -b on|off|ON            Enable/disable Big Moves by default. Specify ON (all-caps) to skip launching routine.\n" +
+           f"   -gameplay MODE          to switch to pour gameplay ({', '.join(VALID_GAMEPLAY_MODES)})\n" +
+           f"   -solve METHOD           to change the solve method ({', '.join(VALID_SOLVE_METHODS)})\n" +
+            "   -level NUM              to change the level of this game\n" +
+            "   -vials NUM              to change the number of vials in the game\n" +
+            "   -e or -exit             to save and exit\n" +
+            "   -q or quit              to quit\n" +
+            "   -d or -debug            to see debug info")
+  def saveNewBigMovesSetting(self, input: str, originalGame: "Game") -> None:
+    setting = input.split()[1]
+    settingLower = setting.lower()
+
+    if settingLower == "on":
+      Game.preferBigMoves = True
+      print("Big Moves enabled by default.")
+      if setting != "ON":
+        BigSolutionDisplay(originalGame).start()
+    elif settingLower == "off":
+      Game.preferBigMoves = False
+      print("Big Moves disabled by default.")
+    else:
+      print(f"Unrecognized option for -b: {setting}")
   def saveNewGameplayMode(self, input: str) -> None:
     flag, mode = input.split()
     mode = mode.strip().lower()
@@ -389,61 +452,63 @@ class Game:
   MoveInfo = tuple[str, int, bool, bool, bool]
   """ (colorMoved, numMoved, isComplete, vacatedVial, startedVial) OR None """
 
-  _prevPrintedMoves: deque[Move] = None
   def printMoves(self) -> None:
-    # Print all the moves that lead to this game
-    lines = deque()
-
-    if not self.move:
-      lines.append("None")
-      Game._prevPrintedMoves = None
-    else:
-      curGame = self
-      SEPARATOR = "\t "
-
-      moves = deque()
-      while curGame and curGame.move:
-        start, end = curGame.move
-        # CONSIDER: Color coding the displayed color
-        moves.appendleft(curGame.move)
-        info = curGame.__getMoveInfo()
-        moveString = formatVialColor(info[0], f"{start+1}->{end+1}", ljust=8)
-        lines.appendleft(moveString + curGame.__getMoveString(info))
-        curGame = curGame.prev
-
-      if Game._prevPrintedMoves:
-        prevMoves = Game._prevPrintedMoves
-        i = 0
-
-        while i < len(prevMoves) and i < len(moves):
-          if moves[i] == prevMoves[i]:
-            lines[i] += SEPARATOR + "(same)"
-          else:
-            lines[i] += SEPARATOR + "(different)"
-            break
-          i += 1
-
-      Game._prevPrintedMoves = moves
+    """Prints out the moves taken to reach this game state."""
+    steps: deque[SolutionStep] = self._prepareSolutionSteps()
 
     NEW_LINE = "\n  "
-    introduction = f"Moves ({len(lines)})"
+    SEPARATOR = "\t "
+
+    lines = []
+    if not steps:
+      lines.append("None")
+    else:
+      for step in steps:
+        start, end = step.move
+        moveString = formatVialColor(step.colorMoved, f"{start+1}->{end+1}", ljust=8)
+        moveString += self._getMoveString(step.info)
+        if step.isSameAsPrevious != None:
+          moveString += SEPARATOR + ("(same)" if step.isSameAsPrevious else "(different)")
+        lines.append(moveString)
+
+    introduction = f"Moves ({len(steps)})"
     if self.root.pourMode:
       introduction += " [Pour Gameplay]"
     print(introduction + ":" + NEW_LINE + NEW_LINE.join(lines))
-  def printVials(self) -> None:
-    lines = [list() for _ in range(NUM_SPACES_PER_VIAL + 1)]
 
-    for i in range(self.__numVials):
-      lines[0].append("\t" + str(i + 1))
+  __prevPrintedMoves: deque[Move] = None
+  def _prepareSolutionSteps(self) -> deque[SolutionStep]:
+    """Prepares the solution steps to be printed, including comparison to previous printed solution."""
+    steps = deque()
+    if not self.move:
+      Game.__prevPrintedMoves = None
+      return steps
 
-    color: str = None
-    for spaceIndex in range(NUM_SPACES_PER_VIAL):
-      for vialIndex in range(self.__numVials):
-        color = self.vials[vialIndex][spaceIndex]
-        lines[spaceIndex + 1].append("\t" + formatVialColor(color, text=color))
+    # Collect moves
+    curGame = self
+    moves = deque()
+    while curGame and curGame.move:
+      info = curGame.__getMoveInfo()
+      moves.appendleft(curGame.move)
+      steps.appendleft(SolutionStep(curGame, info))
+      curGame = curGame.prev
 
-    print("\n".join(["".join(line) for line in lines]))
-  def __getMoveString(self, info: MoveInfo = None) -> str:
+    # Compare to previous printed moves
+    if Game.__prevPrintedMoves:
+      prevMoves = Game.__prevPrintedMoves
+      i = 0
+      while i < len(prevMoves) and i < len(moves):
+        if moves[i] == prevMoves[i]:
+          steps[i].isSameAsPrevious = True
+        else:
+          steps[i].isSameAsPrevious = False
+          break  # All subsequent moves are different
+        i += 1
+
+    Game.__prevPrintedMoves = moves
+    return steps
+
+  def _getMoveString(self, info: MoveInfo = None) -> str:
 
     if not info:
       info = self.__getMoveInfo()
@@ -459,7 +524,9 @@ class Game:
         extraStr = Game.VACATED_STR
       elif startedVial:
         extraStr = Game.STARTED_STR
+
       numStr = Style.BRIGHT + str(num) + Style.NORMAL if num > 1 else num
+      if extraStr: extraStr = " " + extraStr
       result = f"({numStr} {color}{extraStr})"
 
     return result.ljust(Game.TOTAL_MOVE_PRINT_WIDTH)
@@ -475,8 +542,22 @@ class Game:
     vacatedVial = numMoved + startEmptySpaces == NUM_SPACES_PER_VIAL
     startedVial = NUM_SPACES_PER_VIAL - numMoved == endEmptySpaces
     return (colorMoved, numMoved, complete, vacatedVial, startedVial)
-  # Prints out the state of the colors, including any errors
+  def printVials(self) -> None:
+    lines = [list() for _ in range(NUM_SPACES_PER_VIAL + 1)]
+
+    for i in range(self.__numVials):
+      lines[0].append("\t" + str(i + 1))
+
+    color: str = None
+    for spaceIndex in range(NUM_SPACES_PER_VIAL):
+      for vialIndex in range(self.__numVials):
+        color = self.vials[vialIndex][spaceIndex]
+        lines[spaceIndex + 1].append("\t" + formatVialColor(color, text=color))
+
+    print("\n".join(["".join(line) for line in lines]))
+
   def printColors(self, analyzedData = None) -> list[str]:
+    """Prints out the state of the colors, including any errors"""
     lines = []
     countColors, errors = analyzedData if analyzedData else self._analyzeColors()
 
@@ -728,6 +809,109 @@ class Game:
     return self.__numVials
   def getDepth(self) -> int:
     return self._numMoves
+
+class BigSolutionDisplay:
+  steps: deque[SolutionStep]
+  currentIndex: int
+  hasDisplayedStep: bool = False
+
+  SCREEN_WIDTH = 80
+
+  def __init__(self, game: Game):
+    self.steps = game._prepareSolutionSteps()
+    self.currentIndex = 0
+
+  def start(self):
+    if not self.steps:
+      print("No steps to display.")
+      return
+
+    running = True
+    self.displayCurrent()
+
+    # Main loop
+    # When any key is pressed, move forward
+    while running and self.currentIndex < len(self.steps) - 1:
+      # Clear the screen
+      self.printCenteredLines(["Press Space to advance. Use arrow keys to navigate. Press 'q' to quit."])
+
+      while True:
+        k = readkey()
+
+        if k == 'q' or k == 'Q':
+          running = False
+        elif k == 'p' or k == 'b' or k == key.UP or k == key.LEFT:
+          self.previous()
+        elif k == 'n' or k == 'f' or k == key.DOWN or k == key.RIGHT or k == ' ' or k == key.ENTER:
+          self.next()
+        else:
+          self.printCenteredLines([f"Unrecognized key ({k})"])
+          continue  # Keep waiting for a valid key
+
+        break  # We handled a keypress, break out to the main loop
+
+      pass
+
+  def displayCurrent(self) -> None:
+    lines = []
+    step = self.steps[self.currentIndex]
+
+    lines.append("")
+    lines.append("")
+    lines.append(f"Step {self.currentIndex + 1} of {len(self.steps)}:")
+
+    addlInfo = []
+    addlInfo.append(COLOR_NAMES[step.colorMoved])
+    addlInfo.append(f'{step.numMoved} space{"" if step.numMoved == 1 else "s"}')
+    addlInfo.append(BigSolutionDisplay._getMoveDescriptor(step))
+    if step.isSameAsPrevious != None:
+      addlInfo.append("Repeated path" if step.isSameAsPrevious else "New path")
+    lines.append(" | ".join(addlInfo))
+
+    lines.extend(self._prepareBigMoveLines(step.move))
+    lines.append("")
+    lines.append("")
+
+    if self.hasDisplayedStep: print(clear_screen())
+    print(formatVialColor(step.colorMoved))
+    self.printCenteredLines(lines)
+    print(Style.RESET_ALL)
+
+    self.hasDisplayedStep = True
+
+  @staticmethod
+  def _getMoveDescriptor(step: SolutionStep) -> str:
+    if step.isComplete:
+      return "Complete"
+    elif step.vacatedVial:
+      return "Vacate"
+    elif step.startedVial:
+      return "Occupy"
+    else:
+      return "Move"
+
+  def _prepareBigMoveLines(self, move: Move) -> None:
+    start, end = move
+    symbols = f"{start + 1}→{end + 1}"
+    bigSymbols = BigChar.FromSymbols(symbols)
+    return ["", *BigChar.FormatSingleLine(*bigSymbols, spacing=4), ""]
+
+  def printCenteredLines(self, lines: list[str]) -> None:
+    centeredLines = [line.center(BigSolutionDisplay.SCREEN_WIDTH) for line in lines]
+    print("\n".join(centeredLines), flush=True)
+
+  def next(self) -> None:
+    if self.currentIndex < len(self.steps) - 1:
+      self.currentIndex += 1
+      self.displayCurrent()
+    else:
+      print("Already at the last step.")
+  def previous(self) -> None:
+    if self.currentIndex > 0:
+      self.currentIndex -= 1
+      self.displayCurrent()
+    else:
+      print("Already at the first step.")
 
 def playGame(game: "Game"):
   currentGame = game
@@ -992,8 +1176,9 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
           """)
 
     if minSolution:
-      print(f"Found solution{' to level ' + game.level if game.level else ''}!")
-      minSolution.printMoves()
+      BigSolutionDisplay(minSolution).start()
+      # print(f"Found solution{' to level ' + game.level if game.level else ''}!")
+      # minSolution.printMoves()
     else:
       print("Cannot not find solution.")
 
@@ -1484,9 +1669,11 @@ def _initColors(rootGame: Game) -> tuple[int, list[str]]: # (numColors, list_of_
     allColorsList.append(color)
 
   return (numColors, allColorsList)
-# Given an int with any number of digits (base 10),
-# It will return at most the `digits` number of the highest order digits
 def preserveHighestOrderDigits(x: int, digits=5) -> int:
+  """
+  Given an int with any number of digits (base 10),
+  It will return at most the `digits` number of the highest order digits
+  """
   return x // (10 ** max(floor(log(x, 10) - digits + 1), 0))
 
 def saveCSVFile(fileName: str, columns: list[tuple[str, defaultdict[int, any]]], headers: list[tuple[str, ...]] = None, keyColumnName = "Key") -> None:
