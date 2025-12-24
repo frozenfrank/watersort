@@ -1,6 +1,6 @@
 import signal
 from collections import deque, defaultdict
-from resources import COLOR_CODES
+from resources import COLOR_CODES, BigChar
 from math import floor, log
 import random
 from colorama import Style
@@ -103,12 +103,12 @@ class Game:
   pourMode: bool = None
 
   # Cached for single use calculation
-  COMPLETE_STR = Style.BRIGHT + " complete" + Style.NORMAL
-  VACATED_STR = Style.DIM + " vacated" + Style.NORMAL
-  STARTED_STR = Style.DIM + " occupied" + Style.NORMAL
+  COMPLETE_STR = Style.BRIGHT + "complete" + Style.NORMAL
+  VACATED_STR = Style.DIM + "vacated" + Style.NORMAL
+  STARTED_STR = Style.DIM + "occupied" + Style.NORMAL
   COLOR_WIDTH = 3             # CONSIDER: Make more direct by dynamically figuring the maximum color length
   NUMBER_WIDTH = 1            # Num is always less than NUM_SPACES_PER_VIAL (which is small)
-  EXTRA_CHARS = 3             # The number of additional chars in our result string
+  EXTRA_CHARS = 4             # The number of additional chars in our result string
   TOTAL_MOVE_PRINT_WIDTH = COLOR_WIDTH + NUMBER_WIDTH + EXTRA_CHARS + len(COMPLETE_STR)
 
   @staticmethod
@@ -474,18 +474,24 @@ class Game:
     if info == None:
       result = ""
     else:
-      color, num, complete, vacated, startedVial = info
-      extraStr = ""
-      if complete:
-        extraStr = Game.COMPLETE_STR
-      elif vacated:
-        extraStr = Game.VACATED_STR
-      elif startedVial:
-        extraStr = Game.STARTED_STR
+      color, num, _, _, _ = info
+      extraStr = self._getMoveDescriptor(info)
+      if extraStr: extraStr = " " + extraStr
       numStr = Style.BRIGHT + str(num) + Style.NORMAL if num > 1 else num
       result = f"({numStr} {color}{extraStr})"
 
     return result.ljust(Game.TOTAL_MOVE_PRINT_WIDTH)
+  @staticmethod
+  def _getMoveDescriptor(info: MoveInfo) -> str:
+    _, _, complete, vacated, startedVial = info
+    if complete:
+      return Game.COMPLETE_STR
+    elif vacated:
+      return Game.VACATED_STR
+    elif startedVial:
+      return Game.STARTED_STR
+
+    return ""
   def __getMoveInfo(self) -> MoveInfo:
     if not self.move:
       return None
@@ -767,23 +773,45 @@ class Game:
     return self._numMoves
 
 class BigSolutionDisplay:
+  steps: deque[SolutionStep]
+  currentIndex: int
+
+  SCREEN_WIDTH = 80
+
   def __init__(self, game: Game):
-    self.steps: deque[SolutionStep] = game._prepareSolutionSteps()
-    self.currentIndex: int = 0
+    self.steps = game._prepareSolutionSteps()
+    self.currentIndex = 0
 
   def start(self):
     self.displayCurrent()
 
   def displayCurrent(self) -> None:
+    lines = []
     step = self.steps[self.currentIndex]
-    print(f"Step {self.currentIndex + 1} of {len(self.steps)}:")
-    # step.game.printVials()
-    start, end = step.move
-    moveStr = f"Move: {start + 1} -> {end + 1}" if step.move else "Initial State"
-    print(moveStr)
-    print(step.game._getMoveString(step.info))
+    addlInfo = []
+
+    moveDescriptor = Game._getMoveDescriptor(step.info)
+    if moveDescriptor:
+      addlInfo.append(moveDescriptor + " vial")
     if step.isSameAsPrevious != None:
-      print("This move is " + ("the same as" if step.isSameAsPrevious else "different from") + " the previous printed move.")
+      addlInfo.append("Repeated path" if step.isSameAsPrevious else "New path")
+
+    lines.append(f"Step {self.currentIndex + 1} of {len(self.steps)}:")
+    lines.extend(self._prepareBigMoveLines(step.move))
+    if addlInfo: lines.append("; ".join(addlInfo))
+
+    self.printCenteredLines(lines)
+
+
+  def _prepareBigMoveLines(self, move: Move) -> None:
+    start, end = move
+    symbols = f"{start + 1}→{end + 1}"
+    bigSymbols = BigChar.FromSymbols(symbols)
+    return ["", *BigChar.FormatSingleLine(*bigSymbols, spacing=4), ""]
+
+  def printCenteredLines(self, lines: list[str]) -> None:
+    centeredLines = [line.center(BigSolutionDisplay.SCREEN_WIDTH) for line in lines]
+    print("\n".join(centeredLines), flush=True)
 
   def next(self) -> None:
     if self.currentIndex < len(self.steps) - 1:
