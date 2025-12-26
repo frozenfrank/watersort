@@ -31,7 +31,7 @@ FORCE_INTERACTION_MODE = None # "a"
 
 SOLVE_METHOD = "DFR"
 VALID_SOLVE_METHODS = set(["MIX", "BFS", "DFS", "DFR"]) # An enum is more accurate, but overkill for this need
-VALID_GAMEPLAY_MODES = set(["drain"])
+VALID_GAMEPLAY_MODES = set(["drain", "blind"])
 
 MIX_SWITCH_THRESHOLD_MOVES = 10
 ENABLE_QUEUE_CHECKS = True # Disable only for temporary testing
@@ -113,6 +113,9 @@ class Game:
   _colorError: bool
   _hasUnknowns: bool
   drainMode: bool = None
+  """Special mode where colors drain out of the bottom of vials instead of pouring from the top."""
+  blindMode: bool = None
+  """Represents FULL-blind mode where spaces re-hide themselves after moving."""
 
   # Cached for single use calculation
   _COMPLETE_TERM = "complete"
@@ -127,9 +130,10 @@ class Game:
   TOTAL_MOVE_PRINT_WIDTH = COLOR_WIDTH + NUMBER_WIDTH + EXTRA_CHARS + len(COMPLETE_STR)
 
   @staticmethod
-  def Create(vials, drainMode=False) -> "Game":
+  def Create(vials, drainMode=False, blindMode=False) -> "Game":
     newGame = Game(vials, None, None)
     newGame.drainMode = bool(drainMode)
+    newGame.blindMode = bool(blindMode)
     newGame._analyzeColors()
     return newGame
 
@@ -410,15 +414,15 @@ class Game:
       print(f"Unrecognized gameplay mode: {mode}. Valid modes are: {', '.join(VALID_GAMEPLAY_MODES)}")
       return
 
-    isDrain = mode == "drain"
-    if self.root.drainMode == isDrain:
-      print(f"Gameplay mode is already set to: {mode}. No change made.")
-      return
+    newVal: bool = None
+    if mode == "drain":
+      newVal = self.root.drainMode = not self.root.drainMode
+    elif mode == "blind":
+      newVal = self.root.blindMode = not self.root.blindMode
 
     Game.reset = True
-    self.root.drainMode = isDrain
     self.root.modified = True
-    print(f"Set gameplay mode to: {mode}. Continue on.")
+    print(f"Gameplay mode '{mode}' {'enabled' if newVal else 'disabled'}. Resetting to resolve.")
   def saveOtherColor(self, input: str) -> None:
     flag, o_vial, o_space, color = input.split()
     vial = int(o_vial) - 1
@@ -1423,11 +1427,11 @@ def fPercent(num: float, den: float, roundDigits=1) -> str:
   return str(round(num/den*100, roundDigits)) + "%"
 
 
-def readGameInput(userInteracting: bool, drainMode: bool = None) -> Game:
-  game = _readGame(input, userInteraction=userInteracting, drainMode=drainMode)
+def readGameInput(userInteracting: bool, drainMode: bool = None, blindMode: bool = None) -> Game:
+  game = _readGame(input, userInteraction=userInteracting, drainMode=drainMode, blindMode=blindMode)
   game.modified = True
   return game
-def readGameFile(gameFileName: str, level: str = None, drainMode: bool = None) -> Game:
+def readGameFile(gameFileName: str, level: str = None, drainMode: bool = None, blindMode: bool = None) -> Game:
   gameRead: Game = None
   try:
     gameFile = open(gameFileName, "r")
@@ -1438,7 +1442,8 @@ def readGameFile(gameFileName: str, level: str = None, drainMode: bool = None) -
       levelLine = nextLine().split()        # Read level name
       level = levelLine[0]
       drainMode = "drain" in levelLine or "pour" in levelLine
-    gameRead = _readGame(nextLine, drainMode=drainMode)
+      blindMode = "blind" in levelLine
+    gameRead = _readGame(nextLine, drainMode=drainMode, blindMode=blindMode)
     gameRead.level = level
 
     gameFile.close()
@@ -1449,7 +1454,7 @@ def readGameFile(gameFileName: str, level: str = None, drainMode: bool = None) -
     print("Resumed game progress from saved file " + gameFileName)
   finally:
     return gameRead
-def _readGame(nextLine: Callable[[], str], userInteraction = False, drainMode: bool = None) -> Game:
+def _readGame(nextLine: Callable[[], str], userInteraction = False, drainMode: bool = None, blindMode: bool = None) -> Game:
   """
   Reads the game one line at a time by invoking a configurable `nextLine()` method.
 
@@ -1467,6 +1472,15 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False, drainMode: b
         drainMode = True
   if drainMode and userInteraction:
     print("Reading a drain-mode game.")
+
+  if blindMode is None:
+    blindMode = False
+    if userInteraction:
+      rsp = input("Level uses blind gameplay? (y/n): ").strip().lower()
+      if rsp and rsp[0] == "y":
+        blindMode = True
+  if blindMode and userInteraction:
+    print("Reading a blind-mode game.")
 
   numVials = -1
   if not userInteraction:
@@ -1512,7 +1526,7 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False, drainMode: b
       spaces.append("?")
     vials.append(spaces)
 
-  return Game.Create(vials, drainMode=drainMode)
+  return Game.Create(vials, drainMode=drainMode, blindMode=blindMode)
 def _determineNumEmpty(vialsWithColors: int) -> int:
   return 1 if vialsWithColors < FEW_VIALS_THRESHOLD else 2
 
@@ -1521,6 +1535,7 @@ def chooseInteraction():
   mode: str = None
   level: str = None
   drainMode: bool = False  # None means ask the user; otherwise, True/False
+  blindMode: bool = False  # None means ask the user; otherwise, True/False
   userInteracting = True
   originalGame: Game = None
   analyzeSamples = ANALYZE_ATTEMPTS
@@ -1549,6 +1564,9 @@ def chooseInteraction():
       if "drain" in sys.argv:
         drainMode = True
         sys.argv.remove("drain")
+      if "blind" in sys.argv:
+        blindMode = True
+        sys.argv.remove("blind")
 
       mode = "i"
       level = sys.argv[1]
@@ -1619,7 +1637,7 @@ def chooseInteraction():
   # Attempt to read the game state out of a file
   if mode != "n" and level:
     gameFileName = generateFileName(level)
-    originalGame = readGameFile(gameFileName, level, drainMode=drainMode)
+    originalGame = readGameFile(gameFileName, level, drainMode=drainMode, blindMode=blindMode)
 
   if originalGame and level:
     originalGame.level = level
@@ -1627,7 +1645,7 @@ def chooseInteraction():
 
   # Fallback to reading in manually
   if not originalGame:
-    originalGame = readGameInput(userInteracting, drainMode=drainMode)
+    originalGame = readGameInput(userInteracting, drainMode=drainMode, blindMode=blindMode)
     if level != None:
       originalGame.level = level
     saveGame(originalGame)
@@ -1684,6 +1702,8 @@ def generateFileContents(game: "Game") -> str:
   levelLine = str(game.level)
   if game.root.drainMode:
     levelLine += " drain"
+  if game.root.blindMode:
+    levelLine += " blind"
 
   lines.append(levelLine)
   lines.append(str(len(game.vials)))
