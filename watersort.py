@@ -2,7 +2,7 @@ from datetime import datetime
 import signal
 import os
 from collections import deque, defaultdict
-from resources import COLOR_CODES, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar
+from resources import COLOR_CODES, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar, BigShades
 from math import floor, log
 import random
 from colorama import Style
@@ -834,6 +834,8 @@ class BigSolutionDisplay:
 
   _currentStage: Literal["PRE","GAME","POST"]
   """ Pre -> Game -> Post. Can advance back from POST, but can never return to PRE. """
+  _currentSpacesMoved: int
+  """The number of spaces that will have been moved after the user completes the indicated action."""
   __hasDisplayedStep: bool = False
 
   SCREEN_WIDTH = 80
@@ -847,6 +849,7 @@ class BigSolutionDisplay:
     self.__currentStep = 0
     self.__currentPoststep = 0
     self._currentStage = "GAME"
+    self._currentSpacesMoved = 0
 
     if self._steps:
       self.__init_presteps()
@@ -961,6 +964,10 @@ class BigSolutionDisplay:
     symbols = f"{start + 1}→{end + 1}"
     lines.extend(self._prepareBigCharLines(symbols))
 
+    if step.numMoved > 1:
+      curMoved = self._currentSpacesMoved if self._currentSpacesMoved else 1
+      lines.extend(self._prepareBigDotLines(BigShades.Fill * curMoved + BigShades.Medium * (step.numMoved - curMoved)))
+
     return (lines, step.colorMoved)
   def _preparePostLines(self, step: SolutionStep):
     return self._preparePreLines(step)
@@ -977,8 +984,12 @@ class BigSolutionDisplay:
       return "Move"
 
   def _prepareBigCharLines(self, symbols: str) -> None:
-    bigSymbols = BigChar.FromSymbols(symbols)
-    return ["", *BigChar.FormatSingleLine(*bigSymbols, spacing=4), ""]
+    bigChars = BigChar.FromSymbols(symbols)
+    return ["", *BigChar.FormatSingleLine(*bigChars, spacing=4), ""]
+
+  def _prepareBigDotLines(self, dots: str) -> None:
+    bigChars = BigShades.FromShading(dots)
+    return ["", *BigShades.FormatSingleLine(*bigChars, spacing=3), ""]
 
   def printCenteredLines(self, lines: list[str]) -> None:
     centeredLines = [line.center(BigSolutionDisplay.SCREEN_WIDTH) for line in lines]

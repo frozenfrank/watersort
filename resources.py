@@ -379,5 +379,3 @@ def constructShadingChar(shading: str) -> BigChar:
   shadingChars = line + "\n" + line
   return shading, BigChar(shadingChars, height=2, width=shadingWidth)
 BIG_SHADING = dict(map(constructShadingChar, "█▓▒░"))
-
-BigShades.PrintShades("█▓▒░" + "".join(reversed("█▓▒░")))
