@@ -7,6 +7,7 @@ MONTH_ABBRS = [month[0:3].lower() for month in MONTHS]
 RESERVED_COLORS = set(["?", "-"])
 
 COLOR_CODES = defaultdict(str, {
+  "bl": Back.BLACK + Fore.LIGHTWHITE_EX,          # Black (System)
   "m": Back.CYAN,                                 # Mint
   "g": Back.LIGHTBLACK_EX + Fore.WHITE,           # Gray
   "gr": "",                                       # Green (Occasionally)
@@ -25,6 +26,7 @@ COLOR_CODES = defaultdict(str, {
 })
 
 COLOR_NAMES = defaultdict(lambda: "Unrecognized", {
+  "bl": "Black",
   "m": "Mint",
   "g": "Gray",
   "gr": "Green",

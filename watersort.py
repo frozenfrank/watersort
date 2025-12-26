@@ -919,12 +919,13 @@ class BigSolutionDisplay:
       raise "Unknown current stage: " + self._currentStage
 
     lines.extend(stageLines)
+    if not color: color = "bl"
 
     lines.append("")
     lines.append("")
 
     if self.__hasDisplayedStep: print(clear_screen())
-    if color: print(formatVialColor(color))
+    print(formatVialColor(color))
     self.printCenteredLines(lines)
     print(Style.RESET_ALL)
 
