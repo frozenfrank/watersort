@@ -813,14 +813,14 @@ class Game:
 
 class BigSolutionDisplay:
   steps: deque[SolutionStep]
-  currentIndex: int
+  currentStep: int
   hasDisplayedStep: bool = False
 
   SCREEN_WIDTH = 80
 
   def __init__(self, game: Game):
     self.steps = game._prepareSolutionSteps()
-    self.currentIndex = 0
+    self.currentStep = 0
 
   def start(self):
     if not self.steps:
@@ -832,7 +832,7 @@ class BigSolutionDisplay:
 
     # Main loop
     # When any key is pressed, move forward
-    while running and self.currentIndex < len(self.steps) - 1:
+    while running and self.currentStep < len(self.steps) - 1:
       # Clear the screen
       self.printCenteredLines(["Press Space to advance. Use arrow keys to navigate. Press 'q' to quit."])
 
@@ -845,6 +845,8 @@ class BigSolutionDisplay:
           self.previous()
         elif k == 'n' or k == 'f' or k == key.DOWN or k == key.RIGHT or k == ' ' or k == key.ENTER:
           self.next()
+        elif k == 'r':
+          self.restart()
         else:
           self.printCenteredLines([f"Unrecognized key ({k})"])
           continue  # Keep waiting for a valid key
@@ -855,11 +857,11 @@ class BigSolutionDisplay:
 
   def displayCurrent(self) -> None:
     lines = []
-    step = self.steps[self.currentIndex]
+    step = self.steps[self.currentStep]
 
     lines.append("")
     lines.append("")
-    lines.append(f"Step {self.currentIndex + 1} of {len(self.steps)}:")
+    lines.append(f"Step {self.currentStep + 1} of {len(self.steps)}:")
 
     addlInfo = []
     addlInfo.append(COLOR_NAMES[step.colorMoved])
@@ -901,18 +903,30 @@ class BigSolutionDisplay:
     centeredLines = [line.center(BigSolutionDisplay.SCREEN_WIDTH) for line in lines]
     print("\n".join(centeredLines), flush=True)
 
-  def next(self) -> None:
-    if self.currentIndex < len(self.steps) - 1:
-      self.currentIndex += 1
-      self.displayCurrent()
-    else:
-      print("Already at the last step.")
-  def previous(self) -> None:
-    if self.currentIndex > 0:
-      self.currentIndex -= 1
-      self.displayCurrent()
-    else:
+  def restart(self) -> None:
+    if not self._hasPrev():
       print("Already at the first step.")
+      return
+    self.currentStep = 0
+    self.displayCurrent()
+  def next(self) -> None:
+    if not self._hasNext():
+      print("Already at the last step.")
+      return
+    self.currentStep += 1
+    self.displayCurrent()
+  def previous(self) -> None:
+    if not self._hasPrev():
+      print("Already at the first step.")
+      return
+    self.currentStep -= 1
+    self.displayCurrent()
+
+  def _hasNext(self) -> bool:
+    return self.currentStep < len(self.steps) -1
+  def _hasPrev(self) -> None:
+    return self.currentStep > 0
+
 
 def playGame(game: "Game"):
   currentGame = game
