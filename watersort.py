@@ -828,6 +828,7 @@ class Game:
     return self._numMoves
 
 class BigSolutionDisplay:
+  rootGame: "Game"
   _presteps: deque[SolutionStep]
   _steps: deque[SolutionStep]
   _poststeps: deque[SolutionStep]
@@ -845,6 +846,8 @@ class BigSolutionDisplay:
   SCREEN_WIDTH = 80
 
   def __init__(self, game: Game):
+    self.rootGame = game.root
+
     self._presteps = deque()
     self._steps = game._prepareSolutionSteps()
     self._poststeps = deque()
@@ -967,11 +970,12 @@ class BigSolutionDisplay:
     symbols = f"{start + 1}→{end + 1}"
     lines.extend(self._prepareBigCharLines(symbols))
 
-    if step.numMoved > 1:
-      curMoved = self._currentSpacesMoved if self._currentSpacesMoved else 1
-      lines.extend(self._prepareBigDotLines(BigShades.Fill * curMoved + BigShades.Medium * (step.numMoved - curMoved)))
-    else:
-      lines.extend(self._prepareBigDotLines(None))
+    if self._usePerSpaceDots():
+      if step.numMoved > 1:
+        curMoved = self._currentSpacesMoved if self._currentSpacesMoved else 1
+        lines.extend(self._prepareBigDotLines(BigShades.Fill * curMoved + BigShades.Medium * (step.numMoved - curMoved)))
+      else:
+        lines.extend(self._prepareBigDotLines(None))
 
     return (lines, step.colorMoved)
   def _preparePostLines(self, step: SolutionStep):
@@ -1031,7 +1035,8 @@ class BigSolutionDisplay:
     curStep, steps = self._getQueue()
     numToMove = steps[curStep].numMoved
 
-    if not wholeStep and numToMove and self._currentSpacesMoved < numToMove:
+    partialStepsEnabled = not wholeStep and self._usePerSpaceDots() and numToMove
+    if partialStepsEnabled and self._currentSpacesMoved < numToMove:
       self._currentSpacesMoved += 1 if self._currentSpacesMoved else 2 # If set to zero, it was treated as 1 anyways
     else:
       self._currentSpacesMoved = 1
@@ -1105,6 +1110,9 @@ class BigSolutionDisplay:
       self.__currentPoststep = newStep
     else:
       raise "Unknown current stage: " + self._currentStage
+
+  def _usePerSpaceDots(self) -> bool:
+    return self.rootGame.blindMode
 
 
 
