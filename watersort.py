@@ -1013,20 +1013,27 @@ class BigSolutionDisplay:
       return
     self.__currentStep = 0
     self.__currentPoststep = 0
+    self._currentSpacesMoved = 0
     self._currentStage = "GAME"
     self.displayCurrent()
-  def next(self) -> None:
+  def next(self, wholeStep=False) -> None:
     if not self._hasNext():
       print("Already at the last step.")
       return
 
     curStep, steps = self._getQueue()
-    if curStep < len(steps) - 1:
-      self._setStep(curStep+1)
-    elif self._currentStage == "PRE":
-      self._currentStage = "GAME"
-    elif self._currentStage == "GAME":
-      self._currentStage = "POST"
+    numToMove = steps[curStep].numMoved
+
+    if not wholeStep and numToMove and self._currentSpacesMoved < numToMove:
+      self._currentSpacesMoved += 1 if self._currentSpacesMoved else 2 # If set to zero, it was treated as 1 anyways
+    else:
+      self._currentSpacesMoved = 1
+      if curStep < len(steps) - 1:
+        self._setStep(curStep+1)
+      elif self._currentStage == "PRE":
+        self._currentStage = "GAME"
+      elif self._currentStage == "GAME":
+        self._currentStage = "POST"
 
     self.displayCurrent()
   def previous(self) -> None:
@@ -1035,12 +1042,17 @@ class BigSolutionDisplay:
       return
 
     curStep, _steps = self._getQueue()
+    # Don't walk backward through individual spaces
     if curStep > 0:
       self._setStep(curStep-1)
     elif self._currentStage == "POST":
       self._currentStage = "GAME"
     elif self._currentStage == "GAME":
       self._currentStage == "PRE"
+
+    # Always set the spaces to "all moved"
+    numToMove = self._getCurStep().numMoved
+    self._currentSpacesMoved = numToMove if numToMove else 0
 
     self.displayCurrent()
 
@@ -1074,6 +1086,9 @@ class BigSolutionDisplay:
       return (self.__currentPoststep, self._poststeps)
     else:
       raise "Unknown current stage: " + self._currentStage
+  def _getCurStep(self) -> SolutionStep:
+    curStep, steps = self._getQueue()
+    return steps[curStep]
   def _setStep(self, newStep) -> None:
     if self._currentStage == "PRE":
       self.__currentPrestep = newStep
