@@ -898,7 +898,7 @@ class BigSolutionDisplay:
         elif k == 'p' or k == 'b':
           self.previous()
         elif k == 'n' or k == 'f' or k == ' ' or k == '':
-          self.next()
+          self.next(wholeStep=(k == 'n'))
         elif k == 'r':
           self.restart()
         elif USE_READCHAR and (k == key.UP or k == key.LEFT):
