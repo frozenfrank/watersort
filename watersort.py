@@ -5,7 +5,7 @@ from collections import deque, defaultdict
 from resources import COLOR_CODES, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar, BigShades
 from math import floor, log
 import random
-from colorama import Style
+from colorama import Fore, Style
 from colorama.ansi import clear_screen
 from time import time
 from typing import Callable, Literal
@@ -938,8 +938,7 @@ class BigSolutionDisplay:
     lines.append("")
 
     if self.__hasDisplayedStep: print(clear_screen())
-    print(formatVialColor(color))
-    self.printCenteredLines(lines)
+    self.printCenteredLines(lines, linePrefix=formatVialColor(color), linePostfix=Style.RESET_ALL)
     print(Style.RESET_ALL)
 
     self.__hasDisplayedStep = True
@@ -991,9 +990,9 @@ class BigSolutionDisplay:
     bigChars = BigShades.FromShading(dots)
     return ["", *BigShades.FormatSingleLine(*bigChars, spacing=3), ""]
 
-  def printCenteredLines(self, lines: list[str]) -> None:
+  def printCenteredLines(self, lines: list[str], linePrefix = "", linePostfix = "") -> None:
     centeredLines = [line.center(BigSolutionDisplay.SCREEN_WIDTH) for line in lines]
-    print("\n".join(centeredLines), flush=True)
+    print(linePrefix + (linePostfix + "\n"+linePrefix).join(centeredLines) + linePostfix, flush=True)
 
   def restart(self) -> None:
     if not self._hasPrev():
