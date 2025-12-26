@@ -20,7 +20,7 @@ if USE_READCHAR:
 INSTALLED_BASE_PATH = ""
 WRITE_FILES_TO_ABSOLUTE_PATH = False
 
-SOLVER_VERSION = 1
+SOLVER_VERSION = 2
 ANALYZER_VERSION = 5
 
 NUM_SPACES_PER_VIAL = 4
@@ -653,6 +653,10 @@ class Game:
 
     # Compute additional fields
     willComplete = endOnlyColor and startNumOnTop == endEmptySpaces
+
+    # When completing a vial, never move more spaces than necessary
+    if willComplete and startNumOnTop > endNumOnTop:
+      return INVALID_MOVE
 
     # It's valid
     return (True, startColor, endColor, endEmptySpaces, willComplete)
