@@ -7,6 +7,7 @@ MONTH_ABBRS = [month[0:3].lower() for month in MONTHS]
 RESERVED_COLORS = set(["?", "-"])
 
 COLOR_CODES = defaultdict(str, {
+  "bl": Back.BLACK + Fore.LIGHTWHITE_EX,          # Black (System)
   "m": Back.CYAN,                                 # Mint
   "g": Back.LIGHTBLACK_EX + Fore.WHITE,           # Gray
   "gr": "",                                       # Green (Occasionally)
@@ -25,6 +26,7 @@ COLOR_CODES = defaultdict(str, {
 })
 
 COLOR_NAMES = defaultdict(lambda: "Unrecognized", {
+  "bl": "Black",
   "m": "Mint",
   "g": "Gray",
   "gr": "Green",
@@ -63,6 +65,12 @@ class BigChar:
     for i in range(BigChar._height):
       resultLines[i] += separator.join(map(lambda digit: digit._lines[i], digits))
     return resultLines
+
+  @staticmethod
+  def PrintSymbols(symbols: str) -> None:
+    bigChars = BigChar.FromSymbols(symbols)
+    lines = ["\n", *BigChar.FormatSingleLine(*bigChars)]
+    print("\n".join(lines))
 
 
   def __init__(self, chars: str, width = None):
@@ -175,6 +183,123 @@ BIG_DIGITS = list(map(BigChar, [
 def parseCharText(text: str) -> tuple[str, "BigChar"]:
   return text[0], BigChar(text[1:])
 BIG_SYMBOLS = defaultdict(lambda: BIG_SYMBOLS["□"], map(parseCharText, [
+"""A
+   ###
+  ## ##
+ ##   ##
+ #######
+ ##   ##
+##     ##
+##     ##
+""",
+"""C
+  ####
+ ##  ##
+##
+##
+##
+ ##  ##
+  ####
+""",
+"""D
+#####
+##   ##
+##     ##
+##     ##
+##     ##
+##   ##
+#####
+""",
+"""E
+#######
+##
+##
+####
+##
+##
+#######
+""",
+"""I
+########
+   ##
+   ##
+   ##
+   ##
+   ##
+########
+""",
+"""L
+##
+##
+##
+##
+##
+##
+#######
+""",
+"""N
+##    ##
+###   ##
+####  ##
+## ## ##
+##  ####
+##   ###
+##    ##
+""",
+"""O
+   ###
+ ##   ##
+##     ##
+##     ##
+##     ##
+ ##   ##
+   ###
+""",
+"""P
+######
+##   ##
+##   ##
+#####
+##
+##
+##
+""",
+"""R
+######
+##   ##
+##   ##
+#####
+##  ##
+##   ##
+##    ##
+""",
+"""S
+  ####
+##    ##
+ ##
+   ##
+     ##
+##    ##
+  ####
+""",
+"""T
+##########
+    ##
+    ##
+    ##
+    ##
+    ##
+    ##
+""",
+"""U
+##     ##
+##     ##
+##     ##
+##     ##
+##     ##
+ ##   ##
+  #####
+""",
 """→
 
            @
@@ -183,6 +308,15 @@ BIG_SYMBOLS = defaultdict(lambda: BIG_SYMBOLS["□"], map(parseCharText, [
            @@
            @
 
+""",
+"""?
+  ###
+##   ##
+     ##
+   ##
+   ##
+
+   ##
 """,
 """.
 
@@ -201,6 +335,15 @@ BIG_SYMBOLS = defaultdict(lambda: BIG_SYMBOLS["□"], map(parseCharText, [
 │     │
 └─────┘
 
+""",
+"""✅
+        ✅
+       ✅
+      ✅
+     ✅
+✅  ✅
+ ✅✅
+  ✅
 """,
 ]))
 

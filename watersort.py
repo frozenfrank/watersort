@@ -1,7 +1,6 @@
 from datetime import datetime
 import signal
 import os
-from readchar import readkey, key
 from collections import deque, defaultdict
 from resources import COLOR_CODES, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar
 from math import floor, log
@@ -9,10 +8,14 @@ import random
 from colorama import Style
 from colorama.ansi import clear_screen
 from time import time
-from typing import Callable
+from typing import Callable, Literal
 import copy;
 import itertools;
 import sys;
+
+USE_READCHAR = True
+if USE_READCHAR:
+  from readchar import readkey, key
 
 INSTALLED_BASE_PATH = ""
 WRITE_FILES_TO_ABSOLUTE_PATH = False
@@ -51,6 +54,9 @@ class SolutionStep:
   game: "Game"
   move: Move
 
+  # For special steps
+  bigText: str|None
+
   # Fields received from MoveInfo
   info: "Game.MoveInfo"
   colorMoved: str
@@ -62,7 +68,9 @@ class SolutionStep:
   # Comparison to previously reported solution
   isSameAsPrevious: bool|None
 
-  def __init__(self, game: "Game"=None, info: "Game.MoveInfo"=None):
+  def __init__(self, game: "Game"=None, info: "Game.MoveInfo"=None, bigText: str = None):
+    self.bigText = bigText
+
     self.game = game
     self.move = game.move if game else None
 
@@ -812,18 +820,57 @@ class Game:
     return self._numMoves
 
 class BigSolutionDisplay:
-  steps: deque[SolutionStep]
-  currentIndex: int
-  hasDisplayedStep: bool = False
+  _presteps: deque[SolutionStep]
+  _steps: deque[SolutionStep]
+  _poststeps: deque[SolutionStep]
+
+  __currentPrestep: int
+  __currentStep: int
+  __currentPoststep: int
+
+  _currentStage: Literal["PRE","GAME","POST"]
+  """ Pre -> Game -> Post. Can advance back from POST, but can never return to PRE. """
+  __hasDisplayedStep: bool = False
 
   SCREEN_WIDTH = 80
 
   def __init__(self, game: Game):
-    self.steps = game._prepareSolutionSteps()
-    self.currentIndex = 0
+    self._presteps = deque()
+    self._steps = game._prepareSolutionSteps()
+    self._poststeps = deque()
+
+    self.__currentPrestep = 0
+    self.__currentStep = 0
+    self.__currentPoststep = 0
+    self._currentStage = "GAME"
+
+    if self._steps:
+      self.__init_presteps()
+      self.__init_poststeps()
+  def __init_presteps(self):
+    if self._steps[0].isSameAsPrevious == None:
+      return # No comparison to a previous print sequence
+
+    # Determine text to display
+    bigText: str = None
+    firstNewIndex, firstNewStep = next(((i, s) for i, s in enumerate(self._steps) if s.isSameAsPrevious is not True), (None, None))
+    if firstNewStep == None:
+      bigText = "REPEAT"  # Expected to be unused
+    elif firstNewStep.isSameAsPrevious == False:
+      bigText = "RESET"
+    else:
+      bigText = "CONTINUE"  # Extending a non-divergent path
+      self.__currentStep = firstNewIndex # Pick up where we left off
+
+    # Add step to queue
+    self._presteps.append(SolutionStep(bigText=bigText))
+    self._currentStage = "PRE"
+  def __init_poststeps(self):
+    bigText = "DONE✅" if self._steps[-1].game.isFinished() else "COLOR?"
+    self._poststeps.append(SolutionStep(bigText=bigText))
 
   def start(self):
-    if not self.steps:
+    if not self._steps:
       print("No steps to display.")
       return
 
@@ -832,18 +879,24 @@ class BigSolutionDisplay:
 
     # Main loop
     # When any key is pressed, move forward
-    while running and self.currentIndex < len(self.steps) - 1:
+    while running and self._hasNext():
       # Clear the screen
       self.printCenteredLines(["Press Space to advance. Use arrow keys to navigate. Press 'q' to quit."])
 
       while True:
-        k = readkey()
+        k = readkey() if USE_READCHAR else input()
 
         if k == 'q' or k == 'Q':
           running = False
-        elif k == 'p' or k == 'b' or k == key.UP or k == key.LEFT:
+        elif k == 'p' or k == 'b':
           self.previous()
-        elif k == 'n' or k == 'f' or k == key.DOWN or k == key.RIGHT or k == ' ' or k == key.ENTER:
+        elif k == 'n' or k == 'f' or k == ' ' or k == '':
+          self.next()
+        elif k == 'r':
+          self.restart()
+        elif USE_READCHAR and (k == key.UP or k == key.LEFT):
+          self.previous()
+        elif USE_READCHAR and (k == key.DOWN or k == key.RIGHT or k == key.ENTER):
           self.next()
         else:
           self.printCenteredLines([f"Unrecognized key ({k})"])
@@ -855,11 +908,42 @@ class BigSolutionDisplay:
 
   def displayCurrent(self) -> None:
     lines = []
-    step = self.steps[self.currentIndex]
 
     lines.append("")
     lines.append("")
-    lines.append(f"Step {self.currentIndex + 1} of {len(self.steps)}:")
+
+    curStep, steps = self._getQueue()
+    step = steps[curStep]
+
+    if self._currentStage == "PRE":
+      stageLines, color = self._preparePreLines(step)
+    elif self._currentStage == "GAME":
+      stageLines, color = self._prepareGameLines(step)
+    elif self._currentStage == "POST":
+      stageLines, color = self._preparePostLines(step)
+    else:
+      raise "Unknown current stage: " + self._currentStage
+
+    lines.extend(stageLines)
+    if not color: color = "bl"
+
+    lines.append("")
+    lines.append("")
+
+    if self.__hasDisplayedStep: print(clear_screen())
+    print(formatVialColor(color))
+    self.printCenteredLines(lines)
+    print(Style.RESET_ALL)
+
+    self.__hasDisplayedStep = True
+  def _preparePreLines(self, step: SolutionStep):
+    lines = []
+    lines.extend(self._prepareBigCharLines(step.bigText))
+    return (lines, None)
+  def _prepareGameLines(self, step: SolutionStep):
+    lines = []
+
+    lines.append(f"Step {self.__currentStep + 1} of {len(self._steps)}:")
 
     addlInfo = []
     addlInfo.append(COLOR_NAMES[step.colorMoved])
@@ -869,16 +953,13 @@ class BigSolutionDisplay:
       addlInfo.append("Repeated path" if step.isSameAsPrevious else "New path")
     lines.append(" | ".join(addlInfo))
 
-    lines.extend(self._prepareBigMoveLines(step.move))
-    lines.append("")
-    lines.append("")
+    start, end = step.move
+    symbols = f"{start + 1}→{end + 1}"
+    lines.extend(self._prepareBigCharLines(symbols))
 
-    if self.hasDisplayedStep: print(clear_screen())
-    print(formatVialColor(step.colorMoved))
-    self.printCenteredLines(lines)
-    print(Style.RESET_ALL)
-
-    self.hasDisplayedStep = True
+    return (lines, step.colorMoved)
+  def _preparePostLines(self, step: SolutionStep):
+    return self._preparePreLines(step)
 
   @staticmethod
   def _getMoveDescriptor(step: SolutionStep) -> str:
@@ -891,9 +972,7 @@ class BigSolutionDisplay:
     else:
       return "Move"
 
-  def _prepareBigMoveLines(self, move: Move) -> None:
-    start, end = move
-    symbols = f"{start + 1}→{end + 1}"
+  def _prepareBigCharLines(self, symbols: str) -> None:
     bigSymbols = BigChar.FromSymbols(symbols)
     return ["", *BigChar.FormatSingleLine(*bigSymbols, spacing=4), ""]
 
@@ -901,18 +980,84 @@ class BigSolutionDisplay:
     centeredLines = [line.center(BigSolutionDisplay.SCREEN_WIDTH) for line in lines]
     print("\n".join(centeredLines), flush=True)
 
-  def next(self) -> None:
-    if self.currentIndex < len(self.steps) - 1:
-      self.currentIndex += 1
-      self.displayCurrent()
-    else:
-      print("Already at the last step.")
-  def previous(self) -> None:
-    if self.currentIndex > 0:
-      self.currentIndex -= 1
-      self.displayCurrent()
-    else:
+  def restart(self) -> None:
+    if not self._hasPrev():
       print("Already at the first step.")
+      return
+    self.__currentStep = 0
+    self.__currentPoststep = 0
+    self._currentStage = "GAME"
+    self.displayCurrent()
+  def next(self) -> None:
+    if not self._hasNext():
+      print("Already at the last step.")
+      return
+
+    curStep, steps = self._getQueue()
+    if curStep < len(steps) - 1:
+      self._setStep(curStep+1)
+    elif self._currentStage == "PRE":
+      self._currentStage = "GAME"
+    elif self._currentStage == "GAME":
+      self._currentStage = "POST"
+
+    self.displayCurrent()
+  def previous(self) -> None:
+    if not self._hasPrev():
+      print("Already at the first step.")
+      return
+
+    curStep, _steps = self._getQueue()
+    if curStep > 0:
+      self._setStep(curStep-1)
+    elif self._currentStage == "POST":
+      self._currentStage = "GAME"
+    elif self._currentStage == "GAME":
+      self._currentStage == "PRE"
+
+    self.displayCurrent()
+
+  def _hasNext(self) -> bool:
+    if self._currentStage == "PRE":
+      return True # Always have a GAME stage
+
+    curStep, steps = self._getQueue()
+    if curStep < len(steps) -1:
+      return True # There are remaining steps in this stage
+
+    if self._currentStage == "POST":
+      return False # Post is the last stage
+
+    return len(self._poststeps) > 0 # The POST stage is available
+  def _hasPrev(self) -> None:
+    if self._currentStage == "POST":
+      return True # Always have a GAME stage
+
+    curStep, _steps = self._getQueue()
+    if curStep > 0:
+      return True # There are previous steps in this stage
+
+    return False # Cannot return from GAME nor PRE stages
+  def _getQueue(self) -> tuple[int, deque["SolutionStep"]]:
+    if self._currentStage == "PRE":
+      return (self.__currentPrestep, self._presteps)
+    elif self._currentStage == "GAME":
+      return (self.__currentStep, self._steps)
+    elif self._currentStage == "POST":
+      return (self.__currentPoststep, self._poststeps)
+    else:
+      raise "Unknown current stage: " + self._currentStage
+  def _setStep(self, newStep) -> None:
+    if self._currentStage == "PRE":
+      self.__currentPrestep = newStep
+    elif self._currentStage == "GAME":
+      self.__currentStep = newStep
+    elif self._currentStage == "POST":
+      self.__currentPoststep = newStep
+    else:
+      raise "Unknown current stage: " + self._currentStage
+
+
 
 def playGame(game: "Game"):
   currentGame = game
@@ -1452,6 +1597,7 @@ def chooseInteraction():
 
   quit(0)
 def debugLevel(level,dfrSearchAttempts=DFR_SEARCH_ATTEMPTS):
+  print(f"\n\nDEBUGGING LEVEL: {level}\n\n")
   gameFileName = generateFileName(level)
   originalGame = readGameFile(gameFileName, level)
   originalGame.level = level
