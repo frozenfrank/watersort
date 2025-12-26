@@ -991,8 +991,21 @@ class BigSolutionDisplay:
     return ["", *BigShades.FormatSingleLine(*bigChars, spacing=3), ""]
 
   def printCenteredLines(self, lines: list[str], linePrefix = "", linePostfix = "") -> None:
-    centeredLines = [line.center(BigSolutionDisplay.SCREEN_WIDTH) for line in lines]
+    """
+    Takes an array of lines, centers them, and prints them to the screen.
+    @param lines A list of strings to print. Can contain formatting characters separated from the text by Chr(1).
+    @param linePrefix Inserted before every line after centering
+    @param linePostfix Appended to each line after centering
+    """
+    centeredLines = [self.__centerContent(line) for line in lines]
     print(linePrefix + (linePostfix + "\n"+linePrefix).join(centeredLines) + linePostfix, flush=True)
+  def __centerContent(self, line: str) -> str:
+    style = ""
+    content = line
+    if chr(1) in line:
+      style, content = line.split(chr(1), maxsplit=1)
+    return style + content.center(BigSolutionDisplay.SCREEN_WIDTH)
+
 
   def restart(self) -> None:
     if not self._hasPrev():
