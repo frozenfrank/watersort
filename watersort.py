@@ -2,10 +2,10 @@ from datetime import datetime
 import signal
 import os
 from collections import deque, defaultdict
-from resources import COLOR_CODES, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar
+from resources import COLOR_CODES, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar, BigShades
 from math import floor, log
 import random
-from colorama import Style
+from colorama import Fore, Style
 from colorama.ansi import clear_screen
 from time import time
 from typing import Callable, Literal
@@ -834,6 +834,8 @@ class BigSolutionDisplay:
 
   _currentStage: Literal["PRE","GAME","POST"]
   """ Pre -> Game -> Post. Can advance back from POST, but can never return to PRE. """
+  _currentSpacesMoved: int
+  """The number of spaces that will have been moved after the user completes the indicated action."""
   __hasDisplayedStep: bool = False
 
   SCREEN_WIDTH = 80
@@ -847,6 +849,7 @@ class BigSolutionDisplay:
     self.__currentStep = 0
     self.__currentPoststep = 0
     self._currentStage = "GAME"
+    self._currentSpacesMoved = 0
 
     if self._steps:
       self.__init_presteps()
@@ -895,7 +898,7 @@ class BigSolutionDisplay:
         elif k == 'p' or k == 'b':
           self.previous()
         elif k == 'n' or k == 'f' or k == ' ' or k == '':
-          self.next()
+          self.next(wholeStep=(k == 'n'))
         elif k == 'r':
           self.restart()
         elif USE_READCHAR and (k == key.UP or k == key.LEFT):
@@ -935,8 +938,7 @@ class BigSolutionDisplay:
     lines.append("")
 
     if self.__hasDisplayedStep: print(clear_screen())
-    print(formatVialColor(color))
-    self.printCenteredLines(lines)
+    self.printCenteredLines(lines, linePrefix=formatVialColor(color), linePostfix=Style.RESET_ALL)
     print(Style.RESET_ALL)
 
     self.__hasDisplayedStep = True
@@ -961,6 +963,12 @@ class BigSolutionDisplay:
     symbols = f"{start + 1}→{end + 1}"
     lines.extend(self._prepareBigCharLines(symbols))
 
+    if step.numMoved > 1:
+      curMoved = self._currentSpacesMoved if self._currentSpacesMoved else 1
+      lines.extend(self._prepareBigDotLines(BigShades.Fill * curMoved + BigShades.Medium * (step.numMoved - curMoved)))
+    else:
+      lines.extend(self._prepareBigDotLines(None))
+
     return (lines, step.colorMoved)
   def _preparePostLines(self, step: SolutionStep):
     return self._preparePreLines(step)
@@ -977,12 +985,30 @@ class BigSolutionDisplay:
       return "Move"
 
   def _prepareBigCharLines(self, symbols: str) -> None:
-    bigSymbols = BigChar.FromSymbols(symbols)
-    return ["", *BigChar.FormatSingleLine(*bigSymbols, spacing=4), ""]
+    bigChars = BigChar.FromSymbols(symbols)
+    return ["", *BigChar.FormatSingleLine(*bigChars, spacing=4), ""]
 
-  def printCenteredLines(self, lines: list[str]) -> None:
-    centeredLines = [line.center(BigSolutionDisplay.SCREEN_WIDTH) for line in lines]
-    print("\n".join(centeredLines), flush=True)
+  def _prepareBigDotLines(self, dots: str) -> None:
+    if not dots: return [""] * 4 # The dots use four lines of space
+    bigChars = BigShades.FromShading(dots)
+    return ["", *BigShades.FormatSingleLine(*bigChars, spacing=3), ""]
+
+  def printCenteredLines(self, lines: list[str], linePrefix = "", linePostfix = "") -> None:
+    """
+    Takes an array of lines, centers them, and prints them to the screen.
+    @param lines A list of strings to print. Can contain formatting characters separated from the text by Chr(1).
+    @param linePrefix Inserted before every line after centering
+    @param linePostfix Appended to each line after centering
+    """
+    centeredLines = [self.__centerContent(line) for line in lines]
+    print(linePrefix + (linePostfix + "\n"+linePrefix).join(centeredLines) + linePostfix, flush=True)
+  def __centerContent(self, line: str) -> str:
+    style = ""
+    content = line
+    if chr(1) in line:
+      style, content = line.split(chr(1), maxsplit=1)
+    return style + content.center(BigSolutionDisplay.SCREEN_WIDTH)
+
 
   def restart(self) -> None:
     if not self._hasPrev():
@@ -990,20 +1016,27 @@ class BigSolutionDisplay:
       return
     self.__currentStep = 0
     self.__currentPoststep = 0
+    self._currentSpacesMoved = 0
     self._currentStage = "GAME"
     self.displayCurrent()
-  def next(self) -> None:
+  def next(self, wholeStep=False) -> None:
     if not self._hasNext():
       print("Already at the last step.")
       return
 
     curStep, steps = self._getQueue()
-    if curStep < len(steps) - 1:
-      self._setStep(curStep+1)
-    elif self._currentStage == "PRE":
-      self._currentStage = "GAME"
-    elif self._currentStage == "GAME":
-      self._currentStage = "POST"
+    numToMove = steps[curStep].numMoved
+
+    if not wholeStep and numToMove and self._currentSpacesMoved < numToMove:
+      self._currentSpacesMoved += 1 if self._currentSpacesMoved else 2 # If set to zero, it was treated as 1 anyways
+    else:
+      self._currentSpacesMoved = 1
+      if curStep < len(steps) - 1:
+        self._setStep(curStep+1)
+      elif self._currentStage == "PRE":
+        self._currentStage = "GAME"
+      elif self._currentStage == "GAME":
+        self._currentStage = "POST"
 
     self.displayCurrent()
   def previous(self) -> None:
@@ -1012,12 +1045,17 @@ class BigSolutionDisplay:
       return
 
     curStep, _steps = self._getQueue()
+    # Don't walk backward through individual spaces
     if curStep > 0:
       self._setStep(curStep-1)
     elif self._currentStage == "POST":
       self._currentStage = "GAME"
     elif self._currentStage == "GAME":
       self._currentStage == "PRE"
+
+    # Always set the spaces to "all moved"
+    numToMove = self._getCurStep().numMoved
+    self._currentSpacesMoved = numToMove if numToMove else 0
 
     self.displayCurrent()
 
@@ -1051,6 +1089,9 @@ class BigSolutionDisplay:
       return (self.__currentPoststep, self._poststeps)
     else:
       raise "Unknown current stage: " + self._currentStage
+  def _getCurStep(self) -> SolutionStep:
+    curStep, steps = self._getQueue()
+    return steps[curStep]
   def _setStep(self, newStep) -> None:
     if self._currentStage == "PRE":
       self.__currentPrestep = newStep

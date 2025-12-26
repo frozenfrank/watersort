@@ -14,10 +14,10 @@ git mv level.txt YEAR/level.txt
 ## Ideas/Todo
 
 - Big Solution Display
-  - [ ] Display big progress dots for multiple colors to move
+  - [x] Display big progress dots for multiple colors to move
     - [ ] Connected to "blind" mode stored in the game, similar to pour mode
-  - [ ] Require multiple button presses to advance through multiple spaces
-  - [ ] Optionally enable/disable the multi-space advance button
+  - [x] Require multiple button presses to advance through multiple spaces
+  - [x] Optionally enable/disable the multi-space advance button
   - [x] Add a "Done" screen with checkmarks
   - [x] Add a "Reset" screen at the beginning
   - [ ] Indicate current level in top corner of box
