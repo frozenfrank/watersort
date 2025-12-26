@@ -18,8 +18,8 @@ git mv level.txt YEAR/level.txt
     - [ ] Connected to "blind" mode stored in the game, similar to pour mode
   - [ ] Require multiple button presses to advance through multiple spaces
   - [ ] Optionally enable/disable the multi-space advance button
-  - [ ] Add a "Done" screen with checkmarks
-  - [ ] Add a "Reset" screen at the beginning
+  - [x] Add a "Done" screen with checkmarks
+  - [x] Add a "Reset" screen at the beginning
   - [ ] Indicate current level in top corner of box
   - [ ] Show number of moves until next color is complete
   - [ ] Show whether path eventually diverges, or extends. Indicate when crossing into new territory.
