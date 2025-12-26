@@ -864,6 +864,9 @@ class BigSolutionDisplay:
     self.__currentPrestep = 0
     self._currentStage = "PRE"
   def __init_poststeps(self):
+    if not self._steps[-1].game.isFinished():
+      return # Only show when the game is finished
+
     self._poststeps.append(SolutionStep(bigText="DONE"))
     self.__currentPoststep=0
 
@@ -877,7 +880,7 @@ class BigSolutionDisplay:
 
     # Main loop
     # When any key is pressed, move forward
-    while running and self.__currentStep < len(self._steps) - 1:
+    while running and self._hasNext():
       # Clear the screen
       self.printCenteredLines(["Press Space to advance. Use arrow keys to navigate. Press 'q' to quit."])
 
@@ -914,7 +917,7 @@ class BigSolutionDisplay:
     elif self._currentStage == "GAME":
       stageLines, color = self._prepareGameLines(step)
     elif self._currentStage == "POST":
-      pass
+      stageLines, color = self._preparePostLines(step)
     else:
       raise "Unknown current stage: " + self._currentStage
 
@@ -952,6 +955,8 @@ class BigSolutionDisplay:
     lines.extend(self._prepareBigCharLines(symbols))
 
     return (lines, step.colorMoved)
+  def _preparePostLines(self, step: SolutionStep):
+    return self._preparePreLines(step)
 
   @staticmethod
   def _getMoveDescriptor(step: SolutionStep) -> str:
