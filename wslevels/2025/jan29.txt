@@ -1,0 +1,16 @@
+i
+jan29
+13
+r	b	p	p
+o	gn	g	gn
+o	lb	b	lb
+g	g	b	p
+br	pn	gn	r
+pk	m	br	m
+pn	pn	g	gn
+b	r	m	m
+o	lb	pk	lb
+br	pk	pk	r
+p	o	pn	br
+-	-	-	-
+-	-	-	-

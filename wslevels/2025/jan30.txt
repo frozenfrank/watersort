@@ -1,0 +1,14 @@
+i
+jan30 pour
+11
+p	pn	m	b
+b	pk	p	lb
+o	m	g	b
+lb	o	o	pn
+pn	r	r	g
+m	pk	o	b
+lb	p	r	m
+pk	r	pk	g
+p	g	lb	pn
+-	-	-	-
+-	-	-	-
