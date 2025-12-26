@@ -892,7 +892,6 @@ class BigSolutionDisplay:
     self.displayCurrent()
 
     # Main loop
-    # When any key is pressed, move forward
     while running and self._hasNext():
       # Clear the screen
       self.printCenteredLines(["Press Space to advance. Use arrow keys to navigate. Press 'q' to quit."])
@@ -902,16 +901,16 @@ class BigSolutionDisplay:
 
         if k == 'q' or k == 'Q':
           running = False
-        elif k == 'p' or k == 'b':
-          self.previous()
         elif k == 'n' or k == 'f' or k == ' ' or k == '':
           self.next(wholeStep=(k == 'n'))
-        elif k == 'r':
-          self.restart()
-        elif USE_READCHAR and (k == key.UP or k == key.LEFT):
-          self.previous()
         elif USE_READCHAR and (k == key.DOWN or k == key.RIGHT or k == key.ENTER):
           self.next()
+        elif k == 'p' or k == 'b':
+          self.previous()
+        elif USE_READCHAR and (k == key.UP or k == key.LEFT):
+          self.previous()
+        elif k == 'r':
+          self.restart()
         else:
           self.printCenteredLines([f"Unrecognized key ({k})"])
           continue  # Keep waiting for a valid key
