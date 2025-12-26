@@ -64,6 +64,12 @@ class BigChar:
       resultLines[i] += separator.join(map(lambda digit: digit._lines[i], digits))
     return resultLines
 
+  @staticmethod
+  def PrintSymbols(symbols: str) -> None:
+    bigChars = BigChar.FromSymbols(symbols)
+    lines = ["\n", *BigChar.FormatSingleLine(*bigChars)]
+    print("\n".join(lines))
+
 
   def __init__(self, chars: str, width = None):
     lines = chars.split("\n")
