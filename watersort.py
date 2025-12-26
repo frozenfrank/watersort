@@ -864,14 +864,12 @@ class BigSolutionDisplay:
 
     # Add step to queue
     self._presteps.append(SolutionStep(bigText=bigText))
-    self.__currentPrestep = 0
     self._currentStage = "PRE"
   def __init_poststeps(self):
     if not self._steps[-1].game.isFinished():
       return # Only show when the game is finished
 
     self._poststeps.append(SolutionStep(bigText="DONE"))
-    self.__currentPoststep=0
 
   def start(self):
     if not self._steps:
@@ -1003,7 +1001,7 @@ class BigSolutionDisplay:
     elif self._currentStage == "PRE":
       self._currentStage = "GAME"
     elif self._currentStage == "GAME":
-      self._currentStage == "POST"
+      self._currentStage = "POST"
 
     self.displayCurrent()
   def previous(self) -> None:
@@ -1601,6 +1599,7 @@ def chooseInteraction():
 
   quit(0)
 def debugLevel(level,dfrSearchAttempts=DFR_SEARCH_ATTEMPTS):
+  print(f"\n\nDEBUGGING LEVEL: {level}\n\n")
   gameFileName = generateFileName(level)
   originalGame = readGameFile(gameFileName, level)
   originalGame.level = level
