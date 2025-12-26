@@ -966,6 +966,8 @@ class BigSolutionDisplay:
     if step.numMoved > 1:
       curMoved = self._currentSpacesMoved if self._currentSpacesMoved else 1
       lines.extend(self._prepareBigDotLines(BigShades.Fill * curMoved + BigShades.Medium * (step.numMoved - curMoved)))
+    else:
+      lines.extend(self._prepareBigDotLines(None))
 
     return (lines, step.colorMoved)
   def _preparePostLines(self, step: SolutionStep):
@@ -987,6 +989,7 @@ class BigSolutionDisplay:
     return ["", *BigChar.FormatSingleLine(*bigChars, spacing=4), ""]
 
   def _prepareBigDotLines(self, dots: str) -> None:
+    if not dots: return [""] * 4 # The dots use four lines of space
     bigChars = BigShades.FromShading(dots)
     return ["", *BigShades.FormatSingleLine(*bigChars, spacing=3), ""]
 
