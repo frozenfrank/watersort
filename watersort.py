@@ -902,10 +902,40 @@ class BigSolutionDisplay:
 
   def displayCurrent(self) -> None:
     lines = []
-    step = self._steps[self.__currentStep]
 
     lines.append("")
     lines.append("")
+
+    curStep, steps = self._getQueue()
+    step = steps[curStep]
+
+    if self._currentStage == "PRE":
+      stageLines, color = self._preparePreLines(step)
+    elif self._currentStage == "GAME":
+      stageLines, color = self._prepareGameLines(step)
+    elif self._currentStage == "POST":
+      pass
+    else:
+      raise "Unknown current stage: " + self._currentStage
+
+    lines.extend(stageLines)
+
+    lines.append("")
+    lines.append("")
+
+    if self.__hasDisplayedStep: print(clear_screen())
+    if color: print(formatVialColor(color))
+    self.printCenteredLines(lines)
+    print(Style.RESET_ALL)
+
+    self.__hasDisplayedStep = True
+  def _preparePreLines(self, step: SolutionStep):
+    lines = []
+    lines.extend(self._prepareBigCharLines(step.bigText))
+    return (lines, None)
+  def _prepareGameLines(self, step: SolutionStep):
+    lines = []
+
     lines.append(f"Step {self.__currentStep + 1} of {len(self._steps)}:")
 
     addlInfo = []
@@ -916,16 +946,11 @@ class BigSolutionDisplay:
       addlInfo.append("Repeated path" if step.isSameAsPrevious else "New path")
     lines.append(" | ".join(addlInfo))
 
-    lines.extend(self._prepareBigMoveLines(step.move))
-    lines.append("")
-    lines.append("")
+    start, end = step.move
+    symbols = f"{start + 1}→{end + 1}"
+    lines.extend(self._prepareBigCharLines(symbols))
 
-    if self.__hasDisplayedStep: print(clear_screen())
-    print(formatVialColor(step.colorMoved))
-    self.printCenteredLines(lines)
-    print(Style.RESET_ALL)
-
-    self.__hasDisplayedStep = True
+    return (lines, step.colorMoved)
 
   @staticmethod
   def _getMoveDescriptor(step: SolutionStep) -> str:
@@ -938,9 +963,7 @@ class BigSolutionDisplay:
     else:
       return "Move"
 
-  def _prepareBigMoveLines(self, move: Move) -> None:
-    start, end = move
-    symbols = f"{start + 1}→{end + 1}"
+  def _prepareBigCharLines(self, symbols: str) -> None:
     bigSymbols = BigChar.FromSymbols(symbols)
     return ["", *BigChar.FormatSingleLine(*bigSymbols, spacing=4), ""]
 
