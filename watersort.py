@@ -31,7 +31,7 @@ FORCE_INTERACTION_MODE = None # "a"
 
 SOLVE_METHOD = "DFR"
 VALID_SOLVE_METHODS = set(["MIX", "BFS", "DFS", "DFR"]) # An enum is more accurate, but overkill for this need
-VALID_GAMEPLAY_MODES = set(["normal", "pour"])
+VALID_GAMEPLAY_MODES = set(["drain"])
 
 MIX_SWITCH_THRESHOLD_MOVES = 10
 ENABLE_QUEUE_CHECKS = True # Disable only for temporary testing
@@ -112,7 +112,7 @@ class Game:
   modified: bool # Indicates it's changed from the last read in state
   _colorError: bool
   _hasUnknowns: bool
-  pourMode: bool = None
+  drainMode: bool = None
 
   # Cached for single use calculation
   _COMPLETE_TERM = "complete"
@@ -127,9 +127,9 @@ class Game:
   TOTAL_MOVE_PRINT_WIDTH = COLOR_WIDTH + NUMBER_WIDTH + EXTRA_CHARS + len(COMPLETE_STR)
 
   @staticmethod
-  def Create(vials, pourMode=False) -> "Game":
+  def Create(vials, drainMode=False) -> "Game":
     newGame = Game(vials, None, None)
-    newGame.pourMode = bool(pourMode)
+    newGame.drainMode = bool(drainMode)
     newGame._analyzeColors()
     return newGame
 
@@ -382,7 +382,7 @@ class Game:
             "   -m or -moves            to print the moves to this point\n" +
             "   -b                      to view Big Moves up to this point\n" +
             "   -b on|off|ON            Enable/disable Big Moves by default. Specify ON (all-caps) to skip launching routine.\n" +
-           f"   -gameplay MODE          to switch to pour gameplay ({', '.join(VALID_GAMEPLAY_MODES)})\n" +
+           f"   -gameplay MODE          to toggle other forms of gameplay ({', '.join(VALID_GAMEPLAY_MODES)})\n" +
            f"   -solve METHOD           to change the solve method ({', '.join(VALID_SOLVE_METHODS)})\n" +
             "   -level NUM              to change the level of this game\n" +
             "   -vials NUM              to change the number of vials in the game\n" +
@@ -410,13 +410,13 @@ class Game:
       print(f"Unrecognized gameplay mode: {mode}. Valid modes are: {', '.join(VALID_GAMEPLAY_MODES)}")
       return
 
-    isPour = mode == "pour"
-    if self.root.pourMode == isPour:
+    isDrain = mode == "drain"
+    if self.root.drainMode == isDrain:
       print(f"Gameplay mode is already set to: {mode}. No change made.")
       return
 
     Game.reset = True
-    self.root.pourMode = isPour
+    self.root.drainMode = isDrain
     self.root.modified = True
     print(f"Set gameplay mode to: {mode}. Continue on.")
   def saveOtherColor(self, input: str) -> None:
@@ -481,8 +481,8 @@ class Game:
         lines.append(moveString)
 
     introduction = f"Moves ({len(steps)})"
-    if self.root.pourMode:
-      introduction += " [Pour Gameplay]"
+    if self.root.drainMode:
+      introduction += " [Drain Gameplay]"
     print(introduction + ":" + NEW_LINE + NEW_LINE.join(lines))
 
   __prevPrintedMoves: deque[Move] = None
@@ -545,7 +545,7 @@ class Game:
     start, end = self.move
 
     colorMoved = self.getTopVialColor(end)
-    _, _, numMoved, startEmptySpaces   = self.prev.__countOnTop(colorMoved, start, bottom=self.root.pourMode)
+    _, _, numMoved, startEmptySpaces   = self.prev.__countOnTop(colorMoved, start, bottom=self.root.drainMode)
     complete, _, _, endEmptySpaces     = self.__countOnTop(colorMoved, end)
 
     vacatedVial = numMoved + startEmptySpaces == NUM_SPACES_PER_VIAL
@@ -626,10 +626,10 @@ class Game:
     INVALID_MOVE = (False, None, None, None, False)
     if startVial == endVial:
       return INVALID_MOVE # Can't move to the same place
-    if not self.root.pourMode and self.move and startVial == self.move[1] and endVial == self.move[0]:
+    if not self.root.drainMode and self.move and startVial == self.move[1] and endVial == self.move[0]:
       return INVALID_MOVE # Can't simply undo the previous move
 
-    startColor = self.getTopVialColor(startVial, bottom=self.root.pourMode)
+    startColor = self.getTopVialColor(startVial, bottom=self.root.drainMode)
     if startColor == "-" or startColor == "?":
       return INVALID_MOVE # Can only move an active color
     endColor = self.getTopVialColor(endVial)
@@ -642,7 +642,7 @@ class Game:
       return INVALID_MOVE # End vial is full
 
     # Verify that this vial isn't full
-    startIsComplete, startOnlyColor, startNumOnTop, startEmptySpaces = self.__countOnTop(startColor, startVial, bottom=self.root.pourMode)
+    startIsComplete, startOnlyColor, startNumOnTop, startEmptySpaces = self.__countOnTop(startColor, startVial, bottom=self.root.drainMode)
     if startIsComplete:
       return INVALID_MOVE # Start is fully filled
     if startOnlyColor and endColor == "-":
@@ -699,7 +699,7 @@ class Game:
     moveRange = endSpaces
     startColors = 0
     while piecesMoved < moveRange and piecesMoved < NUM_SPACES_PER_VIAL:
-      idx = NUM_SPACES_PER_VIAL-piecesMoved-1 if self.root.pourMode else piecesMoved
+      idx = NUM_SPACES_PER_VIAL-piecesMoved-1 if self.root.drainMode else piecesMoved
       color = fromVial[idx]
       if color == '-':
         moveRange += 1
@@ -710,8 +710,8 @@ class Game:
         break
       piecesMoved += 1
 
-    # Shift down moved colors in pour mode
-    if self.root.pourMode:
+    # Shift down moved colors in drain mode
+    if self.root.drainMode:
       for i in range(NUM_SPACES_PER_VIAL-1,-1,-1):
         shiftFrom = i - piecesMoved
         shiftColor = "-" if shiftFrom < 0 else fromVial[shiftFrom]
@@ -1423,11 +1423,11 @@ def fPercent(num: float, den: float, roundDigits=1) -> str:
   return str(round(num/den*100, roundDigits)) + "%"
 
 
-def readGameInput(userInteracting: bool, pourMode: bool = None) -> Game:
-  game = _readGame(input, userInteraction=userInteracting, pourMode=pourMode)
+def readGameInput(userInteracting: bool, drainMode: bool = None) -> Game:
+  game = _readGame(input, userInteraction=userInteracting, drainMode=drainMode)
   game.modified = True
   return game
-def readGameFile(gameFileName: str, level: str = None, pourMode: bool = None) -> Game:
+def readGameFile(gameFileName: str, level: str = None, drainMode: bool = None) -> Game:
   gameRead: Game = None
   try:
     gameFile = open(gameFileName, "r")
@@ -1437,8 +1437,8 @@ def readGameFile(gameFileName: str, level: str = None, pourMode: bool = None) ->
     if mode == "i":
       levelLine = nextLine().split()        # Read level name
       level = levelLine[0]
-      pourMode = "pour" in levelLine
-    gameRead = _readGame(nextLine, pourMode=pourMode)
+      drainMode = "drain" in levelLine or "pour" in levelLine
+    gameRead = _readGame(nextLine, drainMode=drainMode)
     gameRead.level = level
 
     gameFile.close()
@@ -1449,7 +1449,7 @@ def readGameFile(gameFileName: str, level: str = None, pourMode: bool = None) ->
     print("Resumed game progress from saved file " + gameFileName)
   finally:
     return gameRead
-def _readGame(nextLine: Callable[[], str], userInteraction = False, pourMode: bool = None) -> Game:
+def _readGame(nextLine: Callable[[], str], userInteraction = False, drainMode: bool = None) -> Game:
   """
   Reads the game one line at a time by invoking a configurable `nextLine()` method.
 
@@ -1459,14 +1459,14 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False, pourMode: bo
   When reading from files, the prompts are suppressed and the number of vials is
   explicitly read as the first line of input.
   """
-  if pourMode is None:
-    pourMode = False
+  if drainMode is None:
+    drainMode = False
     if userInteraction:
-      rsp = input("Level uses pour gameplay? (y/n): ").strip().lower()
+      rsp = input("Level uses drain gameplay? (y/n): ").strip().lower()
       if rsp and rsp[0] == "y":
-        pourMode = True
-  if pourMode and userInteraction:
-    print("Reading a pour gameplay.")
+        drainMode = True
+  if drainMode and userInteraction:
+    print("Reading a drain-mode game.")
 
   numVials = -1
   if not userInteraction:
@@ -1512,7 +1512,7 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False, pourMode: bo
       spaces.append("?")
     vials.append(spaces)
 
-  return Game.Create(vials, pourMode=pourMode)
+  return Game.Create(vials, drainMode=drainMode)
 def _determineNumEmpty(vialsWithColors: int) -> int:
   return 1 if vialsWithColors < FEW_VIALS_THRESHOLD else 2
 
@@ -1520,7 +1520,7 @@ def chooseInteraction():
   validModes = set("psqin")
   mode: str = None
   level: str = None
-  pourMode: bool = False  # None means ask the user; otherwise, True/False
+  drainMode: bool = False  # None means ask the user; otherwise, True/False
   userInteracting = True
   originalGame: Game = None
   analyzeSamples = ANALYZE_ATTEMPTS
@@ -1545,10 +1545,10 @@ def chooseInteraction():
 
     # Playing a level
     else:
-      # Determine pour mode
-      if "pour" in sys.argv:
-        pourMode = True
-        sys.argv.remove("pour")
+      # Determine special modes
+      if "drain" in sys.argv:
+        drainMode = True
+        sys.argv.remove("drain")
 
       mode = "i"
       level = sys.argv[1]
@@ -1619,7 +1619,7 @@ def chooseInteraction():
   # Attempt to read the game state out of a file
   if mode != "n" and level:
     gameFileName = generateFileName(level)
-    originalGame = readGameFile(gameFileName, level, pourMode=pourMode)
+    originalGame = readGameFile(gameFileName, level, drainMode=drainMode)
 
   if originalGame and level:
     originalGame.level = level
@@ -1627,7 +1627,7 @@ def chooseInteraction():
 
   # Fallback to reading in manually
   if not originalGame:
-    originalGame = readGameInput(userInteracting, pourMode=pourMode)
+    originalGame = readGameInput(userInteracting, drainMode=drainMode)
     if level != None:
       originalGame.level = level
     saveGame(originalGame)
@@ -1682,8 +1682,8 @@ def generateFileContents(game: "Game") -> str:
   lines.append("i")
 
   levelLine = str(game.level)
-  if game.root.pourMode:
-    levelLine += " pour"
+  if game.root.drainMode:
+    levelLine += " drain"
 
   lines.append(levelLine)
   lines.append(str(len(game.vials)))
@@ -1962,10 +1962,11 @@ signal.signal(signal.SIGINT, signalHandler)
 # py watersort.py LEVEL a SAMPLES?
 # py watersort.py a LEVEL SAMPLES?
 
-# py watersort.py <pour?> LEVEL <MODE>  # "pour" can appear anywhere in the arguments list
-# py watersort.py LEVEL <pour?> <MODE>  # "pour" can appear anywhere in the arguments list
-# py watersort.py LEVEL <MODE> <pour?>  # "pour" can appear anywhere in the arguments list
-# py watersort.py <pour?> LEVEL dfr SAMPLES?
+# GAMEPLAY_MODE can appear anywhere in the list
+# py watersort.py <GAMEPLAY_MODE?> LEVEL <MODE>
+# py watersort.py LEVEL <GAMEPLAY_MODE?> <MODE>
+# py watersort.py LEVEL <MODE> <GAMEPLAY_MODE?>
+# py watersort.py <GAMEPLAY_MODE?> LEVEL dfr SAMPLES?
 chooseInteraction()
 
 # debugLevel("dec15", dfrSearchAttempts=1)

@@ -15,7 +15,7 @@ git mv level.txt YEAR/level.txt
 
 - Big Solution Display
   - [x] Display big progress dots for multiple colors to move
-    - [ ] Connected to "blind" mode stored in the game, similar to pour mode
+    - [ ] Connected to "blind" mode stored in the game, similar to drain mode
   - [x] Require multiple button presses to advance through multiple spaces
   - [x] Optionally enable/disable the multi-space advance button
   - [x] Add a "Done" screen with checkmarks
@@ -29,5 +29,5 @@ git mv level.txt YEAR/level.txt
 - General
   - [x] Automatically store/retrieve monthly game files in annual sub-folders based on current year
   - [ ] Offer to automatically start analysis session of level (in the background)
-  - [ ] Rename "pour mode" to "drain mode" internally
+  - [x] Rename "pour mode" to "drain mode" internally
   - [ ] Introduce intelligent search with heuristics that potentially discover multiple values at once
