@@ -866,7 +866,7 @@ class BigSolutionDisplay:
     self._presteps.append(SolutionStep(bigText=bigText))
     self._currentStage = "PRE"
   def __init_poststeps(self):
-    bigText = "DONE" if self._steps[-1].game.isFinished() else "COLOR?"
+    bigText = "DONE✅" if self._steps[-1].game.isFinished() else "COLOR?"
     self._poststeps.append(SolutionStep(bigText=bigText))
 
   def start(self):

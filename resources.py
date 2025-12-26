@@ -336,6 +336,15 @@ BIG_SYMBOLS = defaultdict(lambda: BIG_SYMBOLS["□"], map(parseCharText, [
 └─────┘
 
 """,
+"""✅
+        ✅
+       ✅
+      ✅
+     ✅
+✅  ✅
+ ✅✅
+  ✅
+""",
 ]))
 
 # Populate BIG_SYMBOLS with digit mappings
