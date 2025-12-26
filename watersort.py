@@ -911,6 +911,9 @@ class BigSolutionDisplay:
           self.previous()
         elif k == 'r':
           self.restart()
+        elif k == 'l':
+          self.toggleBlindMode()
+          self.displayCurrent()
         else:
           self.printCenteredLines([f"Unrecognized key ({k})"])
           continue  # Keep waiting for a valid key
@@ -1112,6 +1115,10 @@ class BigSolutionDisplay:
 
   def _usePerSpaceDots(self) -> bool:
     return self.rootGame.blindMode
+  def toggleBlindMode(self) -> None:
+    self.rootGame.blindMode = not self.rootGame.blindMode
+    self.rootGame.modified = True
+    saveGame(self.rootGame)
 
 
 
