@@ -183,7 +183,15 @@ BIG_DIGITS = list(map(BigChar, [
 def parseCharText(text: str) -> tuple[str, "BigChar"]:
   return text[0], BigChar(text[1:])
 BIG_SYMBOLS = defaultdict(lambda: BIG_SYMBOLS["□"], map(parseCharText, [
-# cdeinorstu
+"""A
+   ###
+  ## ##
+ ##   ##
+ #######
+ ##   ##
+##     ##
+##     ##
+""",
 """C
   ####
  ##  ##
@@ -220,6 +228,15 @@ BIG_SYMBOLS = defaultdict(lambda: BIG_SYMBOLS["□"], map(parseCharText, [
    ##
 ########
 """,
+"""L
+##
+##
+##
+##
+##
+##
+#######
+""",
 """N
 ##    ##
 ###   ##
@@ -237,6 +254,15 @@ BIG_SYMBOLS = defaultdict(lambda: BIG_SYMBOLS["□"], map(parseCharText, [
 ##     ##
  ##   ##
    ###
+""",
+"""P
+######
+##   ##
+##   ##
+#####
+##
+##
+##
 """,
 """R
 ######
@@ -282,6 +308,15 @@ BIG_SYMBOLS = defaultdict(lambda: BIG_SYMBOLS["□"], map(parseCharText, [
            @@
            @
 
+""",
+"""?
+  ###
+##   ##
+     ##
+   ##
+   ##
+
+   ##
 """,
 """.
 
