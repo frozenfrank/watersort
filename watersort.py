@@ -1,7 +1,6 @@
 from datetime import datetime
 import signal
 import os
-from readchar import readkey, key
 from collections import deque, defaultdict
 from resources import COLOR_CODES, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar
 from math import floor, log
@@ -13,6 +12,10 @@ from typing import Callable, Literal
 import copy;
 import itertools;
 import sys;
+
+USE_READCHAR = True
+if USE_READCHAR:
+  from readchar import readkey, key
 
 INSTALLED_BASE_PATH = ""
 WRITE_FILES_TO_ABSOLUTE_PATH = False
@@ -885,16 +888,20 @@ class BigSolutionDisplay:
       self.printCenteredLines(["Press Space to advance. Use arrow keys to navigate. Press 'q' to quit."])
 
       while True:
-        k = readkey()
+        k = readkey() if USE_READCHAR else input()
 
         if k == 'q' or k == 'Q':
           running = False
-        elif k == 'p' or k == 'b' or k == key.UP or k == key.LEFT:
+        elif k == 'p' or k == 'b':
           self.previous()
-        elif k == 'n' or k == 'f' or k == key.DOWN or k == key.RIGHT or k == ' ' or k == key.ENTER:
+        elif k == 'n' or k == 'f' or k == ' ' or k == '':
           self.next()
         elif k == 'r':
           self.restart()
+        elif USE_READCHAR and (k == key.UP or k == key.LEFT):
+          self.previous()
+        elif USE_READCHAR and (k == key.DOWN or k == key.RIGHT or k == key.ENTER):
+          self.next()
         else:
           self.printCenteredLines([f"Unrecognized key ({k})"])
           continue  # Keep waiting for a valid key
