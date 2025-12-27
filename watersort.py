@@ -31,7 +31,7 @@ FORCE_INTERACTION_MODE = None # "a"
 
 SOLVE_METHOD = "DFR"
 VALID_SOLVE_METHODS = set(["MIX", "BFS", "DFS", "DFR"]) # An enum is more accurate, but overkill for this need
-VALID_GAMEPLAY_MODES = set(["normal", "pour"])
+VALID_GAMEPLAY_MODES = set(["drain", "blind"])
 
 MIX_SWITCH_THRESHOLD_MOVES = 10
 ENABLE_QUEUE_CHECKS = True # Disable only for temporary testing
@@ -112,7 +112,10 @@ class Game:
   modified: bool # Indicates it's changed from the last read in state
   _colorError: bool
   _hasUnknowns: bool
-  pourMode: bool = None
+  drainMode: bool = None
+  """Special mode where colors drain out of the bottom of vials instead of pouring from the top."""
+  blindMode: bool = None
+  """Represents FULL-blind mode where spaces re-hide themselves after moving."""
 
   # Cached for single use calculation
   _COMPLETE_TERM = "complete"
@@ -127,9 +130,10 @@ class Game:
   TOTAL_MOVE_PRINT_WIDTH = COLOR_WIDTH + NUMBER_WIDTH + EXTRA_CHARS + len(COMPLETE_STR)
 
   @staticmethod
-  def Create(vials, pourMode=False) -> "Game":
+  def Create(vials, drainMode=False, blindMode=False) -> "Game":
     newGame = Game(vials, None, None)
-    newGame.pourMode = bool(pourMode)
+    newGame.drainMode = bool(drainMode)
+    newGame.blindMode = bool(blindMode)
     newGame._analyzeColors()
     return newGame
 
@@ -382,7 +386,7 @@ class Game:
             "   -m or -moves            to print the moves to this point\n" +
             "   -b                      to view Big Moves up to this point\n" +
             "   -b on|off|ON            Enable/disable Big Moves by default. Specify ON (all-caps) to skip launching routine.\n" +
-           f"   -gameplay MODE          to switch to pour gameplay ({', '.join(VALID_GAMEPLAY_MODES)})\n" +
+           f"   -gameplay MODE          to toggle other forms of gameplay ({', '.join(VALID_GAMEPLAY_MODES)})\n" +
            f"   -solve METHOD           to change the solve method ({', '.join(VALID_SOLVE_METHODS)})\n" +
             "   -level NUM              to change the level of this game\n" +
             "   -vials NUM              to change the number of vials in the game\n" +
@@ -410,15 +414,15 @@ class Game:
       print(f"Unrecognized gameplay mode: {mode}. Valid modes are: {', '.join(VALID_GAMEPLAY_MODES)}")
       return
 
-    isPour = mode == "pour"
-    if self.root.pourMode == isPour:
-      print(f"Gameplay mode is already set to: {mode}. No change made.")
-      return
+    newVal: bool = None
+    if mode == "drain":
+      newVal = self.root.drainMode = not self.root.drainMode
+    elif mode == "blind":
+      newVal = self.root.blindMode = not self.root.blindMode
 
     Game.reset = True
-    self.root.pourMode = isPour
     self.root.modified = True
-    print(f"Set gameplay mode to: {mode}. Continue on.")
+    print(f"Gameplay mode '{mode}' {'enabled' if newVal else 'disabled'}. Resetting to resolve.")
   def saveOtherColor(self, input: str) -> None:
     flag, o_vial, o_space, color = input.split()
     vial = int(o_vial) - 1
@@ -481,8 +485,8 @@ class Game:
         lines.append(moveString)
 
     introduction = f"Moves ({len(steps)})"
-    if self.root.pourMode:
-      introduction += " [Pour Gameplay]"
+    if self.root.drainMode:
+      introduction += " [Drain Gameplay]"
     print(introduction + ":" + NEW_LINE + NEW_LINE.join(lines))
 
   __prevPrintedMoves: deque[Move] = None
@@ -545,7 +549,7 @@ class Game:
     start, end = self.move
 
     colorMoved = self.getTopVialColor(end)
-    _, _, numMoved, startEmptySpaces   = self.prev.__countOnTop(colorMoved, start, bottom=self.root.pourMode)
+    _, _, numMoved, startEmptySpaces   = self.prev.__countOnTop(colorMoved, start, bottom=self.root.drainMode)
     complete, _, _, endEmptySpaces     = self.__countOnTop(colorMoved, end)
 
     vacatedVial = numMoved + startEmptySpaces == NUM_SPACES_PER_VIAL
@@ -626,10 +630,10 @@ class Game:
     INVALID_MOVE = (False, None, None, None, False)
     if startVial == endVial:
       return INVALID_MOVE # Can't move to the same place
-    if not self.root.pourMode and self.move and startVial == self.move[1] and endVial == self.move[0]:
+    if not self.root.drainMode and self.move and startVial == self.move[1] and endVial == self.move[0]:
       return INVALID_MOVE # Can't simply undo the previous move
 
-    startColor = self.getTopVialColor(startVial, bottom=self.root.pourMode)
+    startColor = self.getTopVialColor(startVial, bottom=self.root.drainMode)
     if startColor == "-" or startColor == "?":
       return INVALID_MOVE # Can only move an active color
     endColor = self.getTopVialColor(endVial)
@@ -642,7 +646,7 @@ class Game:
       return INVALID_MOVE # End vial is full
 
     # Verify that this vial isn't full
-    startIsComplete, startOnlyColor, startNumOnTop, startEmptySpaces = self.__countOnTop(startColor, startVial, bottom=self.root.pourMode)
+    startIsComplete, startOnlyColor, startNumOnTop, startEmptySpaces = self.__countOnTop(startColor, startVial, bottom=self.root.drainMode)
     if startIsComplete:
       return INVALID_MOVE # Start is fully filled
     if startOnlyColor and endColor == "-":
@@ -699,7 +703,7 @@ class Game:
     moveRange = endSpaces
     startColors = 0
     while piecesMoved < moveRange and piecesMoved < NUM_SPACES_PER_VIAL:
-      idx = NUM_SPACES_PER_VIAL-piecesMoved-1 if self.root.pourMode else piecesMoved
+      idx = NUM_SPACES_PER_VIAL-piecesMoved-1 if self.root.drainMode else piecesMoved
       color = fromVial[idx]
       if color == '-':
         moveRange += 1
@@ -710,8 +714,8 @@ class Game:
         break
       piecesMoved += 1
 
-    # Shift down moved colors in pour mode
-    if self.root.pourMode:
+    # Shift down moved colors in drain mode
+    if self.root.drainMode:
       for i in range(NUM_SPACES_PER_VIAL-1,-1,-1):
         shiftFrom = i - piecesMoved
         shiftColor = "-" if shiftFrom < 0 else fromVial[shiftFrom]
@@ -824,6 +828,7 @@ class Game:
     return self._numMoves
 
 class BigSolutionDisplay:
+  rootGame: "Game"
   _presteps: deque[SolutionStep]
   _steps: deque[SolutionStep]
   _poststeps: deque[SolutionStep]
@@ -841,6 +846,8 @@ class BigSolutionDisplay:
   SCREEN_WIDTH = 80
 
   def __init__(self, game: Game):
+    self.rootGame = game.root
+
     self._presteps = deque()
     self._steps = game._prepareSolutionSteps()
     self._poststeps = deque()
@@ -885,7 +892,6 @@ class BigSolutionDisplay:
     self.displayCurrent()
 
     # Main loop
-    # When any key is pressed, move forward
     while running and self._hasNext():
       # Clear the screen
       self.printCenteredLines(["Press Space to advance. Use arrow keys to navigate. Press 'q' to quit."])
@@ -895,16 +901,19 @@ class BigSolutionDisplay:
 
         if k == 'q' or k == 'Q':
           running = False
-        elif k == 'p' or k == 'b':
-          self.previous()
         elif k == 'n' or k == 'f' or k == ' ' or k == '':
           self.next(wholeStep=(k == 'n'))
-        elif k == 'r':
-          self.restart()
-        elif USE_READCHAR and (k == key.UP or k == key.LEFT):
-          self.previous()
         elif USE_READCHAR and (k == key.DOWN or k == key.RIGHT or k == key.ENTER):
           self.next()
+        elif k == 'p' or k == 'b':
+          self.previous()
+        elif USE_READCHAR and (k == key.UP or k == key.LEFT):
+          self.previous()
+        elif k == 'r':
+          self.restart()
+        elif k == 'l':
+          self.toggleBlindMode()
+          self.displayCurrent()
         else:
           self.printCenteredLines([f"Unrecognized key ({k})"])
           continue  # Keep waiting for a valid key
@@ -963,11 +972,12 @@ class BigSolutionDisplay:
     symbols = f"{start + 1}→{end + 1}"
     lines.extend(self._prepareBigCharLines(symbols))
 
-    if step.numMoved > 1:
-      curMoved = self._currentSpacesMoved if self._currentSpacesMoved else 1
-      lines.extend(self._prepareBigDotLines(BigShades.Fill * curMoved + BigShades.Medium * (step.numMoved - curMoved)))
-    else:
-      lines.extend(self._prepareBigDotLines(None))
+    if self._usePerSpaceDots():
+      if step.numMoved > 1:
+        curMoved = self._currentSpacesMoved if self._currentSpacesMoved else 1
+        lines.extend(self._prepareBigDotLines(BigShades.Fill * curMoved + BigShades.Medium * (step.numMoved - curMoved)))
+      else:
+        lines.extend(self._prepareBigDotLines(None))
 
     return (lines, step.colorMoved)
   def _preparePostLines(self, step: SolutionStep):
@@ -1027,7 +1037,8 @@ class BigSolutionDisplay:
     curStep, steps = self._getQueue()
     numToMove = steps[curStep].numMoved
 
-    if not wholeStep and numToMove and self._currentSpacesMoved < numToMove:
+    partialStepsEnabled = not wholeStep and self._usePerSpaceDots() and numToMove
+    if partialStepsEnabled and self._currentSpacesMoved < numToMove:
       self._currentSpacesMoved += 1 if self._currentSpacesMoved else 2 # If set to zero, it was treated as 1 anyways
     else:
       self._currentSpacesMoved = 1
@@ -1101,6 +1112,13 @@ class BigSolutionDisplay:
       self.__currentPoststep = newStep
     else:
       raise "Unknown current stage: " + self._currentStage
+
+  def _usePerSpaceDots(self) -> bool:
+    return self.rootGame.blindMode
+  def toggleBlindMode(self) -> None:
+    self.rootGame.blindMode = not self.rootGame.blindMode
+    self.rootGame.modified = True
+    saveGame(self.rootGame)
 
 
 
@@ -1423,11 +1441,11 @@ def fPercent(num: float, den: float, roundDigits=1) -> str:
   return str(round(num/den*100, roundDigits)) + "%"
 
 
-def readGameInput(userInteracting: bool, pourMode: bool = None) -> Game:
-  game = _readGame(input, userInteraction=userInteracting, pourMode=pourMode)
+def readGameInput(userInteracting: bool, drainMode: bool = None, blindMode: bool = None) -> Game:
+  game = _readGame(input, userInteraction=userInteracting, drainMode=drainMode, blindMode=blindMode)
   game.modified = True
   return game
-def readGameFile(gameFileName: str, level: str = None, pourMode: bool = None) -> Game:
+def readGameFile(gameFileName: str, level: str = None, drainMode: bool = None, blindMode: bool = None) -> Game:
   gameRead: Game = None
   try:
     gameFile = open(gameFileName, "r")
@@ -1437,8 +1455,9 @@ def readGameFile(gameFileName: str, level: str = None, pourMode: bool = None) ->
     if mode == "i":
       levelLine = nextLine().split()        # Read level name
       level = levelLine[0]
-      pourMode = "pour" in levelLine
-    gameRead = _readGame(nextLine, pourMode=pourMode)
+      drainMode = "drain" in levelLine or "pour" in levelLine
+      blindMode = "blind" in levelLine
+    gameRead = _readGame(nextLine, drainMode=drainMode, blindMode=blindMode)
     gameRead.level = level
 
     gameFile.close()
@@ -1449,7 +1468,7 @@ def readGameFile(gameFileName: str, level: str = None, pourMode: bool = None) ->
     print("Resumed game progress from saved file " + gameFileName)
   finally:
     return gameRead
-def _readGame(nextLine: Callable[[], str], userInteraction = False, pourMode: bool = None) -> Game:
+def _readGame(nextLine: Callable[[], str], userInteraction = False, drainMode: bool = None, blindMode: bool = None) -> Game:
   """
   Reads the game one line at a time by invoking a configurable `nextLine()` method.
 
@@ -1459,14 +1478,23 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False, pourMode: bo
   When reading from files, the prompts are suppressed and the number of vials is
   explicitly read as the first line of input.
   """
-  if pourMode is None:
-    pourMode = False
+  if drainMode is None:
+    drainMode = False
     if userInteraction:
-      rsp = input("Level uses pour gameplay? (y/n): ").strip().lower()
+      rsp = input("Level uses drain gameplay? (y/n): ").strip().lower()
       if rsp and rsp[0] == "y":
-        pourMode = True
-  if pourMode and userInteraction:
-    print("Reading a pour gameplay.")
+        drainMode = True
+  if drainMode and userInteraction:
+    print("Reading a drain-mode game.")
+
+  if blindMode is None:
+    blindMode = False
+    if userInteraction:
+      rsp = input("Level uses blind gameplay? (y/n): ").strip().lower()
+      if rsp and rsp[0] == "y":
+        blindMode = True
+  if blindMode and userInteraction:
+    print("Reading a blind-mode game.")
 
   numVials = -1
   if not userInteraction:
@@ -1512,7 +1540,7 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False, pourMode: bo
       spaces.append("?")
     vials.append(spaces)
 
-  return Game.Create(vials, pourMode=pourMode)
+  return Game.Create(vials, drainMode=drainMode, blindMode=blindMode)
 def _determineNumEmpty(vialsWithColors: int) -> int:
   return 1 if vialsWithColors < FEW_VIALS_THRESHOLD else 2
 
@@ -1520,7 +1548,8 @@ def chooseInteraction():
   validModes = set("psqin")
   mode: str = None
   level: str = None
-  pourMode: bool = False  # None means ask the user; otherwise, True/False
+  drainMode: bool = False  # None means ask the user; otherwise, True/False
+  blindMode: bool = False  # None means ask the user; otherwise, True/False
   userInteracting = True
   originalGame: Game = None
   analyzeSamples = ANALYZE_ATTEMPTS
@@ -1545,10 +1574,13 @@ def chooseInteraction():
 
     # Playing a level
     else:
-      # Determine pour mode
-      if "pour" in sys.argv:
-        pourMode = True
-        sys.argv.remove("pour")
+      # Determine special modes
+      if "drain" in sys.argv:
+        drainMode = True
+        sys.argv.remove("drain")
+      if "blind" in sys.argv:
+        blindMode = True
+        sys.argv.remove("blind")
 
       mode = "i"
       level = sys.argv[1]
@@ -1619,7 +1651,7 @@ def chooseInteraction():
   # Attempt to read the game state out of a file
   if mode != "n" and level:
     gameFileName = generateFileName(level)
-    originalGame = readGameFile(gameFileName, level, pourMode=pourMode)
+    originalGame = readGameFile(gameFileName, level, drainMode=drainMode, blindMode=blindMode)
 
   if originalGame and level:
     originalGame.level = level
@@ -1627,7 +1659,7 @@ def chooseInteraction():
 
   # Fallback to reading in manually
   if not originalGame:
-    originalGame = readGameInput(userInteracting, pourMode=pourMode)
+    originalGame = readGameInput(userInteracting, drainMode=drainMode, blindMode=blindMode)
     if level != None:
       originalGame.level = level
     saveGame(originalGame)
@@ -1682,8 +1714,10 @@ def generateFileContents(game: "Game") -> str:
   lines.append("i")
 
   levelLine = str(game.level)
-  if game.root.pourMode:
-    levelLine += " pour"
+  if game.root.drainMode:
+    levelLine += " drain"
+  if game.root.blindMode:
+    levelLine += " blind"
 
   lines.append(levelLine)
   lines.append(str(len(game.vials)))
@@ -1962,10 +1996,11 @@ signal.signal(signal.SIGINT, signalHandler)
 # py watersort.py LEVEL a SAMPLES?
 # py watersort.py a LEVEL SAMPLES?
 
-# py watersort.py <pour?> LEVEL <MODE>  # "pour" can appear anywhere in the arguments list
-# py watersort.py LEVEL <pour?> <MODE>  # "pour" can appear anywhere in the arguments list
-# py watersort.py LEVEL <MODE> <pour?>  # "pour" can appear anywhere in the arguments list
-# py watersort.py <pour?> LEVEL dfr SAMPLES?
+# GAMEPLAY_MODE can appear anywhere in the list
+# py watersort.py <GAMEPLAY_MODE?> LEVEL <MODE>
+# py watersort.py LEVEL <GAMEPLAY_MODE?> <MODE>
+# py watersort.py LEVEL <MODE> <GAMEPLAY_MODE?>
+# py watersort.py <GAMEPLAY_MODE?> LEVEL dfr SAMPLES?
 chooseInteraction()
 
 # debugLevel("dec15", dfrSearchAttempts=1)
