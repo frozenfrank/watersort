@@ -1009,26 +1009,67 @@ class BigSolutionDisplay:
     bigChars = BigShades.FromShading(dots)
     return ["", *BigShades.FormatSingleLine(*bigChars, spacing=3), ""]
 
-  def printCenteredLines(self, lines: list[str], linePrefix = "", linePostfix = "", fullScreenBufferLines = None) -> None:
+  def printCenteredLines(self, lines: list[str], linePrefix = "", linePostfix = "", fullScreenBufferLines: int = None, introLines: list[str] = [], exitLines: list[str] = []) -> None:
     """
     Takes an array of lines, centers them, and prints them to the screen.
-    @param lines A list of strings to print. Can contain formatting characters separated from the text by Chr(1).
-    @param linePrefix Inserted before every line after centering
-    @param linePostfix Appended to each line after centering
+
+    :param lines: A list of strings to print. Can contain formatting characters separated from the text by Chr(1).
+    :type lines: list[str]
+    :param linePrefix: Inserted before every line after centering. Used to control style of all lines.
+    :param linePostfix: Appended to each line after centering. Used to reset styles to prevent bleeding of the edge of the space.
+    :param fullScreenBufferLines: When specified, full screen mode will be enabled and this number of lines will be withheld.
+    :type fullScreenBufferLines: int
     """
-    if fullScreenBufferLines and len(lines) + fullScreenBufferLines < BigSolutionDisplay.SCREEN_HEIGHT:
+    contentHeight = len(lines) + len(introLines) + len(exitLines)
+    if fullScreenBufferLines is not None and contentHeight + fullScreenBufferLines < BigSolutionDisplay.SCREEN_HEIGHT:
       extraLines = BigSolutionDisplay.SCREEN_HEIGHT - fullScreenBufferLines - len(lines)
+
+      # Adjust intro lines
       extraLinesPre = extraLines // 2
+      if extraLinesPre > len(introLines):
+        introLines += [""] * (extraLinesPre - len(introLines))
+      else:
+        extraLinesPre = len(introLines)
+
+      # Adjust exit lines
       extraLinesPost = extraLines - extraLinesPre
-      lines = [""] * extraLinesPre + lines + [""] * extraLinesPost
-    lines = [self.__centerContent(line) for line in lines]
+      if extraLinesPost > len(exitLines):
+        exitLines = [""] * (extraLinesPost - len(exitLines)) + exitLines
+
+    lines = introLines + lines + exitLines
+    lines = [self.__alignContent(line) for line in lines]
     print(linePrefix + (linePostfix + "\n"+linePrefix).join(lines) + linePostfix, flush=True)
-  def __centerContent(self, line: str) -> str:
+  def __alignContent(self, line: str) -> str:
+    """
+    Takes in a specially formatted line and formats it for printing.
+
+    :param line: The line of data to print. Format "[Style<C1>][Left Aligned<C2>]Middle Aligned (default)[<C3>Right Aligned"]
+    :type line: str
+    :return: The aligned string ready to print as a single line
+    :rtype: str
+    """
+    # Separate styles from content
     style = ""
     content = line
-    if chr(1) in line:
-      style, content = line.split(chr(1), maxsplit=1)
-    return style + content.center(BigSolutionDisplay.SCREEN_WIDTH)
+    if chr(1) in content:
+      style, content = content.split(chr(1), maxsplit=1)
+
+    # Split content by alignment
+    leftContent = ""
+    middleContent = content
+    rightContent = ""
+    if chr(2) in middleContent:
+      leftContent, middleContent = middleContent.split(chr(2), maxsplit=1)
+    if chr(3) in middleContent:
+      middleContent, rightContent = middleContent.split(chr(3), maxsplit=1)
+
+    # Align content properly
+    content = middleContent.center(BigSolutionDisplay.SCREEN_WIDTH)
+    if leftContent: content = leftContent + content[len(leftContent):]
+    if rightContent: content = content[:-len(rightContent)] + rightContent
+
+    # Recombine and return
+    return style + content
 
 
   def restart(self) -> None:
