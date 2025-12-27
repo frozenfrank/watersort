@@ -1292,6 +1292,9 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
         numDeadEnds += 1
         deadEndDepth[current._numMoves] += 1
 
+    if not solution:
+      break  # There are no solutions
+
   # End timer
   endTime = time()
 
