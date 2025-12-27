@@ -343,13 +343,13 @@ BIG_SYMBOLS = defaultdict(lambda: BIG_SYMBOLS["□"], map(parseCharText, [
 
 """,
 """✅
-        ✅
-       ✅
-      ✅
-     ✅
-✅  ✅
- ✅✅
-  ✅
+        ​✅
+       ​✅
+      ​✅
+     ​✅
+​✅  ​✅
+ ​✅​✅
+  ​✅
 """,
 ]))
 
