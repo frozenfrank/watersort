@@ -1293,10 +1293,17 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
         deadEndDepth[current._numMoves] += 1
 
     if not solution:
-      break  # There are no solutions
+      endTime = time()
+      message = Style.BRIGHT + Fore.RED + "This game has no solution." + Style.RESET_ALL
+      message += " Type YES if you have corrected the game state and want to try searching again."
+      retryRsp = game.requestVal(game, message, printOptions=True)
+      if retryRsp != "YES":
+        break # There are no solutions
+      else:
+        endTime = None
 
   # End timer
-  endTime = time()
+  endTime = endTime or time()
 
   # Print results
   if analyzeSampleCount > 0:
