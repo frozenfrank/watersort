@@ -1,0 +1,12 @@
+i
+jan25 blind
+9
+lb	lb	r	o
+m	pn	pn	m
+m	o	b	g
+r	g	b	pn
+m	pn	g	o
+lb	o	r	r
+g	b	b	lb
+-	-	-	-
+-	-	-	-
