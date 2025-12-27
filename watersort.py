@@ -983,7 +983,8 @@ class BigSolutionDisplay:
 
     ### Print ###
 
-    self.printCenteredLines(lines, linePrefix=formatVialColor(color), linePostfix=Style.RESET_ALL, fullScreenBufferLines=2, introLines=introLines, exitLines=exitLines)
+    self.printCenteredLines(lines, linePrefix=formatVialColor(color), linePostfix=Style.RESET_ALL, fullScreenBufferLines=3, introLines=introLines, exitLines=exitLines)
+    print("")
   def _preparePreLines(self, step: SolutionStep):
     lines = []
     lines.extend(self._prepareBigCharLines(step.bigText))
