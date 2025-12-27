@@ -5,7 +5,7 @@ from collections import deque, defaultdict
 from resources import COLOR_CODES, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar, BigShades
 from math import floor, log
 import random
-from colorama import Style
+from colorama import Fore, Style
 from time import time
 from typing import Callable, Literal
 import copy;
@@ -165,11 +165,11 @@ class Game:
     if not self.hasError():
       return False
 
-    self.requestVal(self, "The colors aren't right in this game. Fix them, and press enter to proceed.")
+    self.requestVal(self, formatVialColor("er", "The colors aren't right in this game.") + " Fix them, and press enter to proceed.")
     self._analyzeColors()
     if self.hasError():
       saveGame(self, forceSave=True)
-      print("Things still aren't right. Review the saved file, and try again.")
+      print(formatVialColor("er", "Things still aren't right.") + " Review the saved file, and try again.")
       quit()
       return True
     else:
@@ -1480,7 +1480,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
       # print(f"Found solution{' to level ' + game.level if game.level else ''}!")
       # minSolution.printMoves()
     else:
-      print("Cannot not find solution.")
+      print(formatVialColor("er", "Cannot find solution."))
 
     if game.level:
       saveGame(game)
@@ -1590,10 +1590,11 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False, drainMode: b
     numEmpty = _determineNumEmpty(numVials)
 
   # Read in the colors
-  if userInteraction: print(f"On the next lines, please type {NUM_SPACES_PER_VIAL} words representing the colors in each vial from top to bottom.\n"+
-                            "  Stopping short of the depth of a vial will fill the remaining spaces with question marks.\n" +
-                            "  Type a . (period) to insert a whole row of question marks.\n" +
-                            "  Type a blank line signal that all vials with colors have been represented (all remaining vials are empty).\n")
+  if userInteraction: print(Fore.CYAN +
+      f"On the next lines, please type {NUM_SPACES_PER_VIAL} words representing the colors in each vial from top to bottom.\n"+
+      "  Stopping short of the depth of a vial will fill the remaining spaces with question marks.\n" +
+      "  Type a . (period) to insert a whole row of question marks.\n" +
+      "  Type a blank line signal that all vials with colors have been represented (all remaining vials are empty).\n" + Fore.RESET)
   emptyRest = False
   i = 0
   while i < numVials or numVials == -1:
