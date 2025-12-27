@@ -901,7 +901,6 @@ class BigSolutionDisplay:
 
     # Main loop
     while running and self._hasNext():
-      self.printCenteredLines(["Press Space to advance. Use arrow keys to navigate. Press 'q' to quit."])
 
       while True:
         k = readkey() if USE_READCHAR else input()
@@ -930,7 +929,24 @@ class BigSolutionDisplay:
       pass
 
   def displayCurrent(self) -> None:
-    lines = []
+    lines: list[str] = []
+    introLines: list[str] = []
+    exitLines: list[str] = []
+
+    SIDE_PADDING = " " * 2
+
+    ### INTRO LINES ###
+
+    introLines.append("")
+    introLines.append("Level: " + self.rootGame.level)
+    if self.rootGame.drainMode:
+      introLines.append("[Drain Mode]")
+    if self.rootGame.blindMode:
+      introLines.append("[Blind Mode]")
+
+    introLines = [chr(3) + line.ljust(15) + SIDE_PADDING for line in introLines]
+
+    ### MAIN CONTENT ###
 
     lines.append("")
     lines.append("")
@@ -953,7 +969,15 @@ class BigSolutionDisplay:
     lines.append("")
     lines.append("")
 
-    self.printCenteredLines(lines, linePrefix=formatVialColor(color), linePostfix=Style.RESET_ALL, fullScreenBufferLines=5)
+    ### EXIT LINES ###
+
+    if self._hasNext():
+      exitLines.append("Press Space to advance. Use arrow keys to navigate. Press 'q' to quit.")
+    exitLines.append("")
+
+    ### Print ###
+
+    self.printCenteredLines(lines, linePrefix=formatVialColor(color), linePostfix=Style.RESET_ALL, fullScreenBufferLines=3, introLines=introLines, exitLines=exitLines)
     print(Style.RESET_ALL)
 
     self.__hasDisplayedStep = True
