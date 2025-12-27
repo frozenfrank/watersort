@@ -5,8 +5,7 @@ from collections import deque, defaultdict
 from resources import COLOR_CODES, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar, BigShades
 from math import floor, log
 import random
-from colorama import Fore, Style
-from colorama.ansi import clear_screen
+from colorama import Style
 from time import time
 from typing import Callable, Literal
 import copy;
@@ -841,9 +840,15 @@ class BigSolutionDisplay:
   """ Pre -> Game -> Post. Can advance back from POST, but can never return to PRE. """
   _currentSpacesMoved: int
   """The number of spaces that will have been moved after the user completes the indicated action."""
-  __hasDisplayedStep: bool = False
 
   SCREEN_WIDTH = 80
+  SCREEN_HEIGHT = 20
+
+  @staticmethod
+  def __updateScreenWidth() -> None:
+    termSize = os.get_terminal_size()
+    BigSolutionDisplay.SCREEN_WIDTH = termSize.columns
+    BigSolutionDisplay.SCREEN_HEIGHT = termSize.lines
 
   def __init__(self, game: Game):
     self.rootGame = game.root
@@ -861,6 +866,8 @@ class BigSolutionDisplay:
     if self._steps:
       self.__init_presteps()
       self.__init_poststeps()
+
+    BigSolutionDisplay.__updateScreenWidth()
   def __init_presteps(self):
     if self._steps[0].isSameAsPrevious is None:
       return # No comparison to a previous print sequence
@@ -893,14 +900,14 @@ class BigSolutionDisplay:
 
     # Main loop
     while running and self._hasNext():
-      # Clear the screen
-      self.printCenteredLines(["Press Space to advance. Use arrow keys to navigate. Press 'q' to quit."])
 
       while True:
         k = readkey() if USE_READCHAR else input()
 
         if k == 'q' or k == 'Q':
           running = False
+        elif k == 'h':
+          self.displayHelp()
         elif k == 'n' or k == 'f' or k == ' ' or k == '':
           self.next(wholeStep=(k == 'n'))
         elif USE_READCHAR and (k == key.DOWN or k == key.RIGHT or k == key.ENTER):
@@ -910,6 +917,8 @@ class BigSolutionDisplay:
         elif USE_READCHAR and (k == key.UP or k == key.LEFT):
           self.previous()
         elif k == 'r':
+          self.displayCurrent()
+        elif k == 'R':
           self.restart()
         elif k == 'l':
           self.toggleBlindMode()
@@ -922,8 +931,28 @@ class BigSolutionDisplay:
 
       pass
 
+  def displayHelp(self) -> None:
+    print("FIXME: List of keyboard expansions...")
+
   def displayCurrent(self) -> None:
-    lines = []
+    lines: list[str] = []
+    introLines: list[str] = []
+    exitLines: list[str] = []
+
+    SIDE_PADDING = " " * 2
+
+    ### INTRO LINES ###
+
+    introLines.append("")
+    introLines.append("Level: " + self.rootGame.level)
+    if self.rootGame.drainMode:
+      introLines.append("[Drain Mode]")
+    if self.rootGame.blindMode:
+      introLines.append("[Blind Mode]")
+
+    introLines = [chr(3) + line.ljust(15) + SIDE_PADDING for line in introLines]
+
+    ### MAIN CONTENT ###
 
     lines.append("")
     lines.append("")
@@ -946,11 +975,15 @@ class BigSolutionDisplay:
     lines.append("")
     lines.append("")
 
-    if self.__hasDisplayedStep: print(clear_screen())
-    self.printCenteredLines(lines, linePrefix=formatVialColor(color), linePostfix=Style.RESET_ALL)
-    print(Style.RESET_ALL)
+    ### EXIT LINES ###
 
-    self.__hasDisplayedStep = True
+    if self._hasNext():
+      exitLines.append("Press Space to advance. Press 'h' for help. Press 'q' to quit.")
+    exitLines.append("")
+
+    ### Print ###
+
+    self.printCenteredLines(lines, linePrefix=formatVialColor(color), linePostfix=Style.RESET_ALL, fullScreenBufferLines=2, introLines=introLines, exitLines=exitLines)
   def _preparePreLines(self, step: SolutionStep):
     lines = []
     lines.extend(self._prepareBigCharLines(step.bigText))
@@ -1003,27 +1036,75 @@ class BigSolutionDisplay:
     bigChars = BigShades.FromShading(dots)
     return ["", *BigShades.FormatSingleLine(*bigChars, spacing=3), ""]
 
-  def printCenteredLines(self, lines: list[str], linePrefix = "", linePostfix = "") -> None:
+  def printCenteredLines(self, lines: list[str], linePrefix = "", linePostfix = "", fullScreenBufferLines: int = None, introLines: list[str] = [], exitLines: list[str] = []) -> None:
     """
     Takes an array of lines, centers them, and prints them to the screen.
-    @param lines A list of strings to print. Can contain formatting characters separated from the text by Chr(1).
-    @param linePrefix Inserted before every line after centering
-    @param linePostfix Appended to each line after centering
+
+    :param lines: A list of strings to print. Can contain formatting characters separated from the text by Chr(1).
+    :type lines: list[str]
+    :param linePrefix: Inserted before every line after centering. Used to control style of all lines.
+    :param linePostfix: Appended to each line after centering. Used to reset styles to prevent bleeding of the edge of the space.
+    :param fullScreenBufferLines: When specified, full screen mode will be enabled and this number of lines will be withheld.
+    :type fullScreenBufferLines: int
     """
-    centeredLines = [self.__centerContent(line) for line in lines]
-    print(linePrefix + (linePostfix + "\n"+linePrefix).join(centeredLines) + linePostfix, flush=True)
-  def __centerContent(self, line: str) -> str:
+    contentHeight = len(lines) + len(introLines) + len(exitLines)
+    if fullScreenBufferLines is not None and contentHeight + fullScreenBufferLines < BigSolutionDisplay.SCREEN_HEIGHT:
+      extraLines = BigSolutionDisplay.SCREEN_HEIGHT - fullScreenBufferLines - len(lines)
+
+      # Adjust intro lines
+      extraLinesPre = extraLines // 2
+      if extraLinesPre > len(introLines):
+        introLines += [""] * (extraLinesPre - len(introLines))
+      else:
+        extraLinesPre = len(introLines)
+
+      # Adjust exit lines
+      extraLinesPost = extraLines - extraLinesPre
+      if extraLinesPost > len(exitLines):
+        exitLines = [""] * (extraLinesPost - len(exitLines)) + exitLines
+
+    lines = introLines + lines + exitLines
+    lines = [self.__alignContent(line) for line in lines]
+    print(linePrefix + (linePostfix + "\n"+linePrefix).join(lines) + linePostfix, flush=True)
+  def __alignContent(self, line: str) -> str:
+    """
+    Takes in a specially formatted line and formats it for printing.
+
+    :param line: The line of data to print. Format "[Style<C1>][Left Aligned<C2>]Middle Aligned (default)[<C3>Right Aligned"]
+    :type line: str
+    :return: The aligned string ready to print as a single line
+    :rtype: str
+    """
+    # Separate styles from content
     style = ""
     content = line
-    if chr(1) in line:
-      style, content = line.split(chr(1), maxsplit=1)
-    return style + content.center(BigSolutionDisplay.SCREEN_WIDTH)
+    if chr(1) in content:
+      style, content = content.split(chr(1), maxsplit=1)
+
+    # Split content by alignment
+    leftContent = ""
+    middleContent = content
+    rightContent = ""
+    if chr(2) in middleContent:
+      leftContent, middleContent = middleContent.split(chr(2), maxsplit=1)
+    if chr(3) in middleContent:
+      middleContent, rightContent = middleContent.split(chr(3), maxsplit=1)
+
+    # Align content properly
+    content = middleContent.center(BigSolutionDisplay.SCREEN_WIDTH)
+    if leftContent: content = leftContent + content[len(leftContent):]
+    if rightContent: content = content[:-len(rightContent)] + rightContent
+
+    # Recombine and return
+    return style + content
 
 
   def restart(self) -> None:
+    BigSolutionDisplay.__updateScreenWidth()
     if not self._hasPrev():
       print("Already at the first step.")
       return
+
     self.__currentStep = 0
     self.__currentPoststep = 0
     self._currentSpacesMoved = 0
@@ -1037,7 +1118,7 @@ class BigSolutionDisplay:
     curStep, steps = self._getQueue()
     numToMove = steps[curStep].numMoved
 
-    partialStepsEnabled = not wholeStep and self._usePerSpaceDots() and numToMove
+    partialStepsEnabled = not wholeStep and self._usePerSpaceDots() and numToMove > 1
     if partialStepsEnabled and self._currentSpacesMoved < numToMove:
       self._currentSpacesMoved += 1 if self._currentSpacesMoved else 2 # If set to zero, it was treated as 1 anyways
     else:
