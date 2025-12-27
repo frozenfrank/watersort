@@ -140,7 +140,7 @@ class Game:
     self.prev = prev
     self.modified = modified
 
-    self.__isRoot = prev == None
+    self.__isRoot = prev is None
     self.root = self if self.__isRoot else prev.root
     self._numMoves = 0 if self.__isRoot else prev._numMoves + 1
     self.completionOrder = list() if self.__isRoot else prev.completionOrder
@@ -295,7 +295,7 @@ class Game:
 
     # Other options start with a dash
     if printOptions != False:
-      self.__requestValHelp(abbreviated=(printOptions == None))
+      self.__requestValHelp(abbreviated=(printOptions is None))
     rsp: str
     while True:
       optionPrompt = "(Or see other options above.)" if printOptions else "(Or use advanced options.)"
@@ -522,7 +522,7 @@ class Game:
     if not info:
       info = self.__getMoveInfo()
     result: str
-    if info == None:
+    if info is None:
       result = ""
     else:
       color, num, complete, vacated, startedVial = info
@@ -855,13 +855,13 @@ class BigSolutionDisplay:
       self.__init_presteps()
       self.__init_poststeps()
   def __init_presteps(self):
-    if self._steps[0].isSameAsPrevious == None:
+    if self._steps[0].isSameAsPrevious is None:
       return # No comparison to a previous print sequence
 
     # Determine text to display
     bigText: str = None
     firstNewIndex, firstNewStep = next(((i, s) for i, s in enumerate(self._steps) if s.isSameAsPrevious is not True), (None, None))
-    if firstNewStep == None:
+    if firstNewStep is None:
       bigText = "REPEAT"  # Expected to be unused
     elif firstNewStep.isSameAsPrevious == False:
       bigText = "RESET"
