@@ -907,6 +907,8 @@ class BigSolutionDisplay:
 
         if k == 'q' or k == 'Q':
           running = False
+        elif k == 'h':
+          self.displayHelp()
         elif k == 'n' or k == 'f' or k == ' ' or k == '':
           self.next(wholeStep=(k == 'n'))
         elif USE_READCHAR and (k == key.DOWN or k == key.RIGHT or k == key.ENTER):
@@ -916,6 +918,8 @@ class BigSolutionDisplay:
         elif USE_READCHAR and (k == key.UP or k == key.LEFT):
           self.previous()
         elif k == 'r':
+          self.displayCurrent()
+        elif k == 'R':
           self.restart()
         elif k == 'l':
           self.toggleBlindMode()
@@ -927,6 +931,9 @@ class BigSolutionDisplay:
         break  # We handled a keypress, break out to the main loop
 
       pass
+
+  def displayHelp(self) -> None:
+    print("FIXME: List of keyboard expansions...")
 
   def displayCurrent(self) -> None:
     lines: list[str] = []
@@ -972,7 +979,7 @@ class BigSolutionDisplay:
     ### EXIT LINES ###
 
     if self._hasNext():
-      exitLines.append("Press Space to advance. Use arrow keys to navigate. Press 'q' to quit.")
+      exitLines.append("Press Space to advance. Press 'h' for help. Press 'q' to quit.")
     exitLines.append("")
 
     ### Print ###
