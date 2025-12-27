@@ -844,10 +844,13 @@ class BigSolutionDisplay:
   __hasDisplayedStep: bool = False
 
   SCREEN_WIDTH = 80
+  SCREEN_HEIGHT = 20
 
   @staticmethod
   def __updateScreenWidth() -> None:
-    BigSolutionDisplay.SCREEN_WIDTH = os.get_terminal_size().columns
+    termSize = os.get_terminal_size()
+    BigSolutionDisplay.SCREEN_WIDTH = termSize.columns
+    BigSolutionDisplay.SCREEN_HEIGHT = termSize.lines
 
   def __init__(self, game: Game):
     self.rootGame = game.root
@@ -953,7 +956,7 @@ class BigSolutionDisplay:
     lines.append("")
 
     if self.__hasDisplayedStep: print(clear_screen())
-    self.printCenteredLines(lines, linePrefix=formatVialColor(color), linePostfix=Style.RESET_ALL)
+    self.printCenteredLines(lines, linePrefix=formatVialColor(color), linePostfix=Style.RESET_ALL, fullScreenBufferLines=5)
     print(Style.RESET_ALL)
 
     self.__hasDisplayedStep = True
@@ -1009,7 +1012,7 @@ class BigSolutionDisplay:
     bigChars = BigShades.FromShading(dots)
     return ["", *BigShades.FormatSingleLine(*bigChars, spacing=3), ""]
 
-  def printCenteredLines(self, lines: list[str], linePrefix = "", linePostfix = "") -> None:
+  def printCenteredLines(self, lines: list[str], linePrefix = "", linePostfix = "", fullScreenBufferLines = None) -> None:
     """
     Takes an array of lines, centers them, and prints them to the screen.
     @param lines A list of strings to print. Can contain formatting characters separated from the text by Chr(1).
@@ -1017,6 +1020,11 @@ class BigSolutionDisplay:
     @param linePostfix Appended to each line after centering
     """
     centeredLines = [self.__centerContent(line) for line in lines]
+    if fullScreenBufferLines and len(centeredLines) + fullScreenBufferLines < BigSolutionDisplay.SCREEN_HEIGHT:
+      extraLines = BigSolutionDisplay.SCREEN_HEIGHT - fullScreenBufferLines - len(centeredLines)
+      extraLinesPre = extraLines // 2
+      extraLinesPost = extraLines - extraLinesPre
+      centeredLines = [""] * extraLinesPre + centeredLines + [""] * extraLinesPost
     print(linePrefix + (linePostfix + "\n"+linePrefix).join(centeredLines) + linePostfix, flush=True)
   def __centerContent(self, line: str) -> str:
     style = ""
