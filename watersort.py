@@ -1037,7 +1037,7 @@ class BigSolutionDisplay:
     curStep, steps = self._getQueue()
     numToMove = steps[curStep].numMoved
 
-    partialStepsEnabled = not wholeStep and self._usePerSpaceDots() and numToMove
+    partialStepsEnabled = not wholeStep and self._usePerSpaceDots() and numToMove > 1
     if partialStepsEnabled and self._currentSpacesMoved < numToMove:
       self._currentSpacesMoved += 1 if self._currentSpacesMoved else 2 # If set to zero, it was treated as 1 anyways
     else:
