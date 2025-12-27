@@ -1393,7 +1393,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
 
     if not solution:
       endTime = time()
-      message = Style.BRIGHT + Fore.RED + "This game has no solution." + Style.RESET_ALL
+      message = formatVialColor("er", "This game has no solution.")
       message += " Type YES if you have corrected the game state and want to try searching again."
       retryRsp = game.requestVal(game, message, printOptions=True)
       if retryRsp != "YES":
