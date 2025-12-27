@@ -1308,6 +1308,8 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
     numDuplicateGames = 0
     maxQueueLength = 1
 
+    expectSolution = True
+
     # CONSIDER: Switching our approach based on the state of the game
     # When we still have unknowns, we should find the shortest path to find an unknown,
     # and continue in that same path until we reach a dead end.
@@ -1317,6 +1319,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
     while q and not solution:
       # Break out
       if Game.reset or Game.quit:
+        expectSolution = False
         break
 
       # Taking from the front or the back makes all the difference between BFS and DFS
@@ -1392,7 +1395,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
         numDeadEnds += 1
         deadEndDepth[current._numMoves] += 1
 
-    if not minSolution:
+    if expectSolution and not minSolution:
       endTime = time()
       message = formatVialColor("er", "This game has no solution.")
       message += " Type YES if you have corrected the game state and want to try searching again."
