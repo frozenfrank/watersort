@@ -840,7 +840,6 @@ class BigSolutionDisplay:
   """ Pre -> Game -> Post. Can advance back from POST, but can never return to PRE. """
   _currentSpacesMoved: int
   """The number of spaces that will have been moved after the user completes the indicated action."""
-  __hasDisplayedStep: bool = False
 
   SCREEN_WIDTH = 80
   SCREEN_HEIGHT = 20
@@ -984,10 +983,7 @@ class BigSolutionDisplay:
 
     ### Print ###
 
-    self.printCenteredLines(lines, linePrefix=formatVialColor(color), linePostfix=Style.RESET_ALL, fullScreenBufferLines=3, introLines=introLines, exitLines=exitLines)
-    print(Style.RESET_ALL)
-
-    self.__hasDisplayedStep = True
+    self.printCenteredLines(lines, linePrefix=formatVialColor(color), linePostfix=Style.RESET_ALL, fullScreenBufferLines=2, introLines=introLines, exitLines=exitLines)
   def _preparePreLines(self, step: SolutionStep):
     lines = []
     lines.extend(self._prepareBigCharLines(step.bigText))
