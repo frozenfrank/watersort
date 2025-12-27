@@ -845,6 +845,10 @@ class BigSolutionDisplay:
 
   SCREEN_WIDTH = 80
 
+  @staticmethod
+  def __updateScreenWidth() -> None:
+    BigSolutionDisplay.SCREEN_WIDTH = os.get_terminal_size().columns
+
   def __init__(self, game: Game):
     self.rootGame = game.root
 
@@ -861,6 +865,8 @@ class BigSolutionDisplay:
     if self._steps:
       self.__init_presteps()
       self.__init_poststeps()
+
+    BigSolutionDisplay.__updateScreenWidth()
   def __init_presteps(self):
     if self._steps[0].isSameAsPrevious is None:
       return # No comparison to a previous print sequence
@@ -1021,9 +1027,11 @@ class BigSolutionDisplay:
 
 
   def restart(self) -> None:
+    BigSolutionDisplay.__updateScreenWidth()
     if not self._hasPrev():
       print("Already at the first step.")
       return
+
     self.__currentStep = 0
     self.__currentPoststep = 0
     self._currentSpacesMoved = 0
