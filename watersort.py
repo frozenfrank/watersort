@@ -5,8 +5,7 @@ from collections import deque, defaultdict
 from resources import COLOR_CODES, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar, BigShades
 from math import floor, log
 import random
-from colorama import Fore, Style
-from colorama.ansi import clear_screen
+from colorama import Style
 from time import time
 from typing import Callable, Literal
 import copy;
@@ -902,7 +901,6 @@ class BigSolutionDisplay:
 
     # Main loop
     while running and self._hasNext():
-      # Clear the screen
       self.printCenteredLines(["Press Space to advance. Use arrow keys to navigate. Press 'q' to quit."])
 
       while True:
@@ -955,7 +953,6 @@ class BigSolutionDisplay:
     lines.append("")
     lines.append("")
 
-    if self.__hasDisplayedStep: print(clear_screen())
     self.printCenteredLines(lines, linePrefix=formatVialColor(color), linePostfix=Style.RESET_ALL, fullScreenBufferLines=5)
     print(Style.RESET_ALL)
 
