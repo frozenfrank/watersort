@@ -1391,7 +1391,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
         numDeadEnds += 1
         deadEndDepth[current._numMoves] += 1
 
-    if not solution:
+    if not minSolution:
       endTime = time()
       message = formatVialColor("er", "This game has no solution.")
       message += " Type YES if you have corrected the game state and want to try searching again."
