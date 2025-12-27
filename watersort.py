@@ -917,6 +917,7 @@ class BigSolutionDisplay:
         elif USE_READCHAR and (k == key.UP or k == key.LEFT):
           self.previous()
         elif k == 'r':
+          BigSolutionDisplay.__updateScreenWidth()
           self.displayCurrent()
         elif k == 'R':
           self.restart()
