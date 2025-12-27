@@ -1019,13 +1019,13 @@ class BigSolutionDisplay:
     @param linePrefix Inserted before every line after centering
     @param linePostfix Appended to each line after centering
     """
-    centeredLines = [self.__centerContent(line) for line in lines]
-    if fullScreenBufferLines and len(centeredLines) + fullScreenBufferLines < BigSolutionDisplay.SCREEN_HEIGHT:
-      extraLines = BigSolutionDisplay.SCREEN_HEIGHT - fullScreenBufferLines - len(centeredLines)
+    if fullScreenBufferLines and len(lines) + fullScreenBufferLines < BigSolutionDisplay.SCREEN_HEIGHT:
+      extraLines = BigSolutionDisplay.SCREEN_HEIGHT - fullScreenBufferLines - len(lines)
       extraLinesPre = extraLines // 2
       extraLinesPost = extraLines - extraLinesPre
-      centeredLines = [""] * extraLinesPre + centeredLines + [""] * extraLinesPost
-    print(linePrefix + (linePostfix + "\n"+linePrefix).join(centeredLines) + linePostfix, flush=True)
+      lines = [""] * extraLinesPre + lines + [""] * extraLinesPost
+    lines = [self.__centerContent(line) for line in lines]
+    print(linePrefix + (linePostfix + "\n"+linePrefix).join(lines) + linePostfix, flush=True)
   def __centerContent(self, line: str) -> str:
     style = ""
     content = line
