@@ -103,7 +103,7 @@ class Game:
   # Flags set on the static class
   reset: bool = False
   quit: bool = False
-  latest: bool = False # "Game" | None
+  latest: "Game" = None
   preferBigMoves: bool = True
 
   # Flags set on the root game
@@ -227,7 +227,7 @@ class Game:
     val = self.requestVal(original, request)
     if val:
       rootChanged = True
-      Game.latest = self
+      Game.latest = original
       self.root.vials[vialIndex][spaceIndex] = val.strip()
 
     colorDist, colorErrors = self.root._analyzeColors()
@@ -1289,6 +1289,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
     game.attemptCorrectErrors()
 
     startTime = time()
+    expectSolution = True
 
     # Setup our search
     solution: Game | None = None
@@ -1299,6 +1300,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
       q.append(Game.latest)
       Game.latest = None
       searchBFS = True
+      expectSolution = False
     else:
       q.append(game)
       searchBFS = shouldSearchBFS()
@@ -1308,8 +1310,6 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
     numPartialSolutionsGenerated = 0
     numDuplicateGames = 0
     maxQueueLength = 1
-
-    expectSolution = True
 
     # CONSIDER: Switching our approach based on the state of the game
     # When we still have unknowns, we should find the shortest path to find an unknown,
