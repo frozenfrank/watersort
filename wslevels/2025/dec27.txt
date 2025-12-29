@@ -1,0 +1,14 @@
+i
+dec27 drain
+11
+b	g	pk	m
+lb	pk	b	o
+r	pk	g	pn
+m	o	lb	lb
+p	r	p	pn
+g	pn	pk	p
+b	p	r	m
+pn	m	o	b
+lb	o	g	r
+-	-	-	-
+-	-	-	-

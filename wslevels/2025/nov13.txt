@@ -1,0 +1,14 @@
+i
+nov13 blind
+11
+g	g	b	o
+pk	o	g	?
+m	pk	m	pk
+p	pk	r	?
+lb	g	p	?
+o	m	r	pk
+lb	lb	b	b
+pn	p	m	?
+b	r	p	?
+-	-	-	-
+-	-	-	-
