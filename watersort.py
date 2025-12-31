@@ -1636,7 +1636,7 @@ def printVialEntryIntro() -> None:
   CODE_WIDTH = 4
   NAME_WIDTH = 20
 
-  availableColorsKeys = sorted([k for k in COLOR_NAMES.keys() if k not in "?-"])
+  availableColorsKeys = sorted([k for k in COLOR_NAMES.keys() if k not in RESERVED_COLORS])
   colorsPerCol = ceil(len(availableColorsKeys) / COLUMNS)
   lines: list[str] = ["  "] * colorsPerCol
 
