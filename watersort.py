@@ -1641,7 +1641,7 @@ def printVialEntryIntro() -> None:
   lines: list[str] = ["  "] * colorsPerCol
 
   for idx, k in enumerate(availableColorsKeys):
-    lines[idx % colorsPerCol] += Style.BRIGHT + (k + Style.NORMAL + ":").ljust(CODE_WIDTH + len(Style.NORMAL)) + formatVialColor(k, COLOR_NAMES[k], NAME_WIDTH)
+    lines[idx % colorsPerCol] += formatVialColor(k, k, CODE_WIDTH) + COLOR_NAMES[k].ljust(NAME_WIDTH)
 
   lines.insert(0, "Available colors:")
   lines.append("")
