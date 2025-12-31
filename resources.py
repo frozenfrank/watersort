@@ -6,13 +6,17 @@ MONTH_ABBRS = [month[0:3].lower() for month in MONTHS]
 
 RESERVED_COLORS = set(["?", "-"])
 
+def ANSI_FORE(r: int, g: int, b: int) -> str:
+  return f"\x1b[38;2;{r};{g};{b}m"
+def ANSI_BACK(r: int, g: int, b: int) -> str:
+  return f"\x1b[48;2;{r};{g};{b}m"
+
 COLOR_CODES = defaultdict(str, {
   "bl": Back.BLACK + Fore.LIGHTWHITE_EX,          # Black (system)
   "er": Style.BRIGHT + Fore.RED,                  # Error (system)
 
   "m": Back.CYAN,                                 # Mint
   "g": Back.LIGHTBLACK_EX + Fore.LIGHTWHITE_EX,   # Gray
-  "gr": "",                                       # Green (Occasionally)
   "o": Back.YELLOW + Fore.RED,                    # Orange
   "y": Back.YELLOW + Fore.BLACK,                  # Yellow
   "r": Back.RED + Fore.LIGHTWHITE_EX,             # Red
@@ -23,8 +27,21 @@ COLOR_CODES = defaultdict(str, {
   "lb": Fore.CYAN + Back.WHITE,                   # Light Blue
   "gn": Back.BLACK + Fore.GREEN,                  # Dark Green
   "b": Back.BLUE + Fore.LIGHTWHITE_EX,            # Blue
-  "?": "",                                        # Unknown
-  "-": "",                                        # Empty
+})
+
+COLOR_FOREGROUND = defaultdict(str, {
+  "m": ANSI_FORE(98, 214, 124),                   # Mint
+  "g": ANSI_FORE(99, 100, 101),                   # Gray
+  "o": ANSI_FORE(232, 140, 66),                   # Orange
+  "y": ANSI_FORE(241, 218, 89),                   # Yellow
+  "r": ANSI_FORE(197, 42, 35),                    # Red
+  "p": ANSI_FORE(115, 42, 147),                   # Purple
+  "pk": ANSI_FORE(120, 150, 15),                  # Puke
+  "pn": ANSI_FORE(234, 94, 123),                  # Pink
+  "br": ANSI_FORE(126, 73, 7),                    # Brown
+  "lb": ANSI_FORE(84, 163, 228),                  # Light Blue
+  "gn": ANSI_FORE(17, 101, 51),                   # Dark Green
+  "b": ANSI_FORE(58, 46, 195),                    # Blue
 })
 
 COLOR_NAMES = defaultdict(lambda: "Unrecognized", {
