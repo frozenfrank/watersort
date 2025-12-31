@@ -2,7 +2,7 @@ from datetime import datetime
 import signal
 import os
 from collections import deque, defaultdict
-from resources import COLOR_CODES, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar, BigShades
+from resources import COLOR_CODES, COLOR_FOREGROUND, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar, BigShades
 from math import floor, log, ceil
 import random
 from colorama import Fore, Style
@@ -1641,7 +1641,7 @@ def printVialEntryIntro() -> None:
   lines: list[str] = ["  "] * colorsPerCol
 
   for idx, k in enumerate(availableColorsKeys):
-    lines[idx % colorsPerCol] += formatVialColor(k, k, CODE_WIDTH) + COLOR_NAMES[k].ljust(NAME_WIDTH)
+    lines[idx % colorsPerCol] += Style.BRIGHT + formatVialColor(k, k, CODE_WIDTH, foregroundOnly=True) + Style.NORMAL + formatVialColor(k, COLOR_NAMES[k], NAME_WIDTH, foregroundOnly=True)
 
   lines.insert(0, "Available colors:")
   lines.append("")
@@ -2078,9 +2078,9 @@ def saveCSVFile(fileName: str, columns: list[tuple[str, defaultdict[int, any]]],
   # Finish
   saveFileContents(fileName, "\n".join(lines))
 
-def formatVialColor(color: str, text: str = "", ljust=0) -> str:
+def formatVialColor(color: str, text: str = "", ljust=0, foregroundOnly=False) -> str:
   """Formats a color for printing. If text is provided, it will autoreset the style afterwards as well."""
-  out = COLOR_CODES[color]
+  out = (COLOR_FOREGROUND if foregroundOnly else COLOR_CODES)[color]
   if text:
     out += text + Style.RESET_ALL
     out += " " * (ljust - len(text))
