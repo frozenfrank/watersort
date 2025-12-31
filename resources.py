@@ -31,7 +31,6 @@ COLOR_NAMES = defaultdict(lambda: "Unrecognized", {
   "bl": "Black",
   "m": "Mint",
   "g": "Gray",
-  "gr": "Green",
   "o": "Orange",
   "y": "Yellow",
   "r": "Red",
