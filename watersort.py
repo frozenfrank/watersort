@@ -1633,7 +1633,7 @@ def printVialEntryIntro() -> None:
     "  Type a blank line signal that all vials with colors have been represented (all remaining vials are empty).\n" + Fore.RESET)
 
   COLUMNS = 3
-  CODE_WIDTH = 2
+  CODE_WIDTH = 4
   NAME_WIDTH = 20
 
   availableColorsKeys = sorted([k for k in COLOR_NAMES.keys() if k not in "?-"])
@@ -1641,9 +1641,10 @@ def printVialEntryIntro() -> None:
   lines: list[str] = ["  "] * colorsPerCol
 
   for idx, k in enumerate(availableColorsKeys):
-    lines[idx % colorsPerCol] += formatVialColor(k, k, CODE_WIDTH) + ": " + formatVialColor(k, COLOR_NAMES[k], NAME_WIDTH)
+    lines[idx % colorsPerCol] += Style.BRIGHT + (k + Style.NORMAL + ":").ljust(CODE_WIDTH + len(Style.NORMAL)) + formatVialColor(k, COLOR_NAMES[k], NAME_WIDTH)
 
   lines.insert(0, "Available colors:")
+  lines.append("")
   print("\n".join(lines))
 def _determineNumEmpty(vialsWithColors: int) -> int:
   return 1 if vialsWithColors < FEW_VIALS_THRESHOLD else 2
