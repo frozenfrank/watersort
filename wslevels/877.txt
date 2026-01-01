@@ -1,0 +1,17 @@
+i
+877
+14
+g	y	b	pn
+o	lb	p	o
+pn	gn	gn	lb
+g	pk	p	r
+pk	m	m	r
+r	y	lb	br
+y	o	lb	pk
+br	br	gn	pk
+y	b	b	p
+pn	g	r	pn
+br	m	b	p
+g	o	gn	m
+-	-	-	-
+-	-	-	-

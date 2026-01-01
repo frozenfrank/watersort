@@ -1,0 +1,16 @@
+i
+dec31 blind
+13
+pn	pk	pk	o
+r	g	gn	o
+pn	br	o	g
+lb	p	o	gn
+lb	pn	b	lb
+pk	g	r	g
+gn	p	b	r
+p	pk	r	m
+pn	b	p	b
+br	m	lb	gn
+m	br	br	m
+-	-	-	-
+-	-	-	-
