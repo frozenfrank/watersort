@@ -31,3 +31,6 @@ git mv level.txt YEAR/level.txt
   - [ ] Offer to automatically start analysis session of level (in the background)
   - [x] Rename "pour mode" to "drain mode" internally
   - [ ] Introduce intelligent search with heuristics that potentially discover multiple values at once
+  - [ ] Analyze at what point the game is "safe"
+    - [ ] Show the safe point on the big solution solver
+  - [ ] Analyze which colors are used most frequently in levels (yellow is uncommon)

@@ -1,8 +1,14 @@
 from colorama import Fore, Back, Style
 from collections import defaultdict
 
+
+#### Months ####
+
 MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"]
 MONTH_ABBRS = [month[0:3].lower() for month in MONTHS]
+
+
+#### Colors ####
 
 RESERVED_COLORS = set(["?", "-"])
 
@@ -61,6 +67,9 @@ COLOR_NAMES = defaultdict(lambda: "Unrecognized", {
   "?": "Unknown",
   "-": "Empty",
 })
+
+
+#### Big Characters ####
 
 class BigChar:
   _width: int
