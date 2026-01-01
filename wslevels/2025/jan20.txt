@@ -1,0 +1,14 @@
+i
+jan20 blind
+11
+pn	g	lb	pk
+p	p	pk	r
+pk	p	b	pn
+m	m	r	m
+pk	o	p	b
+r	lb	lb	r
+o	o	m	pn
+pn	g	o	b
+g	g	lb	b
+-	-	-	-
+-	-	-	-

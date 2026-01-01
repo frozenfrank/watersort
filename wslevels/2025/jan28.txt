@@ -1,0 +1,16 @@
+i
+jan28 blind
+13
+o	g	lb	b
+br	lb	g	p
+m	gn	pn	b
+br	b	g	b
+pk	o	pk	r
+g	pk	m	pn
+o	r	r	p
+gn	br	br	p
+r	p	lb	gn
+m	m	gn	pk
+lb	pn	o	pn
+-	-	-	-
+-	-	-	-

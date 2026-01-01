@@ -1,0 +1,9 @@
+i
+jan23 blind
+6
+b	b	b	r
+o	o	m	m
+o	pn	r	?
+pn	o	m	r
+b	pn	r	?
+-	-	-	-

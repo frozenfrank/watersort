@@ -103,7 +103,7 @@ class Game:
   # Flags set on the static class
   reset: bool = False
   quit: bool = False
-  latest: bool = False # "Game" | None
+  latest: "Game" = None
   preferBigMoves: bool = True
 
   # Flags set on the root game
@@ -227,7 +227,7 @@ class Game:
     val = self.requestVal(original, request)
     if val:
       rootChanged = True
-      Game.latest = self
+      Game.latest = original
       self.root.vials[vialIndex][spaceIndex] = val.strip()
 
     colorDist, colorErrors = self.root._analyzeColors()
@@ -917,6 +917,7 @@ class BigSolutionDisplay:
         elif USE_READCHAR and (k == key.UP or k == key.LEFT):
           self.previous()
         elif k == 'r':
+          BigSolutionDisplay.__updateScreenWidth()
           self.displayCurrent()
         elif k == 'R':
           self.restart()
@@ -983,7 +984,8 @@ class BigSolutionDisplay:
 
     ### Print ###
 
-    self.printCenteredLines(lines, linePrefix=formatVialColor(color), linePostfix=Style.RESET_ALL, fullScreenBufferLines=2, introLines=introLines, exitLines=exitLines)
+    self.printCenteredLines(lines, linePrefix=formatVialColor(color), linePostfix=Style.RESET_ALL, fullScreenBufferLines=3, introLines=introLines, exitLines=exitLines)
+    print("")
   def _preparePreLines(self, step: SolutionStep):
     lines = []
     lines.extend(self._prepareBigCharLines(step.bigText))
@@ -1287,6 +1289,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
     game.attemptCorrectErrors()
 
     startTime = time()
+    expectSolution = True
 
     # Setup our search
     solution: Game | None = None
@@ -1297,6 +1300,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
       q.append(Game.latest)
       Game.latest = None
       searchBFS = True
+      expectSolution = False
     else:
       q.append(game)
       searchBFS = shouldSearchBFS()
@@ -1316,6 +1320,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
     while q and not solution:
       # Break out
       if Game.reset or Game.quit:
+        expectSolution = False
         break
 
       # Taking from the front or the back makes all the difference between BFS and DFS
@@ -1391,7 +1396,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
         numDeadEnds += 1
         deadEndDepth[current._numMoves] += 1
 
-    if not minSolution:
+    if expectSolution and not minSolution:
       endTime = time()
       message = formatVialColor("er", "This game has no solution.")
       message += " Type YES if you have corrected the game state and want to try searching again."

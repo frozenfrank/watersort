@@ -1,0 +1,14 @@
+i
+jan21 drain
+11
+r	lb	lb	pk
+pn	b	r	o
+b	r	g	pk
+m	g	m	lb
+b	b	g	pn
+o	pn	p	pk
+p	m	o	m
+p	r	p	lb
+o	pn	pk	g
+-	-	-	-
+-	-	-	-

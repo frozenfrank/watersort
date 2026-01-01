@@ -39,7 +39,7 @@ COLOR_NAMES = defaultdict(lambda: "Unrecognized", {
   "pk": "Puke",
   "pn": "Pink",
   "br": "Brown",
-  "lb": "Blue",
+  "lb": "Light Blue",
   "gn": "Green",
   "b": "Blue",
   "?": "Unknown",
