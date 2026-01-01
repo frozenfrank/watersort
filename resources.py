@@ -1,37 +1,60 @@
 from colorama import Fore, Back, Style
 from collections import defaultdict
 
+
+#### Months ####
+
 MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"]
 MONTH_ABBRS = [month[0:3].lower() for month in MONTHS]
 
+
+#### Colors ####
+
 RESERVED_COLORS = set(["?", "-"])
+
+def ANSI_FORE(r: int, g: int, b: int) -> str:
+  return f"\x1b[38;2;{r};{g};{b}m"
+def ANSI_BACK(r: int, g: int, b: int) -> str:
+  return f"\x1b[48;2;{r};{g};{b}m"
 
 COLOR_CODES = defaultdict(str, {
   "bl": Back.BLACK + Fore.LIGHTWHITE_EX,          # Black (system)
   "er": Style.BRIGHT + Fore.RED,                  # Error (system)
 
-  "m": Back.CYAN,                                 # Mint
-  "g": Back.LIGHTBLACK_EX + Fore.LIGHTWHITE_EX,   # Gray
-  "gr": "",                                       # Green (Occasionally)
-  "o": Back.YELLOW + Fore.RED,                    # Orange
-  "y": Back.YELLOW + Fore.BLACK,                  # Yellow
-  "r": Back.RED + Fore.LIGHTWHITE_EX,             # Red
-  "p": Back.BLACK  + Fore.MAGENTA,                # Purple
-  "pk": Back.GREEN + Fore.BLACK,                  # Puke
-  "pn": Back.MAGENTA,                             # Pink
-  "br": Back.WHITE + Fore.MAGENTA,                # Brown
-  "lb": Fore.CYAN + Back.WHITE,                   # Light Blue
-  "gn": Back.BLACK + Fore.GREEN,                  # Dark Green
-  "b": Back.BLUE + Fore.LIGHTWHITE_EX,            # Blue
-  "?": "",                                        # Unknown
-  "-": "",                                        # Empty
+  # The actual color from the game as the background. An HSL inverted color to 20/80% Luminosity
+  "m": ANSI_BACK(98, 214, 124) + ANSI_FORE(21, 81, 34),       # Mint
+  "g": ANSI_BACK(99, 100, 101) + ANSI_FORE(203, 204, 205),    # Gray
+  "o": ANSI_BACK(232, 140, 66) + ANSI_FORE(91, 47, 11),       # Orange
+  "y": ANSI_BACK(241, 218, 89) + ANSI_FORE(94, 81, 8),        # Yellow
+  "r": ANSI_BACK(197, 42, 35) + ANSI_FORE(87, 19, 15),        # Red
+  "p": ANSI_BACK(115, 42, 147) + ANSI_FORE(215, 176, 232),    # Purple
+  "pk": ANSI_BACK(120, 150, 15) + ANSI_FORE(228, 246, 162),   # Puke
+  "pn": ANSI_BACK(234, 94, 123) + ANSI_FORE(90, 12, 27),      # Pink
+  "br": ANSI_BACK(126, 73, 7) + ANSI_FORE(250, 209, 158),     # Brown
+  "lb": ANSI_BACK(84, 163, 228) + ANSI_FORE(14, 55, 88),      # Light Blue
+  "gn": ANSI_BACK(17, 101, 51) + ANSI_FORE(124, 233, 168),    # Dark Green
+  "b": ANSI_BACK(58, 46, 195) + ANSI_FORE(197, 193, 240),     # Blue
+})
+
+COLOR_FOREGROUND = defaultdict(str, {
+  "m": ANSI_FORE(98, 214, 124),                   # Mint
+  "g": ANSI_FORE(99, 100, 101),                   # Gray
+  "o": ANSI_FORE(232, 140, 66),                   # Orange
+  "y": ANSI_FORE(241, 218, 89),                   # Yellow
+  "r": ANSI_FORE(197, 42, 35),                    # Red
+  "p": ANSI_FORE(115, 42, 147),                   # Purple
+  "pk": ANSI_FORE(120, 150, 15),                  # Puke
+  "pn": ANSI_FORE(234, 94, 123),                  # Pink
+  "br": ANSI_FORE(126, 73, 7),                    # Brown
+  "lb": ANSI_FORE(84, 163, 228),                  # Light Blue
+  "gn": ANSI_FORE(17, 101, 51),                   # Dark Green
+  "b": ANSI_FORE(58, 46, 195),                    # Blue
 })
 
 COLOR_NAMES = defaultdict(lambda: "Unrecognized", {
   "bl": "Black",
   "m": "Mint",
   "g": "Gray",
-  "gr": "Green",
   "o": "Orange",
   "y": "Yellow",
   "r": "Red",
@@ -45,6 +68,9 @@ COLOR_NAMES = defaultdict(lambda: "Unrecognized", {
   "?": "Unknown",
   "-": "Empty",
 })
+
+
+#### Big Characters ####
 
 class BigChar:
   _width: int

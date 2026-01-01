@@ -2,8 +2,8 @@ from datetime import datetime
 import signal
 import os
 from collections import deque, defaultdict
-from resources import COLOR_CODES, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar, BigShades
-from math import floor, log
+from resources import COLOR_CODES, COLOR_FOREGROUND, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar, BigShades
+from math import floor, log, ceil
 import random
 from colorama import Fore, Style
 from time import time
@@ -1595,11 +1595,8 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False, drainMode: b
     numEmpty = _determineNumEmpty(numVials)
 
   # Read in the colors
-  if userInteraction: print(Fore.CYAN +
-      f"On the next lines, please type {NUM_SPACES_PER_VIAL} words representing the colors in each vial from top to bottom.\n"+
-      "  Stopping short of the depth of a vial will fill the remaining spaces with question marks.\n" +
-      "  Type a . (period) to insert a whole row of question marks.\n" +
-      "  Type a blank line signal that all vials with colors have been represented (all remaining vials are empty).\n" + Fore.RESET)
+  if userInteraction: printVialEntryIntro()
+
   emptyRest = False
   i = 0
   while i < numVials or numVials == -1:
@@ -1628,6 +1625,27 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False, drainMode: b
     vials.append(spaces)
 
   return Game.Create(vials, drainMode=drainMode, blindMode=blindMode)
+def printVialEntryIntro() -> None:
+  print(Fore.CYAN +
+    f"On the next lines, please type {NUM_SPACES_PER_VIAL} words representing the colors in each vial from top to bottom.\n"+
+    "  Stopping short of the depth of a vial will fill the remaining spaces with question marks.\n" +
+    "  Type a . (period) to insert a whole row of question marks.\n" +
+    "  Type a blank line signal that all vials with colors have been represented (all remaining vials are empty).\n" + Fore.RESET)
+
+  COLUMNS = 3
+  CODE_WIDTH = 4
+  NAME_WIDTH = 20
+
+  availableColorsKeys = sorted([k for k in COLOR_NAMES.keys() if k not in RESERVED_COLORS])
+  colorsPerCol = ceil(len(availableColorsKeys) / COLUMNS)
+  lines: list[str] = ["  "] * colorsPerCol
+
+  for idx, k in enumerate(availableColorsKeys):
+    lines[idx % colorsPerCol] += Style.BRIGHT + formatVialColor(k, k, CODE_WIDTH, foregroundOnly=True) + Style.NORMAL + formatVialColor(k, COLOR_NAMES[k], NAME_WIDTH, foregroundOnly=True)
+
+  lines.insert(0, "Available colors:")
+  lines.append("")
+  print("\n".join(lines))
 def _determineNumEmpty(vialsWithColors: int) -> int:
   return 1 if vialsWithColors < FEW_VIALS_THRESHOLD else 2
 
@@ -2060,9 +2078,9 @@ def saveCSVFile(fileName: str, columns: list[tuple[str, defaultdict[int, any]]],
   # Finish
   saveFileContents(fileName, "\n".join(lines))
 
-def formatVialColor(color: str, text: str = "", ljust=0) -> str:
+def formatVialColor(color: str, text: str = "", ljust=0, foregroundOnly=False) -> str:
   """Formats a color for printing. If text is provided, it will autoreset the style afterwards as well."""
-  out = COLOR_CODES[color]
+  out = (COLOR_FOREGROUND if foregroundOnly else COLOR_CODES)[color]
   if text:
     out += text + Style.RESET_ALL
     out += " " * (ljust - len(text))
