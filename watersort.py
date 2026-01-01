@@ -658,8 +658,12 @@ class Game:
     willComplete = endOnlyColor and startNumOnTop == endEmptySpaces
 
     # When completing a vial, never move more spaces than necessary
-    if willComplete and startNumOnTop > endNumOnTop:
-      return INVALID_MOVE
+    if startOnlyColor and endOnlyColor:
+      # Break ties by preferring vials towards the end of the list
+      startCompVal = startNumOnTop + (startVial / 1000)
+      endCompVal = endNumOnTop + (endVial / 1000)
+      if startCompVal > endCompVal:
+        return INVALID_MOVE
 
     # It's valid
     return (True, startColor, endColor, endEmptySpaces, willComplete)
