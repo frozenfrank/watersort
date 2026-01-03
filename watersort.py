@@ -198,10 +198,7 @@ class Game:
       return val
 
     rootVal = self.root.tryAccessVal(self, vialIndex, spaceIndex)
-    if not rootVal:
-      return "?"
-    self.vials[vialIndex][spaceIndex] = rootVal
-    return rootVal
+    return rootVal or "?"
   # The following two methods to be called on `self.root` only
   def tryAccessVal(self, original: "Game", vialIndex, spaceIndex) -> str:
     val = self.vials[vialIndex][spaceIndex]
@@ -239,12 +236,12 @@ class Game:
       if val:
         rootChanged = True
         Game.latest = original
-        spaces = val.split()
+        spaces = val.strip().split()
         if spaceIndex + len(spaces) > NUM_SPACES_PER_VIAL:
           print(formatVialColor("er", "Too many colors.") + f" Multiple colors can be entered, but the total number of spaces cannot exceed {NUM_SPACES_PER_VIAL}.")
-          printState = False
           continue # Reprompt the user
         self.root.vials[vialIndex][spaceIndex:spaceIndex+len(spaces)] = spaces
+        original.vials[vialIndex][spaceIndex:spaceIndex+len(spaces)] = spaces
       break
 
     colorDist, colorErrors = self.root._analyzeColors()
@@ -267,6 +264,7 @@ class Game:
 
       if proceed:
         self.root.vials[lastVialIndex][lastVialSpace] = lastColor
+        original.vials[lastVialIndex][lastVialSpace] = lastColor
         rootChanged = True
     elif colorDist["?"] <= NUM_SPACES_PER_VIAL and len(underusedColors) == 1:
       lastColor = underusedColors[0]
@@ -285,6 +283,7 @@ class Game:
         for vialIdx, spaceIdx in itertools.product(range(self.__numVials), range(NUM_SPACES_PER_VIAL)):
           if self.root.vials[vialIdx][spaceIdx] == "?":
             self.root.vials[vialIdx][spaceIdx] = lastColor
+            original.vials[vialIdx][spaceIdx] = lastColor
 
 
     if rootChanged:
@@ -376,13 +375,13 @@ class Game:
           Game.reset = True
           return ""  # Immediately return to re-solve
         elif rsp.startswith("-gameplay"):
-          root.saveNewGameplayMode(rsp)
+          original.saveNewGameplayMode(rsp)
         elif rsp.startswith("-level"):
-          root.saveNewLevel(rsp)
+          original.saveNewLevel(rsp)
         elif rsp.startswith("-o"):
-          root.saveOtherColor(rsp)
+          original.saveOtherColor(rsp)
         elif rsp.startswith("-v"):
-          root.saveNewVials(rsp)
+          original.saveNewVials(rsp)
 
         # Default
         else:
@@ -456,29 +455,33 @@ class Game:
     Game.reset = True
     self.root.modified = True
     self.root.vials[vial][space] = color
+    self.vials[vial][space] = color
     print(f"Saved color '{color}' to vial {o_vial} in slot {o_space}. Continue on.")
   def saveNewLevel(self, input: str) -> None:
     flag, o_level = input.split()
+    self.level = o_level
     self.root.level = o_level
     self.root.modified = True
     print(f"Saved new level ({o_level}). Continue on.")
   def saveNewVials(self, input: str) -> None:
     flag, o_vials = input.split()
     numVials = int(o_vials)
-    if numVials > len(self.vials):
-      self.modified = True
+
+    target = self.root
+    if numVials > len(target.vials):
+      target.modified = True
       Game.reset = True
-      while numVials > len(self.vials):
-        self.vials.append(["-"] * NUM_SPACES_PER_VIAL)
+      while numVials > len(target.vials):
+        target.vials.append(["-"] * NUM_SPACES_PER_VIAL)
       print(f"Increased number of vials to {numVials}")
-    elif numVials < len(self.vials):
-      self.modified = True
+    elif numVials < len(target.vials):
+      target.modified = True
       Game.reset = True
-      self.vials = self.vials[0:numVials]
+      target.vials = target.vials[0:numVials]
       print(f"Truncated the vials to only the first {numVials}")
     else:
       print(f"No change to number of vials. Still have {numVials}")
-    self.__numVials = numVials
+    target.__numVials = numVials
 
   def _identifyUnderusedColors(self, colorDist: dict[str, int]) -> list[str]:
     return [color for color, count in colorDist.items() if count < NUM_SPACES_PER_VIAL and color != "?"]
