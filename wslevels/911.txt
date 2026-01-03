@@ -1,17 +1,17 @@
 i
 911 mystery
 14
-p	?	?	?
-g	b	pn	?
-r	?	?	?
-m	b	?	?
-m	gn	?	?
-br	?	?	?
-lb	br	?	?
-m	r	?	?
-r	?	?	?
-pk	?	?	?
-br	g	?	?
-pk	?	?	?
+p	r	g	pn
+g	b	pn	o
+r	o	pn	p
+m	b	gn	o
+m	gn	p	gn
+br	y	m	lb
+lb	br	gn	lb
+m	r	y	pn
+r	y	p	b
+pk	g	pk	lb
+br	g	pk	o
+pk	y	br	b
 -	-	-	-
 -	-	-	-
