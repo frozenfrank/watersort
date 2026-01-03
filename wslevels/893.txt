@@ -1,16 +1,17 @@
 i
 893
-13
+14
 pk	b	b	g
 br	p	br	lb
-r	o	pk	?
-pn	y	lb	?
-p	y	r	?
-gn	br	b	?
-?	?	?	?
-?	?	?	?
-?	?	?	?
-?	?	?	?
-?	?	?	?
+r	o	pk	r
+pn	y	lb	pn
+p	y	r	lb
+gn	br	b	o
+m	m	pk	r
+lb	gn	o	g
+y	y	m	p
+p	m	b	pn
+br	g	o	gn
+gn	pn	g	pk
 -	-	-	-
 -	-	-	-
