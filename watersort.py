@@ -115,6 +115,8 @@ class Game:
   """Special mode where colors drain out of the bottom of vials instead of pouring from the top."""
   blindMode: bool = None
   """Represents FULL-blind mode where spaces re-hide themselves after moving."""
+  hadMysterySpaces: bool = False
+  """Automatically flagged when mystery tiles are discovered."""
 
   # Cached for single use calculation
   _COMPLETE_TERM = "complete"
@@ -205,6 +207,11 @@ class Game:
     val = self.vials[vialIndex][spaceIndex]
     if val != "?":
       return val
+
+    if not self.root.hadMysterySpaces:
+      original.root.hadMysterySpaces = True
+      original.root.modified = True
+      # Allow this change to be picked up by the next save cycle
 
     print("\n\n", end="")
     if SOLVE_METHOD == "DFR":
@@ -1559,8 +1566,10 @@ def readGameFile(gameFileName: str, level: str = None, drainMode: bool = None, b
       level = levelLine[0]
       drainMode = "drain" in levelLine or "pour" in levelLine
       blindMode = "blind" in levelLine
+      mysteryMode = "mystery" in levelLine
     gameRead = _readGame(nextLine, drainMode=drainMode, blindMode=blindMode)
     gameRead.level = level
+    if mysteryMode: gameRead.hadMysterySpaces = True
 
     gameFile.close()
   except FileNotFoundError:
@@ -1839,6 +1848,8 @@ def generateFileContents(game: "Game") -> str:
     levelLine += " drain"
   if game.root.blindMode:
     levelLine += " blind"
+  if game.root.hadMysterySpaces:
+    levelLine += " mystery"
 
   lines.append(levelLine)
   lines.append(str(len(game.vials)))
