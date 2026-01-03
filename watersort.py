@@ -115,6 +115,8 @@ class Game:
   """Special mode where colors drain out of the bottom of vials instead of pouring from the top."""
   blindMode: bool = None
   """Represents FULL-blind mode where spaces re-hide themselves after moving."""
+  hadMysterySpaces: bool = False
+  """Automatically flagged when mystery tiles are discovered."""
 
   # Cached for single use calculation
   _COMPLETE_TERM = "complete"
@@ -196,15 +198,17 @@ class Game:
       return val
 
     rootVal = self.root.tryAccessVal(self, vialIndex, spaceIndex)
-    if not rootVal:
-      return "?"
-    self.vials[vialIndex][spaceIndex] = rootVal
-    return rootVal
+    return rootVal or "?"
   # The following two methods to be called on `self.root` only
   def tryAccessVal(self, original: "Game", vialIndex, spaceIndex) -> str:
     val = self.vials[vialIndex][spaceIndex]
     if val != "?":
       return val
+
+    if not self.root.hadMysterySpaces:
+      original.root.hadMysterySpaces = True
+      original.root.modified = True
+      # Allow this change to be picked up by the next save cycle
 
     print("\n\n", end="")
     if SOLVE_METHOD == "DFR":
@@ -216,7 +220,7 @@ class Game:
 
     print("Discovering new value:")
     startVial = vialIndex + 1
-    request = f"What's the new value in the {startVial} vial?"
+    request = f"What's the new value in the {startVial} vial, {spaceIndex+1} space?"
     colorDist, colorErrors = self._analyzeColors()
     if colorDist["?"] > 0:
       underusedColors = sorted(self._identifyUnderusedColors(colorDist))
@@ -224,11 +228,21 @@ class Game:
       request += f" ({colorDist['?']} remaining unknowns: {', '.join(fewColors)})"
 
     rootChanged = False
-    val = self.requestVal(original, request)
-    if val:
-      rootChanged = True
-      Game.latest = original
-      self.root.vials[vialIndex][spaceIndex] = val.strip()
+
+    repromptCount = -1
+    while True:
+      repromptCount += 1
+      val = self.requestVal(original, request, printState=repromptCount==0, printOptions=None if repromptCount == 0 else False)
+      if val:
+        rootChanged = True
+        Game.latest = original
+        spaces = val.strip().split()
+        if spaceIndex + len(spaces) > NUM_SPACES_PER_VIAL:
+          print(formatVialColor("er", "Too many colors.") + f" Multiple colors can be entered, but the total number of spaces cannot exceed {NUM_SPACES_PER_VIAL}.")
+          continue # Reprompt the user
+        self.root.vials[vialIndex][spaceIndex:spaceIndex+len(spaces)] = spaces
+        original.vials[vialIndex][spaceIndex:spaceIndex+len(spaces)] = spaces
+      break
 
     colorDist, colorErrors = self.root._analyzeColors()
     underusedColors = self._identifyUnderusedColors(colorDist)
@@ -250,7 +264,7 @@ class Game:
 
       if proceed:
         self.root.vials[lastVialIndex][lastVialSpace] = lastColor
-        Game.latest = None # Prevent the solver from attempting BFS on this solved state
+        original.vials[lastVialIndex][lastVialSpace] = lastColor
         rootChanged = True
     elif colorDist["?"] <= NUM_SPACES_PER_VIAL and len(underusedColors) == 1:
       lastColor = underusedColors[0]
@@ -269,13 +283,7 @@ class Game:
         for vialIdx, spaceIdx in itertools.product(range(self.__numVials), range(NUM_SPACES_PER_VIAL)):
           if self.root.vials[vialIdx][spaceIdx] == "?":
             self.root.vials[vialIdx][spaceIdx] = lastColor
-
-
-    colorDist, colorErrors = self.root._analyzeColors()
-    if colorDist["?"] == 0:
-      rootChanged = True
-      print("Reverting to original solve method now that all discovered values are found.")
-      autoSwitchForUnknownsRevert()
+            original.vials[vialIdx][spaceIdx] = lastColor
 
 
     if rootChanged:
@@ -283,11 +291,29 @@ class Game:
       self.root.modified = True
       saveGame(self.root)
 
+    colorDist, colorErrors = self.root._analyzeColors()
+    if colorDist["?"] == 0 and AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD:
+      doResolveLevel = True
+      if Game.latest:
+        prompt = Style.BRIGHT + "All unknowns located." + Style.NORMAL + " Would you like to re-solve to find the shortest solution?"
+        defaultYes = original._numMoves < 10
+        doResolveLevel = self.confirmPrompt(original, prompt, defaultYes=defaultYes)
+
+      if doResolveLevel:
+        print("Reverting to original solve method now that all discovered values are found.")
+        autoSwitchForUnknownsRevert()
+        Game.reset = True
+        Game.latest = None
+      else:
+        Game.reset = False
+
+    saveGame(self.root)
     return val
-  def confirmPrompt(self, original: "Game", question: str) -> bool:
-    question += " [y]/n:"
+  def confirmPrompt(self, original: "Game", question: str, defaultYes=True) -> bool:
+    question += " [y]/n:" if defaultYes else " y/[n]:"
     rsp = self.requestVal(original, question, printState=False, disableAutoSave=True, printOptions=False)
-    return (rsp or "y").strip()[0].lower()
+    if not rsp: return defaultYes
+    return rsp.strip()[0].lower() == "y"
   def requestVal(self, original: "Game", request: str, printState=True, disableAutoSave=False, printOptions:bool=None) -> str:
     if printState:
       if Game.preferBigMoves and original.move:
@@ -349,13 +375,13 @@ class Game:
           Game.reset = True
           return ""  # Immediately return to re-solve
         elif rsp.startswith("-gameplay"):
-          root.saveNewGameplayMode(rsp)
+          original.saveNewGameplayMode(rsp)
         elif rsp.startswith("-level"):
-          root.saveNewLevel(rsp)
+          original.saveNewLevel(rsp)
         elif rsp.startswith("-o"):
-          root.saveOtherColor(rsp)
+          original.saveOtherColor(rsp)
         elif rsp.startswith("-v"):
-          root.saveNewVials(rsp)
+          original.saveNewVials(rsp)
 
         # Default
         else:
@@ -429,29 +455,33 @@ class Game:
     Game.reset = True
     self.root.modified = True
     self.root.vials[vial][space] = color
+    self.vials[vial][space] = color
     print(f"Saved color '{color}' to vial {o_vial} in slot {o_space}. Continue on.")
   def saveNewLevel(self, input: str) -> None:
     flag, o_level = input.split()
+    self.level = o_level
     self.root.level = o_level
     self.root.modified = True
     print(f"Saved new level ({o_level}). Continue on.")
   def saveNewVials(self, input: str) -> None:
     flag, o_vials = input.split()
     numVials = int(o_vials)
-    if numVials > len(self.vials):
-      self.modified = True
+
+    target = self.root
+    if numVials > len(target.vials):
+      target.modified = True
       Game.reset = True
-      while numVials > len(self.vials):
-        self.vials.append(["-"] * NUM_SPACES_PER_VIAL)
+      while numVials > len(target.vials):
+        target.vials.append(["-"] * NUM_SPACES_PER_VIAL)
       print(f"Increased number of vials to {numVials}")
-    elif numVials < len(self.vials):
-      self.modified = True
+    elif numVials < len(target.vials):
+      target.modified = True
       Game.reset = True
-      self.vials = self.vials[0:numVials]
+      target.vials = target.vials[0:numVials]
       print(f"Truncated the vials to only the first {numVials}")
     else:
       print(f"No change to number of vials. Still have {numVials}")
-    self.__numVials = numVials
+    target.__numVials = numVials
 
   def _identifyUnderusedColors(self, colorDist: dict[str, int]) -> list[str]:
     return [color for color, count in colorDist.items() if count < NUM_SPACES_PER_VIAL and color != "?"]
@@ -648,8 +678,8 @@ class Game:
     startIsComplete, startOnlyColor, startNumOnTop, startEmptySpaces = self.__countOnTop(startColor, startVial, bottom=self.root.drainMode)
     if startIsComplete:
       return INVALID_MOVE # Start is fully filled
-    if startOnlyColor and endColor == "-":
-      return INVALID_MOVE # Don't needlessly switch to a different empty container
+    if endColor == "-" and (startOnlyColor or self.__findSoloVial(startColor) is not None):
+      return INVALID_MOVE # Never move to an empty contain when it isn't helpful
     if startNumOnTop > endEmptySpaces:
       # CONSIDER: This may not actually be an invalid move
       return INVALID_MOVE # Only pour when it can all be received
@@ -692,6 +722,13 @@ class Game:
         numOnTop += 1
 
     return (isComplete, onlyColor, numOnTop, emptySpaces)
+  def __findSoloVial(self, forColor: str) -> int | None:
+    """Locates a vial that contains *only* the specified color. If no vial exists, returns None."""
+    for searchVial in range(len(self.vials)):
+      _, isOnlyColor, numOnTop, _ = self.__countOnTop(forColor, searchVial)
+      if isOnlyColor and numOnTop > 0:
+        return searchVial
+    return None
 
   def makeMove(self, startVial, endVial) -> bool:
     valid, startColor, endColor, endSpaces, willComplete = self.__prepareMove(startVial, endVial)
@@ -1361,6 +1398,11 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
       # Check all next moves
       hasNextGame = False
       nextGames = current.generateNextGames()
+      # Break out after user input
+      if Game.reset or Game.quit:
+        expectSolution = False
+        break
+
       if SHUFFLE_NEXT_MOVES: random.shuffle(nextGames)
       for nextGame in nextGames:
         numPartialSolutionsGenerated += 1
@@ -1547,8 +1589,10 @@ def readGameFile(gameFileName: str, level: str = None, drainMode: bool = None, b
       level = levelLine[0]
       drainMode = "drain" in levelLine or "pour" in levelLine
       blindMode = "blind" in levelLine
+      mysteryMode = "mystery" in levelLine
     gameRead = _readGame(nextLine, drainMode=drainMode, blindMode=blindMode)
     gameRead.level = level
+    if mysteryMode: gameRead.hadMysterySpaces = True
 
     gameFile.close()
   except FileNotFoundError:
@@ -1827,6 +1871,8 @@ def generateFileContents(game: "Game") -> str:
     levelLine += " drain"
   if game.root.blindMode:
     levelLine += " blind"
+  if game.root.hadMysterySpaces:
+    levelLine += " mystery"
 
   lines.append(levelLine)
   lines.append(str(len(game.vials)))
