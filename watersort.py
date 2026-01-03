@@ -648,8 +648,8 @@ class Game:
     startIsComplete, startOnlyColor, startNumOnTop, startEmptySpaces = self.__countOnTop(startColor, startVial, bottom=self.root.drainMode)
     if startIsComplete:
       return INVALID_MOVE # Start is fully filled
-    if startOnlyColor and endColor == "-":
-      return INVALID_MOVE # Don't needlessly switch to a different empty container
+    if endColor == "-" and (startOnlyColor or self.__findSoloVial(startColor) is not None):
+      return INVALID_MOVE # Never move to an empty contain when it isn't helpful
     if startNumOnTop > endEmptySpaces:
       # CONSIDER: This may not actually be an invalid move
       return INVALID_MOVE # Only pour when it can all be received
@@ -692,6 +692,13 @@ class Game:
         numOnTop += 1
 
     return (isComplete, onlyColor, numOnTop, emptySpaces)
+  def __findSoloVial(self, forColor: str) -> int | None:
+    """Locates a vial that contains *only* the specified color. If no vial exists, returns None."""
+    for searchVial in range(len(self.vials)):
+      _, isOnlyColor, numOnTop, _ = self.__countOnTop(forColor, searchVial)
+      if isOnlyColor and numOnTop > 0:
+        return searchVial
+    return None
 
   def makeMove(self, startVial, endVial) -> bool:
     valid, startColor, endColor, endSpaces, willComplete = self.__prepareMove(startVial, endVial)
