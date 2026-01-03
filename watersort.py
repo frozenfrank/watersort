@@ -267,7 +267,6 @@ class Game:
 
       if proceed:
         self.root.vials[lastVialIndex][lastVialSpace] = lastColor
-        Game.latest = None # Prevent the solver from attempting BFS on this solved state
         rootChanged = True
     elif colorDist["?"] <= NUM_SPACES_PER_VIAL and len(underusedColors) == 1:
       lastColor = underusedColors[0]
@@ -288,23 +287,34 @@ class Game:
             self.root.vials[vialIdx][spaceIdx] = lastColor
 
 
-    colorDist, colorErrors = self.root._analyzeColors()
-    if colorDist["?"] == 0:
-      rootChanged = True
-      print("Reverting to original solve method now that all discovered values are found.")
-      autoSwitchForUnknownsRevert()
-
-
     if rootChanged:
       Game.reset = True # Reset the search to handle this new discovery properly
       self.root.modified = True
       saveGame(self.root)
 
+    colorDist, colorErrors = self.root._analyzeColors()
+    if colorDist["?"] == 0 and AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD:
+      doResolveLevel = True
+      if Game.latest:
+        prompt = Style.BRIGHT + "All unknowns located." + Style.NORMAL + " Would you like to re-solve to find the shortest solution?"
+        defaultYes = original._numMoves < 10
+        doResolveLevel = self.confirmPrompt(original, prompt, defaultYes=defaultYes)
+
+      if doResolveLevel:
+        print("Reverting to original solve method now that all discovered values are found.")
+        autoSwitchForUnknownsRevert()
+        Game.reset = True
+        Game.latest = None
+      else:
+        Game.reset = False
+
+    saveGame(self.root)
     return val
-  def confirmPrompt(self, original: "Game", question: str) -> bool:
-    question += " [y]/n:"
+  def confirmPrompt(self, original: "Game", question: str, defaultYes=True) -> bool:
+    question += " [y]/n:" if defaultYes else " y/[n]:"
     rsp = self.requestVal(original, question, printState=False, disableAutoSave=True, printOptions=False)
-    return (rsp or "y").strip()[0].lower()
+    if not rsp: return defaultYes
+    return rsp.strip()[0].lower() == "y"
   def requestVal(self, original: "Game", request: str, printState=True, disableAutoSave=False, printOptions:bool=None) -> str:
     if printState:
       if Game.preferBigMoves and original.move:
