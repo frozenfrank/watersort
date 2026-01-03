@@ -231,11 +231,21 @@ class Game:
       request += f" ({colorDist['?']} remaining unknowns: {', '.join(fewColors)})"
 
     rootChanged = False
-    val = self.requestVal(original, request)
-    if val:
-      rootChanged = True
-      Game.latest = original
-      self.root.vials[vialIndex][spaceIndex] = val.strip()
+
+    repromptCount = -1
+    while True:
+      repromptCount += 1
+      val = self.requestVal(original, request, printState=repromptCount==0, printOptions=None if repromptCount == 0 else False)
+      if val:
+        rootChanged = True
+        Game.latest = original
+        spaces = val.split()
+        if spaceIndex + len(spaces) > NUM_SPACES_PER_VIAL:
+          print(formatVialColor("er", "Too many colors.") + f" Multiple colors can be entered, but the total number of spaces cannot exceed {NUM_SPACES_PER_VIAL}.")
+          printState = False
+          continue # Reprompt the user
+        self.root.vials[vialIndex][spaceIndex:spaceIndex+len(spaces)] = spaces
+      break
 
     colorDist, colorErrors = self.root._analyzeColors()
     underusedColors = self._identifyUnderusedColors(colorDist)
