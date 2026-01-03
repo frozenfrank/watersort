@@ -1361,6 +1361,11 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
       # Check all next moves
       hasNextGame = False
       nextGames = current.generateNextGames()
+      # Break out after user input
+      if Game.reset or Game.quit:
+        expectSolution = False
+        break
+
       if SHUFFLE_NEXT_MOVES: random.shuffle(nextGames)
       for nextGame in nextGames:
         numPartialSolutionsGenerated += 1
