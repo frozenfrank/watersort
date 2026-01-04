@@ -335,63 +335,76 @@ class Game:
         # CONSIDER: This may not actually be the best behavior
         break
       elif rsp == "quit" or rsp[0] == "-":
-        root = self.root
-
-        # Program mechanics
-        if rsp == "-q" or rsp == "-quit" or rsp == "quit":
-          quit() # Consider terminating just to menu above us??
-        elif rsp == "-e" or rsp == "-exit":
-          saveGame(root)
-          quit()
-        elif rsp == "-s" or rsp == "-save":
-          saveGame(root, forceSave=True)
-        elif rsp == "-r" or rsp == "-reset":
-          Game.reset = True
-          Game.latest = None
-          return ""
-
-        # Printing status
-        elif rsp == "-h" or rsp == "-help":
-          self.__requestValHelp()
-        elif rsp == "-p" or rsp == "-print":
-          root.printVials()
-        elif rsp == "-pc":
-          original.printVials()
-        elif rsp == "-m" or rsp == "-moves":
-          original.printMoves()
-        elif rsp == "-b":
-          BigSolutionDisplay(original).start()
-        elif rsp == "-d" or rsp == "-debug":
-          print("Printing debug info... (None)")
-          # TODO: Print the queue length, and other search related stats
-        elif rsp == "-c" or rsp == "-colors" or rsp == "-color":
-          root.printColors()
-
-        # Special commands
-        elif rsp.startswith("-b "):
-          self.saveNewBigMovesSetting(rsp, original)
-        elif rsp.startswith("-solve"):
-          setSolveMethod(rsp.split(" ")[1])
-          Game.reset = True
-          return ""  # Immediately return to re-solve
-        elif rsp.startswith("-gameplay"):
-          original.saveNewGameplayMode(rsp)
-        elif rsp.startswith("-level"):
-          original.saveNewLevel(rsp)
-        elif rsp.startswith("-o"):
-          original.saveOtherColor(rsp)
-        elif rsp.startswith("-v"):
-          original.saveNewVials(rsp)
-
-        # Default
-        else:
-          print("Unrecognized command: " + rsp)
+        action = self._handleSpecialOption(rsp)
+        if action is not None:
+          return action
       else:
         # They answered the original question
         break
 
     if not disableAutoSave: saveGame(self.root)
     return rsp
+  def _handleSpecialOption(self, rsp: str):
+    """
+    Interprets and acts on a special command represented as a string.
+    The commands available are described by the helptext, and with one exception, they begin with a hyphen (-).
+
+    @returns None when no action is required, otherwise a value with which to immediately return as if entered as a normal value
+    """
+    root = self.root
+    original = self
+
+    # Program mechanics
+    if rsp == "-q" or rsp == "-quit" or rsp == "quit":
+      quit() # Consider terminating just to menu above us??
+    elif rsp == "-e" or rsp == "-exit":
+      saveGame(root)
+      quit()
+    elif rsp == "-s" or rsp == "-save":
+      saveGame(root, forceSave=True)
+    elif rsp == "-r" or rsp == "-reset":
+      Game.reset = True
+      Game.latest = None
+      return ""
+
+    # Printing status
+    elif rsp == "-h" or rsp == "-help":
+      self.__requestValHelp()
+    elif rsp == "-p" or rsp == "-print":
+      root.printVials()
+    elif rsp == "-pc":
+      original.printVials()
+    elif rsp == "-m" or rsp == "-moves":
+      original.printMoves()
+    elif rsp == "-b":
+      BigSolutionDisplay(original).start()
+    elif rsp == "-d" or rsp == "-debug":
+      print("Printing debug info... (None)")
+      # TODO: Print the queue length, and other search related stats
+    elif rsp == "-c" or rsp == "-colors" or rsp == "-color":
+      root.printColors()
+
+    # Special commands
+    elif rsp.startswith("-b "):
+      self.saveNewBigMovesSetting(rsp, original)
+    elif rsp.startswith("-solve"):
+      setSolveMethod(rsp.split(" ")[1])
+      Game.reset = True
+      return ""  # Immediately return to re-solve
+    elif rsp.startswith("-gameplay"):
+      original.saveNewGameplayMode(rsp)
+    elif rsp.startswith("-level"):
+      original.saveNewLevel(rsp)
+    elif rsp.startswith("-o"):
+      original.saveOtherColor(rsp)
+    elif rsp.startswith("-v"):
+      original.saveNewVials(rsp)
+
+    # Default
+    else:
+      print("Unrecognized command: " + rsp)
+
+    return None
   def __requestValHelp(self, abbreviated = False) -> None:
     if abbreviated:
       print("Other options (basic):\n" +
@@ -965,6 +978,11 @@ class BigSolutionDisplay:
         elif k == 'l':
           self.toggleBlindMode()
           self.displayCurrent()
+        elif k == '-' or k.startswith('-'):
+          action = self.__acceptGameCommand(k)
+          if action is not None:
+            print(formatVialColor("wn", "Command not fully supported in this context.") + " This command may not work here, even though it works at other prompts.")
+            running = False
         else:
           self.printCenteredLines([f"Unrecognized key ({k})"])
           continue  # Keep waiting for a valid key
@@ -975,6 +993,20 @@ class BigSolutionDisplay:
 
   def displayHelp(self) -> None:
     print("FIXME: List of keyboard expansions...")
+  def __acceptGameCommand(self, command: str=""):
+    curGame = self._getCurStep().game
+    if not curGame:
+      print(f"{Style.BRIGHT}Game CMD Unavailable{Style.NORMAL} - No game host object")
+      return None
+
+    if len(command) <= 1:  # Accept a command received previously, otherwise, receive the rest of the command
+      command = "-" + input(Style.BRIGHT + "Game CMD:" + Style.NORMAL + " -")
+
+    if not command or command == "-":
+      print("No command received.")
+      return None
+
+    return curGame._handleSpecialOption(command)
 
   def displayCurrent(self) -> None:
     lines: list[str] = []

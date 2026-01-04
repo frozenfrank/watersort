@@ -25,7 +25,7 @@ git mv level.txt YEAR/level.txt
   - [ ] Show whether path eventually diverges, or extends. Indicate when crossing into new territory.
   - [ ] Indicate whether the steps are discovering a new value or leading to eventual solution
     - [ ] Show summary of color analysis results... surface abnormal colors
-  - [ ] Allow leveraging game solver extended menu
+  - [x] Allow leveraging game solver extended menu
 - General
   - [x] Automatically store/retrieve monthly game files in annual sub-folders based on current year
   - [ ] Offer to automatically start analysis session of level (in the background)
