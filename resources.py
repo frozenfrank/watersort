@@ -1,4 +1,5 @@
-from colorama import Fore, Back, Style
+from colorama import Fore, Back
+from colorama.ansi import AnsiStyle
 from collections import defaultdict
 
 
@@ -8,7 +9,17 @@ MONTHS = ["January","February","March","April","May","June","July","August","Sep
 MONTH_ABBRS = [month[0:3].lower() for month in MONTHS]
 
 
-#### Colors ####
+#### Colors & Styles ####
+
+class AnsiConsole(AnsiStyle):
+  ITALICS = 3
+  UNDERSCORE = 4
+  INVERSE = 7
+  CONCEALED = 8
+  STRIKETHROUGH = 9
+
+Style = AnsiConsole()
+
 
 RESERVED_COLORS = set(["?", "-"])
 

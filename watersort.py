@@ -2,10 +2,10 @@ from datetime import datetime
 import signal
 import os
 from collections import deque, defaultdict
-from resources import COLOR_CODES, COLOR_FOREGROUND, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar, BigShades
+from resources import COLOR_CODES, COLOR_FOREGROUND, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar, BigShades, Style
 from math import floor, log, ceil
 import random
-from colorama import Fore, Style
+from colorama import Fore
 from time import time
 from typing import Callable, Literal
 import copy;
