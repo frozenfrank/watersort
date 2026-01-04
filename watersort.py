@@ -992,7 +992,26 @@ class BigSolutionDisplay:
       pass
 
   def displayHelp(self) -> None:
-    print("FIXME: List of keyboard expansions...")
+    B = Style.BRIGHT
+    D = Style.DIM
+    R = Style.RESET_ALL
+    N = Style.NORMAL
+
+    forward = f"{B}f{N} {D}or{N} {B + Style.ITALICS}space{R} or {B}⏎{N}/{B}→{N}/{B}↓{N}"
+    backward = f"{B}b{N} {D}or{N} {B}p{N} {D}or{N} {B}←{N}/{B}↑{N}"
+    quit = f"{B}q{N} {D}or{N} {B}Q{N}"
+
+    print("Big Solution Display Controls:\n" +
+         f"   {quit}                  quit{D}; leave the Big Solution display mode{N}\n" +
+         f"   {B}h{N}                       help{D}; reprint this screen{N}\n" +
+         f"   {B}n{N}                       forward{D}, to the next step{N}\n" +
+         f"   {forward          }     forward\n" +
+         f"   {backward   }           backward\n" +
+         f"   {B}l{N}                       toggle blind mode{D}; in blind mode, each space must be moved individually{N}\n" +
+         f"   {B}r{N}                       refresh display{D}; necessary if the terminal resizes{N}\n" +
+         f"   {B}R{N}                       restart solution {D}to the beginning{N}\n" +
+         f"   {B}-{N + Style.ITALICS}CMD{R}                    enter game command\n" +
+         f"     {B}-help{N}                 print game command help\n")
   def __acceptGameCommand(self, command: str=""):
     curGame = self._getCurStep().game
     if not curGame:
