@@ -257,7 +257,7 @@ class Game:
       proceed = True
       if CONFIRM_APPLY_LAST_UNKNOWN:
         request += f" Would you like to save {formatVialColor(lastColor, lastColor)} into space {lastSpace}?"
-        proceed = self.confirmPrompt(original, request)
+        proceed = original.confirmPrompt(request)
       else:
         request += f" Saving color {formatVialColor(lastColor, lastColor)} into space {lastSpace}."
         print(request)
@@ -273,7 +273,7 @@ class Game:
       proceed = True
       if CONFIRM_APPLY_LAST_BATCH_COLOR:
         request += f" Would you like to save {formatVialColor(lastColor, lastColor)} in *all* {colorDist['?']} spaces?"
-        proceed = self.confirmPrompt(original, request)
+        proceed = original.confirmPrompt(request)
       else:
         request += f" Saving color {formatVialColor(lastColor, lastColor)} into {colorDist['?']} remaining spaces."
         print(request)
@@ -297,7 +297,7 @@ class Game:
       if Game.latest:
         prompt = Style.BRIGHT + "All unknowns located." + Style.NORMAL + " Would you like to re-solve to find the shortest solution?"
         defaultYes = original._numMoves < 10
-        doResolveLevel = self.confirmPrompt(original, prompt, defaultYes=defaultYes)
+        doResolveLevel = original.confirmPrompt(prompt, defaultYes=defaultYes)
 
       if doResolveLevel:
         print("Reverting to original solve method now that all discovered values are found.")
@@ -309,9 +309,9 @@ class Game:
 
     saveGame(self.root)
     return val
-  def confirmPrompt(self, original: "Game", question: str, defaultYes=True) -> bool:
+  def confirmPrompt(self, question: str, defaultYes=True) -> bool:
     question += " [y]/n:" if defaultYes else " y/[n]:"
-    rsp = original.requestVal(question, printState=False, disableAutoSave=True, printOptions=False)
+    rsp = self.requestVal(question, printState=False, disableAutoSave=True, printOptions=False)
     if not rsp: return defaultYes
     return rsp.strip()[0].lower() == "y"
   def requestVal(self, request: str, printState=True, disableAutoSave=False, printOptions:bool=None) -> str:
@@ -1431,7 +1431,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
           print("Switching to DFS search for MIX solve method")
         elif numIterations % QUEUE_CHECK_FREQ == 0:
           if ENABLE_QUEUE_CHECKS and not searchBFS:
-            continueSearching = current.confirmPrompt(current, "This is a lot. Would you like to continue searching?")
+            continueSearching = current.confirmPrompt("This is a lot. Would you like to continue searching?")
             if not continueSearching:
               expectSolution = False
               analysisSamplesRemaining = 0
@@ -1439,7 +1439,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
           else:
             print(f"QUEUE CHECK: \tresets: {numResets} \titrs: {numIterations} \tmvs: {current._numMoves} \tq len: {len(q)} \tends: {numDeadEnds} \tdup games: {numDuplicateGames} \tmins: {round((time() - startTime) / 60, 1)}")
             if SOLVE_METHOD == "MIX":
-              switchFaster = current.confirmPrompt(current, "This is a lot. Would you like to switch to a faster approach?", defaultYes=False)
+              switchFaster = current.confirmPrompt("This is a lot. Would you like to switch to a faster approach?", defaultYes=False)
               if switchFaster:
                 searchBFS = False
                 setSolveMethod("DFS")
