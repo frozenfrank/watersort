@@ -167,7 +167,7 @@ class Game:
     if not self.hasError():
       return False
 
-    self.requestVal(self, formatVialColor("er", "The colors aren't right in this game.") + " Fix them, and press enter to proceed.")
+    self.requestVal(formatVialColor("er", "The colors aren't right in this game.") + " Fix them, and press enter to proceed.")
     self._analyzeColors()
     if self.hasError():
       saveGame(self, forceSave=True)
@@ -232,7 +232,7 @@ class Game:
     repromptCount = -1
     while True:
       repromptCount += 1
-      val = self.requestVal(original, request, printState=repromptCount==0, printOptions=None if repromptCount == 0 else False)
+      val = original.requestVal(request, printState=repromptCount==0, printOptions=None if repromptCount == 0 else False)
       if val:
         rootChanged = True
         Game.latest = original
@@ -311,16 +311,16 @@ class Game:
     return val
   def confirmPrompt(self, original: "Game", question: str, defaultYes=True) -> bool:
     question += " [y]/n:" if defaultYes else " y/[n]:"
-    rsp = self.requestVal(original, question, printState=False, disableAutoSave=True, printOptions=False)
+    rsp = original.requestVal(question, printState=False, disableAutoSave=True, printOptions=False)
     if not rsp: return defaultYes
     return rsp.strip()[0].lower() == "y"
-  def requestVal(self, original: "Game", request: str, printState=True, disableAutoSave=False, printOptions:bool=None) -> str:
+  def requestVal(self, request: str, printState=True, disableAutoSave=False, printOptions:bool=None) -> str:
     if printState:
-      if Game.preferBigMoves and original.move:
-        BigSolutionDisplay(original).start()
+      if Game.preferBigMoves and self.move:
+        BigSolutionDisplay(self).start()
       else:
-        original.printVials()
-        original.printMoves()
+        self.printVials()
+        self.printMoves()
 
     # Other options start with a dash
     if printOptions != False:
@@ -1502,7 +1502,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
       endTime = time()
       message = formatVialColor("er", "This game has no solution.")
       message += " Type YES if you have corrected the game state and want to try searching again."
-      retryRsp = game.requestVal(game, message, printOptions=True)
+      retryRsp = game.requestVal(message, printOptions=True)
       if retryRsp != "YES":
         break # There are no solutions
       else:
