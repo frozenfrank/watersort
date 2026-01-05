@@ -882,6 +882,7 @@ class Game:
 
 class BigSolutionDisplay:
   rootGame: "Game"
+  targetGame: "Game"
   _presteps: deque[SolutionStep]
   _steps: deque[SolutionStep]
   _poststeps: deque[SolutionStep]
@@ -906,6 +907,7 @@ class BigSolutionDisplay:
 
   def __init__(self, game: Game):
     self.rootGame = game.root
+    self.targetGame = game
 
     self._presteps = deque()
     self._steps = game._prepareSolutionSteps()
@@ -938,11 +940,11 @@ class BigSolutionDisplay:
       self.__currentStep = firstNewIndex # Pick up where we left off
 
     # Add step to queue
-    self._presteps.append(SolutionStep(bigText=bigText))
+    self._presteps.append(SolutionStep(bigText=bigText, game=self.targetGame))
     self._currentStage = "PRE"
   def __init_poststeps(self):
     bigText = "DONE✅" if self._steps[-1].game.isFinished() else "COLOR?"
-    self._poststeps.append(SolutionStep(bigText=bigText))
+    self._poststeps.append(SolutionStep(bigText=bigText, game=self.targetGame))
 
   def start(self):
     if not self._steps:
