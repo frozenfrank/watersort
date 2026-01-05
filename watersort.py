@@ -1334,7 +1334,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
 
   minSolution: Game = None
   numResets = -1
-  randomSamplesRemaining = probeDFRSamples if SOLVE_METHOD == "DFR" else 0
+  randomSamplesRemaining = probeDFRSamples
 
   startTime: float = None
   endTime: float = None
@@ -1440,7 +1440,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
               switchFaster = current.confirmPrompt(current, "This is a lot. Would you like to switch to a faster approach?", defaultYes=False)
               if switchFaster:
                 searchBFS = False
-                SOLVE_METHOD = "DFS"
+                setSolveMethod("DFS")
               else:
                 pass
 
