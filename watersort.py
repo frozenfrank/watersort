@@ -431,7 +431,7 @@ class Game:
             "   -e or -exit             to save and exit\n" +
             "   -q or quit              to quit\n" +
             "   -d or -debug            to see debug info")
-  def saveNewBigMovesSetting(self, input: str, originalGame: "Game") -> None:
+  def saveNewBigMovesSetting(self, input: str) -> None:
     setting = input.split()[1]
     settingLower = setting.lower()
 
@@ -439,7 +439,7 @@ class Game:
       Game.preferBigMoves = True
       print("Big Moves enabled by default.")
       if setting != "ON":
-        BigSolutionDisplay(originalGame).start()
+        BigSolutionDisplay(self).start()
     elif settingLower == "off":
       Game.preferBigMoves = False
       print("Big Moves disabled by default.")
