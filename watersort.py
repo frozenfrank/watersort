@@ -1334,7 +1334,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
 
   minSolution: Game = None
   numResets = -1
-  randomSamplesRemaining = probeDFRSamples if solveMethod == "DFR" else 0
+  randomSamplesRemaining = probeDFRSamples if SOLVE_METHOD == "DFR" else 0
 
   startTime: float = None
   endTime: float = None
@@ -1345,7 +1345,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
 
   # Analyzing variables
   analysisStart: float = time()
-  REPORT_ITERATION_FREQ = 10000 if solveMethod == "BFS" else 1000
+  REPORT_ITERATION_FREQ = 10000 if SOLVE_METHOD == "BFS" else 1000
   QUEUE_CHECK_FREQ = REPORT_ITERATION_FREQ * 10
   partialDepth = defaultdict(int)
   dupGameDepth = defaultdict(int)
@@ -1424,7 +1424,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
         if solveMethod != "BFS":
           print(f"Checked {numIterations} iterations.")
 
-        if solveMethod == "MIX" and searchBFS and current._numMoves >= MIX_SWITCH_THRESHOLD_MOVES:
+        if SOLVE_METHOD == "MIX" and searchBFS and current._numMoves >= MIX_SWITCH_THRESHOLD_MOVES:
           searchBFS = False
           print("Switching to DFS search for MIX solve method")
         elif numIterations % QUEUE_CHECK_FREQ == 0:
@@ -1432,12 +1432,12 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
             current.requestVal(current, "This is a lot. Are you sure?", printState=False)
           else:
             print(f"QUEUE CHECK: \tresets: {numResets} \titrs: {numIterations} \tmvs: {current._numMoves} \tq len: {len(q)} \tends: {numDeadEnds} \tdup games: {numDuplicateGames} \tmins: {round((time() - startTime) / 60, 1)}")
-            if solveMethod == "MIX":
+            if SOLVE_METHOD == "MIX":
               rsp = current.requestVal(current, "This is a lot. Would you like to switch to a faster approach? (Yes/no)", printState=False)
               rsp.lower()
               if rsp and rsp[0] == "y":
                 searchBFS = False
-                solveMethod = "DFS"
+                SOLVE_METHOD = "DFS"
               else:
                 pass
 
@@ -1559,7 +1559,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
           Finished search algorithm:
 
             Overall:
-            {solveMethod                  }\t   Solving method
+            {SOLVE_METHOD                 }\t   Solving method
             {numResets + 1                }\t   Num solutions attempted
             {minSolution._numMoves if minSolution else "--"}\t   Shortest Solution
             {minSolutionUpdates           }\t   Min solution updates
