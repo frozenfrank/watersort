@@ -971,6 +971,8 @@ class BigSolutionDisplay:
           self.previous()
         elif USE_READCHAR and (k == key.UP or k == key.LEFT):
           self.previous()
+        elif k == 'E':
+          self.end()
         elif k == 'r':
           BigSolutionDisplay.__updateScreenWidth()
           self.displayCurrent()
@@ -1010,7 +1012,8 @@ class BigSolutionDisplay:
          f"   {backward   }           backward\n" +
          f"   {B}l{N}                       toggle blind mode{D}; in blind mode, each space must be moved individually{N}\n" +
          f"   {B}r{N}                       refresh display{D}; necessary if the terminal resizes{N}\n" +
-         f"   {B}R{N}                       restart solution {D}to the beginning{N}\n" +
+         f"   {B}R{N}                       restart solution {D}(to the beginning){N}\n" +
+         f"   {B}E{N}                       end solution {D}(to the end){N}\n" +
          f"   {B}-{N + Style.ITALICS}CMD{R}                    enter game command\n" +
          f"     {B}-help{N}                 print game command help\n")
   def __acceptGameCommand(self, command: str=""):
@@ -1204,6 +1207,10 @@ class BigSolutionDisplay:
     self.__currentPoststep = 0
     self._currentSpacesMoved = 0
     self._currentStage = "GAME"
+    self.displayCurrent()
+  def end(self) -> None:
+    self.__currentPoststep = 0
+    self._currentStage = "POST"
     self.displayCurrent()
   def next(self, wholeStep=False) -> None:
     if not self._hasNext():
