@@ -1089,8 +1089,10 @@ class BigSolutionDisplay:
   def _prepareGameLines(self, step: SolutionStep):
     lines = []
 
+    # Step counter
     lines.append(f"Step {self.__currentStep + 1} of {len(self._steps)}:")
 
+    # Additional info
     addlInfo = []
     addlInfo.append(COLOR_NAMES[step.colorMoved])
     addlInfo.append(f'{step.numMoved} space{"" if step.numMoved == 1 else "s"}')
@@ -1099,10 +1101,18 @@ class BigSolutionDisplay:
       addlInfo.append("Repeated path" if step.isSameAsPrevious else "New path")
     lines.append(" | ".join(addlInfo))
 
+    # Description
+    description = BigSolutionDisplay._getMoveDescription(step)
+    if description:
+      lines.append("")
+      lines.append(description)
+
+    # Main event
     start, end = step.move
     symbols = f"{start + 1}→{end + 1}"
     lines.extend(self._prepareBigCharLines(symbols))
 
+    # Space dots
     if self._usePerSpaceDots():
       if step.numMoved > 1:
         curMoved = self._currentSpacesMoved if self._currentSpacesMoved else 1
@@ -1124,6 +1134,19 @@ class BigSolutionDisplay:
       return "Occupy"
     else:
       return "Move"
+
+  @staticmethod
+  def _getMoveDescription(step: SolutionStep) -> str:
+    start, end = step.move
+    if step.isComplete:
+      return f"Complete vial {end+1}!"
+    elif step.vacatedVial:
+      return f"Vacate vial {start+1}!"
+    elif step.startedVial:
+      return f"Occupy vial {end+1}!"
+    else:
+      return ""
+
 
   def _prepareBigCharLines(self, symbols: str) -> None:
     bigChars = BigChar.FromSymbols(symbols)
