@@ -352,7 +352,6 @@ class Game:
     @returns None when no action is required, otherwise a value with which to immediately return as if entered as a normal value
     """
     root = self.root
-    original = self
 
     # Program mechanics
     if rsp == "-q" or rsp == "-quit" or rsp == "quit":
@@ -373,11 +372,11 @@ class Game:
     elif rsp == "-p" or rsp == "-print":
       root.printVials()
     elif rsp == "-pc":
-      original.printVials()
+      self.printVials()
     elif rsp == "-m" or rsp == "-moves":
-      original.printMoves()
+      self.printMoves()
     elif rsp == "-b":
-      BigSolutionDisplay(original).start()
+      BigSolutionDisplay(self).start()
     elif rsp == "-d" or rsp == "-debug":
       print("Printing debug info... (None)")
       # TODO: Print the queue length, and other search related stats
@@ -386,19 +385,19 @@ class Game:
 
     # Special commands
     elif rsp.startswith("-b "):
-      self.saveNewBigMovesSetting(rsp, original)
+      self.saveNewBigMovesSetting(rsp, self)
     elif rsp.startswith("-solve"):
       setSolveMethod(rsp.split(" ")[1])
       Game.reset = True
       return ""  # Immediately return to re-solve
     elif rsp.startswith("-gameplay"):
-      original.saveNewGameplayMode(rsp)
+      self.saveNewGameplayMode(rsp)
     elif rsp.startswith("-level"):
-      original.saveNewLevel(rsp)
+      self.saveNewLevel(rsp)
     elif rsp.startswith("-o"):
-      original.saveOtherColor(rsp)
+      self.saveOtherColor(rsp)
     elif rsp.startswith("-v"):
-      original.saveNewVials(rsp)
+      self.saveNewVials(rsp)
 
     # Default
     else:
