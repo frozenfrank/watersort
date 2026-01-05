@@ -24,13 +24,18 @@ git mv level.txt YEAR/level.txt
   - [ ] Show number of moves until next color is complete
   - [ ] Show whether path eventually diverges, or extends. Indicate when crossing into new territory.
   - [ ] Indicate whether the steps are discovering a new value or leading to eventual solution
+    - This could be implemented with a context-provided message by the code launching the solution stepper
     - [ ] Show summary of color analysis results... surface abnormal colors
-  - [ ] Allow leveraging game solver extended menu
+  - [x] Allow leveraging game solver extended menu
+    - [ ] Add ability to manually play a game from any step
+    - [ ] Add option to launch solver from any step
+    - [ ] Implement help menu
+  - [ ] Reuse terminal space instead of bumping things out of the terminal history
 - General
   - [x] Automatically store/retrieve monthly game files in annual sub-folders based on current year
   - [ ] Offer to automatically start analysis session of level (in the background)
   - [x] Rename "pour mode" to "drain mode" internally
   - [ ] Introduce intelligent search with heuristics that potentially discover multiple values at once
-  - [ ] Analyze at what point the game is "safe"
+  - [ ] Analyze at what point the game is "safe" (no more dead ends)
     - [ ] Show the safe point on the big solution solver
   - [ ] Analyze which colors are used most frequently in levels (yellow is uncommon)
