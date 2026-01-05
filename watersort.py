@@ -1771,7 +1771,7 @@ def chooseInteraction():
   drainMode: bool = False  # None means ask the user; otherwise, True/False
   blindMode: bool = False  # None means ask the user; otherwise, True/False
   userInteracting = True
-  originalGame: Game = None
+  game: Game = None
   analyzeSamples = ANALYZE_ATTEMPTS
   dfrSearchAttempts = DFR_SEARCH_ATTEMPTS
 
@@ -1871,32 +1871,32 @@ def chooseInteraction():
   # Attempt to read the game state out of a file
   if mode != "n" and level:
     gameFileName = generateFileName(level)
-    originalGame = readGameFile(gameFileName, level, drainMode=drainMode, blindMode=blindMode)
+    game = readGameFile(gameFileName, level, drainMode=drainMode, blindMode=blindMode)
 
-  if originalGame and level:
-    originalGame.level = level
+  if game and level:
+    game.level = level
 
 
   # Fallback to reading in manually
-  if not originalGame:
-    originalGame = readGameInput(userInteracting, drainMode=drainMode, blindMode=blindMode)
+  if not game:
+    game = readGameInput(userInteracting, drainMode=drainMode, blindMode=blindMode)
     if level != None:
-      originalGame.level = level
-    saveGame(originalGame)
+      game.level = level
+    saveGame(game)
 
   # Verify game has no error
-  if originalGame.attemptCorrectErrors():
+  if game.attemptCorrectErrors():
     print("Attempts to resolve the errors did not work. Abandoning program.")
     return
 
   # Choose mode
   if mode == "p":
-    playGame(originalGame)
+    playGame(game)
   elif mode == "i" or mode == "s" or mode == "n":
-    solveGame(originalGame, solveMethod=SOLVE_METHOD, probeDFRSamples=dfrSearchAttempts)
-    saveGame(originalGame)
+    solveGame(game, solveMethod=SOLVE_METHOD, probeDFRSamples=dfrSearchAttempts)
+    saveGame(game)
   elif mode == "a":
-    solveGame(originalGame, solveMethod="DFR", analyzeSampleCount=analyzeSamples)
+    solveGame(game, solveMethod="DFR", analyzeSampleCount=analyzeSamples)
   else:
     print("Unrecognized mode: " + mode)
 
