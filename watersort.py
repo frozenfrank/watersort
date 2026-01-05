@@ -1364,7 +1364,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
   # Temp only
   timeCheck: float
 
-  while Game.reset or not minSolution or randomSamplesRemaining > 0 or analysisSamplesRemaining > 0:
+  while Game.reset or not minSolution or (randomSamplesRemaining > 0 and SOLVE_METHOD == "DFR") or analysisSamplesRemaining > 0:
     Game.reset = False
     numResets += 1
     if randomSamplesRemaining > 0:
@@ -1421,7 +1421,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
       # Perform some work at some checkpoints
       numIterations += 1
       if numIterations % REPORT_ITERATION_FREQ == 0 and not analyzeSampleCount:
-        if solveMethod != "BFS":
+        if not searchBFS:
           print(f"Checked {numIterations} iterations.")
 
         if SOLVE_METHOD == "MIX" and searchBFS and current._numMoves >= MIX_SWITCH_THRESHOLD_MOVES:
@@ -1892,9 +1892,7 @@ def chooseInteraction():
     solveGame(originalGame, solveMethod=SOLVE_METHOD, probeDFRSamples=dfrSearchAttempts)
     saveGame(originalGame)
   elif mode == "a":
-    global SHUFFLE_NEXT_MOVES
-    SHUFFLE_NEXT_MOVES = True
-    solveGame(originalGame, solveMethod="DFS", analyzeSampleCount=analyzeSamples)
+    solveGame(originalGame, solveMethod="DFR", analyzeSampleCount=analyzeSamples)
   else:
     print("Unrecognized mode: " + mode)
 
