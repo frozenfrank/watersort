@@ -29,7 +29,7 @@ git mv level.txt YEAR/level.txt
   - [x] Allow leveraging game solver extended menu
     - [ ] Add ability to manually play a game from any step
     - [ ] Add option to launch solver from any step
-    - [ ] Implement help menu
+    - [x] Implement help menu
   - [ ] Reuse terminal space instead of bumping things out of the terminal history
 - General
   - [x] Automatically store/retrieve monthly game files in annual sub-folders based on current year

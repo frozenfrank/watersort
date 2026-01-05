@@ -2,10 +2,10 @@ from datetime import datetime
 import signal
 import os
 from collections import deque, defaultdict
-from resources import COLOR_CODES, COLOR_FOREGROUND, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar, BigShades
+from resources import COLOR_CODES, COLOR_FOREGROUND, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar, BigShades, Style
 from math import floor, log, ceil
 import random
-from colorama import Fore, Style
+from colorama import Fore
 from time import time
 from typing import Callable, Literal
 import copy;
@@ -882,6 +882,7 @@ class Game:
 
 class BigSolutionDisplay:
   rootGame: "Game"
+  targetGame: "Game"
   _presteps: deque[SolutionStep]
   _steps: deque[SolutionStep]
   _poststeps: deque[SolutionStep]
@@ -906,6 +907,7 @@ class BigSolutionDisplay:
 
   def __init__(self, game: Game):
     self.rootGame = game.root
+    self.targetGame = game
 
     self._presteps = deque()
     self._steps = game._prepareSolutionSteps()
@@ -938,11 +940,11 @@ class BigSolutionDisplay:
       self.__currentStep = firstNewIndex # Pick up where we left off
 
     # Add step to queue
-    self._presteps.append(SolutionStep(bigText=bigText))
+    self._presteps.append(SolutionStep(bigText=bigText, game=self.targetGame))
     self._currentStage = "PRE"
   def __init_poststeps(self):
     bigText = "DONE✅" if self._steps[-1].game.isFinished() else "COLOR?"
-    self._poststeps.append(SolutionStep(bigText=bigText))
+    self._poststeps.append(SolutionStep(bigText=bigText, game=self.targetGame))
 
   def start(self):
     if not self._steps:
@@ -992,7 +994,26 @@ class BigSolutionDisplay:
       pass
 
   def displayHelp(self) -> None:
-    print("FIXME: List of keyboard expansions...")
+    B = Style.BRIGHT
+    D = Style.DIM
+    R = Style.RESET_ALL
+    N = Style.NORMAL
+
+    forward = f"{B}f{N} {D}or{N} {B + Style.ITALICS}space{R} or {B}⏎{N}/{B}→{N}/{B}↓{N}"
+    backward = f"{B}b{N} {D}or{N} {B}p{N} {D}or{N} {B}←{N}/{B}↑{N}"
+    quit = f"{B}q{N} {D}or{N} {B}Q{N}"
+
+    print("Big Solution Display Controls:\n" +
+         f"   {quit}                  quit{D}; leave the Big Solution display mode{N}\n" +
+         f"   {B}h{N}                       help{D}; reprint this screen{N}\n" +
+         f"   {B}n{N}                       forward{D}, to the next step{N}\n" +
+         f"   {forward          }     forward\n" +
+         f"   {backward   }           backward\n" +
+         f"   {B}l{N}                       toggle blind mode{D}; in blind mode, each space must be moved individually{N}\n" +
+         f"   {B}r{N}                       refresh display{D}; necessary if the terminal resizes{N}\n" +
+         f"   {B}R{N}                       restart solution {D}to the beginning{N}\n" +
+         f"   {B}-{N + Style.ITALICS}CMD{R}                    enter game command\n" +
+         f"     {B}-help{N}                 print game command help\n")
   def __acceptGameCommand(self, command: str=""):
     curGame = self._getCurStep().game
     if not curGame:
@@ -1315,7 +1336,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
 
   minSolution: Game = None
   numResets = -1
-  randomSamplesRemaining = probeDFRSamples if solveMethod == "DFR" else 0
+  randomSamplesRemaining = probeDFRSamples
 
   startTime: float = None
   endTime: float = None
@@ -1326,7 +1347,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
 
   # Analyzing variables
   analysisStart: float = time()
-  REPORT_ITERATION_FREQ = 10000 if solveMethod == "BFS" else 1000
+  REPORT_ITERATION_FREQ = 10000 if SOLVE_METHOD == "BFS" else 1000
   QUEUE_CHECK_FREQ = REPORT_ITERATION_FREQ * 10
   partialDepth = defaultdict(int)
   dupGameDepth = defaultdict(int)
@@ -1345,7 +1366,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
   # Temp only
   timeCheck: float
 
-  while Game.reset or not minSolution or randomSamplesRemaining > 0 or analysisSamplesRemaining > 0:
+  while Game.reset or not minSolution or (randomSamplesRemaining > 0 and SOLVE_METHOD == "DFR") or analysisSamplesRemaining > 0:
     Game.reset = False
     numResets += 1
     if randomSamplesRemaining > 0:
@@ -1402,23 +1423,26 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
       # Perform some work at some checkpoints
       numIterations += 1
       if numIterations % REPORT_ITERATION_FREQ == 0 and not analyzeSampleCount:
-        if solveMethod != "BFS":
+        if not searchBFS:
           print(f"Checked {numIterations} iterations.")
 
-        if solveMethod == "MIX" and searchBFS and current._numMoves >= MIX_SWITCH_THRESHOLD_MOVES:
+        if SOLVE_METHOD == "MIX" and searchBFS and current._numMoves >= MIX_SWITCH_THRESHOLD_MOVES:
           searchBFS = False
           print("Switching to DFS search for MIX solve method")
         elif numIterations % QUEUE_CHECK_FREQ == 0:
           if ENABLE_QUEUE_CHECKS and not searchBFS:
-            current.requestVal(current, "This is a lot. Are you sure?", printState=False)
+            continueSearching = current.confirmPrompt(current, "This is a lot. Would you like to continue searching?")
+            if not continueSearching:
+              expectSolution = False
+              analysisSamplesRemaining = 0
+              break
           else:
             print(f"QUEUE CHECK: \tresets: {numResets} \titrs: {numIterations} \tmvs: {current._numMoves} \tq len: {len(q)} \tends: {numDeadEnds} \tdup games: {numDuplicateGames} \tmins: {round((time() - startTime) / 60, 1)}")
-            if solveMethod == "MIX":
-              rsp = current.requestVal(current, "This is a lot. Would you like to switch to a faster approach? (Yes/no)", printState=False)
-              rsp.lower()
-              if rsp and rsp[0] == "y":
+            if SOLVE_METHOD == "MIX":
+              switchFaster = current.confirmPrompt(current, "This is a lot. Would you like to switch to a faster approach?", defaultYes=False)
+              if switchFaster:
                 searchBFS = False
-                solveMethod = "DFS"
+                setSolveMethod("DFS")
               else:
                 pass
 
@@ -1540,7 +1564,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
           Finished search algorithm:
 
             Overall:
-            {solveMethod                  }\t   Solving method
+            {SOLVE_METHOD                 }\t   Solving method
             {numResets + 1                }\t   Num solutions attempted
             {minSolution._numMoves if minSolution else "--"}\t   Shortest Solution
             {minSolutionUpdates           }\t   Min solution updates
@@ -1686,13 +1710,12 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False, drainMode: b
       continue
 
     if userInteraction: print(f"Vial {i}: ")
-    response = nextLine()
+    response = nextLine().strip()
     if response == "" or not response:
       emptyRest = True
       i -= 1 # Place an empty value for this row
       if userInteraction:
-        numVials = len(vials)
-        numVials += _determineNumEmpty(numVials)
+        numVials += len(vials) + _determineNumEmpty(len(vials))
       continue
 
     if response == ".":
@@ -1700,6 +1723,19 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False, drainMode: b
       continue
 
     spaces = response.split()
+    if len(spaces) > NUM_SPACES_PER_VIAL:
+      if len(vials) > 0:
+        print(formatVialColor("er", "Too many colors.") + f" The game only supports {NUM_SPACES_PER_VIAL} colors per vial.")
+        continue
+
+      # Mystery input mode where only the first color of each vial is observable
+      for topColor in spaces:
+        vials.append([topColor] + ["?"] * (NUM_SPACES_PER_VIAL - 1))
+      i = numVials # Jump forward for all the vials we created
+      numVials = len(vials) + _determineNumEmpty(len(vials))
+      emptyRest = True
+      continue
+
     while len(spaces) < NUM_SPACES_PER_VIAL:
       spaces.append("?")
     vials.append(spaces)
@@ -1861,9 +1897,7 @@ def chooseInteraction():
     solveGame(originalGame, solveMethod=SOLVE_METHOD, probeDFRSamples=dfrSearchAttempts)
     saveGame(originalGame)
   elif mode == "a":
-    global SHUFFLE_NEXT_MOVES
-    SHUFFLE_NEXT_MOVES = True
-    solveGame(originalGame, solveMethod="DFS", analyzeSampleCount=analyzeSamples)
+    solveGame(originalGame, solveMethod="DFR", analyzeSampleCount=analyzeSamples)
   else:
     print("Unrecognized mode: " + mode)
 
