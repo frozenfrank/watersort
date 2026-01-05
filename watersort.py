@@ -1429,13 +1429,16 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
           print("Switching to DFS search for MIX solve method")
         elif numIterations % QUEUE_CHECK_FREQ == 0:
           if ENABLE_QUEUE_CHECKS and not searchBFS:
-            current.requestVal(current, "This is a lot. Are you sure?", printState=False)
+            continueSearching = current.confirmPrompt(current, "This is a lot. Would you like to continue searching?")
+            if not continueSearching:
+              expectSolution = False
+              analysisSamplesRemaining = 0
+              break
           else:
             print(f"QUEUE CHECK: \tresets: {numResets} \titrs: {numIterations} \tmvs: {current._numMoves} \tq len: {len(q)} \tends: {numDeadEnds} \tdup games: {numDuplicateGames} \tmins: {round((time() - startTime) / 60, 1)}")
             if SOLVE_METHOD == "MIX":
-              rsp = current.requestVal(current, "This is a lot. Would you like to switch to a faster approach? (Yes/no)", printState=False)
-              rsp.lower()
-              if rsp and rsp[0] == "y":
+              switchFaster = current.confirmPrompt(current, "This is a lot. Would you like to switch to a faster approach?", defaultYes=False)
+              if switchFaster:
                 searchBFS = False
                 SOLVE_METHOD = "DFS"
               else:
