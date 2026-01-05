@@ -1705,13 +1705,12 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False, drainMode: b
       continue
 
     if userInteraction: print(f"Vial {i}: ")
-    response = nextLine()
+    response = nextLine().strip()
     if response == "" or not response:
       emptyRest = True
       i -= 1 # Place an empty value for this row
       if userInteraction:
-        numVials = len(vials)
-        numVials += _determineNumEmpty(numVials)
+        numVials += len(vials) + _determineNumEmpty(len(vials))
       continue
 
     if response == ".":
@@ -1719,6 +1718,19 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False, drainMode: b
       continue
 
     spaces = response.split()
+    if len(spaces) > NUM_SPACES_PER_VIAL:
+      if len(vials) > 0:
+        print(formatVialColor("er", "Too many colors.") + f" The game only supports {NUM_SPACES_PER_VIAL} colors per vial.")
+        continue
+
+      # Mystery input mode where only the first color of each vial is observable
+      for topColor in spaces:
+        vials.append([topColor] + ["?"] * (NUM_SPACES_PER_VIAL - 1))
+      i = numVials # Jump forward for all the vials we created
+      numVials = len(vials) + _determineNumEmpty(len(vials))
+      emptyRest = True
+      continue
+
     while len(spaces) < NUM_SPACES_PER_VIAL:
       spaces.append("?")
     vials.append(spaces)
