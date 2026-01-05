@@ -167,7 +167,7 @@ class Game:
     if not self.hasError():
       return False
 
-    self.requestVal(self, formatVialColor("er", "The colors aren't right in this game.") + " Fix them, and press enter to proceed.")
+    self.requestVal(formatVialColor("er", "The colors aren't right in this game.") + " Fix them, and press enter to proceed.")
     self._analyzeColors()
     if self.hasError():
       saveGame(self, forceSave=True)
@@ -197,17 +197,17 @@ class Game:
     if val != '?':
       return val
 
-    rootVal = self.root.tryAccessVal(self, vialIndex, spaceIndex)
+    rootVal = self.tryAccessVal(vialIndex, spaceIndex)
     return rootVal or "?"
-  # The following two methods to be called on `self.root` only
-  def tryAccessVal(self, original: "Game", vialIndex, spaceIndex) -> str:
-    val = self.vials[vialIndex][spaceIndex]
+  def tryAccessVal(self, vialIndex, spaceIndex) -> str:
+    root = self.root
+    val = root.vials[vialIndex][spaceIndex]
     if val != "?":
       return val
 
-    if not self.root.hadMysterySpaces:
-      original.root.hadMysterySpaces = True
-      original.root.modified = True
+    if not root.hadMysterySpaces:
+      root.hadMysterySpaces = True
+      root.modified = True
       # Allow this change to be picked up by the next save cycle
 
     print("\n\n", end="")
@@ -221,9 +221,9 @@ class Game:
     print("Discovering new value:")
     startVial = vialIndex + 1
     request = f"What's the new value in the {startVial} vial, {spaceIndex+1} space?"
-    colorDist, colorErrors = self._analyzeColors()
+    colorDist, colorErrors = root._analyzeColors()
     if colorDist["?"] > 0:
-      underusedColors = sorted(self._identifyUnderusedColors(colorDist))
+      underusedColors = sorted(Game._identifyUnderusedColors(colorDist))
       fewColors = [formatVialColor(color, color) for color in underusedColors]
       request += f" ({colorDist['?']} remaining unknowns: {', '.join(fewColors)})"
 
@@ -232,24 +232,24 @@ class Game:
     repromptCount = -1
     while True:
       repromptCount += 1
-      val = self.requestVal(original, request, printState=repromptCount==0, printOptions=None if repromptCount == 0 else False)
+      val = self.requestVal(request, printState=repromptCount==0, printOptions=None if repromptCount == 0 else False)
       if val:
         rootChanged = True
-        Game.latest = original
+        Game.latest = self
         spaces = val.strip().split()
         if spaceIndex + len(spaces) > NUM_SPACES_PER_VIAL:
           print(formatVialColor("er", "Too many colors.") + f" Multiple colors can be entered, but the total number of spaces cannot exceed {NUM_SPACES_PER_VIAL}.")
           continue # Reprompt the user
-        self.root.vials[vialIndex][spaceIndex:spaceIndex+len(spaces)] = spaces
-        original.vials[vialIndex][spaceIndex:spaceIndex+len(spaces)] = spaces
+        root.vials[vialIndex][spaceIndex:spaceIndex+len(spaces)] = spaces
+        self.vials[vialIndex][spaceIndex:spaceIndex+len(spaces)] = spaces
       break
 
-    colorDist, colorErrors = self.root._analyzeColors()
-    underusedColors = self._identifyUnderusedColors(colorDist)
+    colorDist, colorErrors = root._analyzeColors()
+    underusedColors = Game._identifyUnderusedColors(colorDist)
 
     if colorDist["?"] == 1:
       lastColor = next((k for k, v in colorDist.items() if (v < NUM_SPACES_PER_VIAL and k != "?")), None)
-      lastVialIndex, lastVialSpace = self.root._findFirstSpaceWithColor("?")
+      lastVialIndex, lastVialSpace = root._findFirstSpaceWithColor("?")
       lastSpace = formatSpaceRef(lastVialIndex, lastVialSpace)
 
       request =   "There is only one remaining unknown value."
@@ -257,14 +257,14 @@ class Game:
       proceed = True
       if CONFIRM_APPLY_LAST_UNKNOWN:
         request += f" Would you like to save {formatVialColor(lastColor, lastColor)} into space {lastSpace}?"
-        proceed = self.confirmPrompt(original, request)
+        proceed = self.confirmPrompt(request)
       else:
         request += f" Saving color {formatVialColor(lastColor, lastColor)} into space {lastSpace}."
         print(request)
 
       if proceed:
-        self.root.vials[lastVialIndex][lastVialSpace] = lastColor
-        original.vials[lastVialIndex][lastVialSpace] = lastColor
+        root.vials[lastVialIndex][lastVialSpace] = lastColor
+        self.vials[lastVialIndex][lastVialSpace] = lastColor
         rootChanged = True
     elif colorDist["?"] <= NUM_SPACES_PER_VIAL and len(underusedColors) == 1:
       lastColor = underusedColors[0]
@@ -273,7 +273,7 @@ class Game:
       proceed = True
       if CONFIRM_APPLY_LAST_BATCH_COLOR:
         request += f" Would you like to save {formatVialColor(lastColor, lastColor)} in *all* {colorDist['?']} spaces?"
-        proceed = self.confirmPrompt(original, request)
+        proceed = self.confirmPrompt(request)
       else:
         request += f" Saving color {formatVialColor(lastColor, lastColor)} into {colorDist['?']} remaining spaces."
         print(request)
@@ -281,23 +281,23 @@ class Game:
       if proceed:
         Game.latest = None
         for vialIdx, spaceIdx in itertools.product(range(self.__numVials), range(NUM_SPACES_PER_VIAL)):
-          if self.root.vials[vialIdx][spaceIdx] == "?":
-            self.root.vials[vialIdx][spaceIdx] = lastColor
-            original.vials[vialIdx][spaceIdx] = lastColor
+          if root.vials[vialIdx][spaceIdx] == "?":
+            root.vials[vialIdx][spaceIdx] = lastColor
+            self.vials[vialIdx][spaceIdx] = lastColor
 
 
     if rootChanged:
       Game.reset = True # Reset the search to handle this new discovery properly
-      self.root.modified = True
-      saveGame(self.root)
+      root.modified = True
+      saveGame(root)
 
-    colorDist, colorErrors = self.root._analyzeColors()
+    colorDist, colorErrors = root._analyzeColors()
     if colorDist["?"] == 0 and AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD:
       doResolveLevel = True
       if Game.latest:
         prompt = Style.BRIGHT + "All unknowns located." + Style.NORMAL + " Would you like to re-solve to find the shortest solution?"
-        defaultYes = original._numMoves < 10
-        doResolveLevel = self.confirmPrompt(original, prompt, defaultYes=defaultYes)
+        defaultYes = self._numMoves < 10
+        doResolveLevel = self.confirmPrompt(prompt, defaultYes=defaultYes)
 
       if doResolveLevel:
         print("Reverting to original solve method now that all discovered values are found.")
@@ -307,20 +307,20 @@ class Game:
       else:
         Game.reset = False
 
-    saveGame(self.root)
+    saveGame(root)
     return val
-  def confirmPrompt(self, original: "Game", question: str, defaultYes=True) -> bool:
+  def confirmPrompt(self, question: str, defaultYes=True) -> bool:
     question += " [y]/n:" if defaultYes else " y/[n]:"
-    rsp = self.requestVal(original, question, printState=False, disableAutoSave=True, printOptions=False)
+    rsp = self.requestVal(question, printState=False, disableAutoSave=True, printOptions=False)
     if not rsp: return defaultYes
     return rsp.strip()[0].lower() == "y"
-  def requestVal(self, original: "Game", request: str, printState=True, disableAutoSave=False, printOptions:bool=None) -> str:
+  def requestVal(self, request: str, printState=True, disableAutoSave=False, printOptions:bool=None) -> str:
     if printState:
-      if Game.preferBigMoves and original.move:
-        BigSolutionDisplay(original).start()
+      if Game.preferBigMoves and self.move:
+        BigSolutionDisplay(self).start()
       else:
-        original.printVials()
-        original.printMoves()
+        self.printVials()
+        self.printMoves()
 
     # Other options start with a dash
     if printOptions != False:
@@ -352,7 +352,6 @@ class Game:
     @returns None when no action is required, otherwise a value with which to immediately return as if entered as a normal value
     """
     root = self.root
-    original = self
 
     # Program mechanics
     if rsp == "-q" or rsp == "-quit" or rsp == "quit":
@@ -373,11 +372,11 @@ class Game:
     elif rsp == "-p" or rsp == "-print":
       root.printVials()
     elif rsp == "-pc":
-      original.printVials()
+      self.printVials()
     elif rsp == "-m" or rsp == "-moves":
-      original.printMoves()
+      self.printMoves()
     elif rsp == "-b":
-      BigSolutionDisplay(original).start()
+      BigSolutionDisplay(self).start()
     elif rsp == "-d" or rsp == "-debug":
       print("Printing debug info... (None)")
       # TODO: Print the queue length, and other search related stats
@@ -386,19 +385,19 @@ class Game:
 
     # Special commands
     elif rsp.startswith("-b "):
-      self.saveNewBigMovesSetting(rsp, original)
+      self.saveNewBigMovesSetting(rsp, self)
     elif rsp.startswith("-solve"):
       setSolveMethod(rsp.split(" ")[1])
       Game.reset = True
       return ""  # Immediately return to re-solve
     elif rsp.startswith("-gameplay"):
-      original.saveNewGameplayMode(rsp)
+      self.saveNewGameplayMode(rsp)
     elif rsp.startswith("-level"):
-      original.saveNewLevel(rsp)
+      self.saveNewLevel(rsp)
     elif rsp.startswith("-o"):
-      original.saveOtherColor(rsp)
+      self.saveOtherColor(rsp)
     elif rsp.startswith("-v"):
-      original.saveNewVials(rsp)
+      self.saveNewVials(rsp)
 
     # Default
     else:
@@ -431,7 +430,7 @@ class Game:
             "   -e or -exit             to save and exit\n" +
             "   -q or quit              to quit\n" +
             "   -d or -debug            to see debug info")
-  def saveNewBigMovesSetting(self, input: str, originalGame: "Game") -> None:
+  def saveNewBigMovesSetting(self, input: str) -> None:
     setting = input.split()[1]
     settingLower = setting.lower()
 
@@ -439,7 +438,7 @@ class Game:
       Game.preferBigMoves = True
       print("Big Moves enabled by default.")
       if setting != "ON":
-        BigSolutionDisplay(originalGame).start()
+        BigSolutionDisplay(self).start()
     elif settingLower == "off":
       Game.preferBigMoves = False
       print("Big Moves disabled by default.")
@@ -495,8 +494,8 @@ class Game:
     else:
       print(f"No change to number of vials. Still have {numVials}")
     target.__numVials = numVials
-
-  def _identifyUnderusedColors(self, colorDist: dict[str, int]) -> list[str]:
+  @staticmethod
+  def _identifyUnderusedColors(colorDist: dict[str, int]) -> list[str]:
     return [color for color, count in colorDist.items() if count < NUM_SPACES_PER_VIAL and color != "?"]
   def _findFirstSpaceWithColor(self, color: str) -> tuple[int, int]:
     """
@@ -1431,7 +1430,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
           print("Switching to DFS search for MIX solve method")
         elif numIterations % QUEUE_CHECK_FREQ == 0:
           if ENABLE_QUEUE_CHECKS and not searchBFS:
-            continueSearching = current.confirmPrompt(current, "This is a lot. Would you like to continue searching?")
+            continueSearching = current.confirmPrompt("This is a lot. Would you like to continue searching?")
             if not continueSearching:
               expectSolution = False
               analysisSamplesRemaining = 0
@@ -1439,7 +1438,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
           else:
             print(f"QUEUE CHECK: \tresets: {numResets} \titrs: {numIterations} \tmvs: {current._numMoves} \tq len: {len(q)} \tends: {numDeadEnds} \tdup games: {numDuplicateGames} \tmins: {round((time() - startTime) / 60, 1)}")
             if SOLVE_METHOD == "MIX":
-              switchFaster = current.confirmPrompt(current, "This is a lot. Would you like to switch to a faster approach?", defaultYes=False)
+              switchFaster = current.confirmPrompt("This is a lot. Would you like to switch to a faster approach?", defaultYes=False)
               if switchFaster:
                 searchBFS = False
                 setSolveMethod("DFS")
@@ -1502,7 +1501,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
       endTime = time()
       message = formatVialColor("er", "This game has no solution.")
       message += " Type YES if you have corrected the game state and want to try searching again."
-      retryRsp = game.requestVal(game, message, printOptions=True)
+      retryRsp = game.requestVal(message, printOptions=True)
       if retryRsp != "YES":
         break # There are no solutions
       else:
@@ -1772,7 +1771,7 @@ def chooseInteraction():
   drainMode: bool = False  # None means ask the user; otherwise, True/False
   blindMode: bool = False  # None means ask the user; otherwise, True/False
   userInteracting = True
-  originalGame: Game = None
+  game: Game = None
   analyzeSamples = ANALYZE_ATTEMPTS
   dfrSearchAttempts = DFR_SEARCH_ATTEMPTS
 
@@ -1872,32 +1871,32 @@ def chooseInteraction():
   # Attempt to read the game state out of a file
   if mode != "n" and level:
     gameFileName = generateFileName(level)
-    originalGame = readGameFile(gameFileName, level, drainMode=drainMode, blindMode=blindMode)
+    game = readGameFile(gameFileName, level, drainMode=drainMode, blindMode=blindMode)
 
-  if originalGame and level:
-    originalGame.level = level
+  if game and level:
+    game.level = level
 
 
   # Fallback to reading in manually
-  if not originalGame:
-    originalGame = readGameInput(userInteracting, drainMode=drainMode, blindMode=blindMode)
+  if not game:
+    game = readGameInput(userInteracting, drainMode=drainMode, blindMode=blindMode)
     if level != None:
-      originalGame.level = level
-    saveGame(originalGame)
+      game.level = level
+    saveGame(game)
 
   # Verify game has no error
-  if originalGame.attemptCorrectErrors():
+  if game.attemptCorrectErrors():
     print("Attempts to resolve the errors did not work. Abandoning program.")
     return
 
   # Choose mode
   if mode == "p":
-    playGame(originalGame)
+    playGame(game)
   elif mode == "i" or mode == "s" or mode == "n":
-    solveGame(originalGame, solveMethod=SOLVE_METHOD, probeDFRSamples=dfrSearchAttempts)
-    saveGame(originalGame)
+    solveGame(game, solveMethod=SOLVE_METHOD, probeDFRSamples=dfrSearchAttempts)
+    saveGame(game)
   elif mode == "a":
-    solveGame(originalGame, solveMethod="DFR", analyzeSampleCount=analyzeSamples)
+    solveGame(game, solveMethod="DFR", analyzeSampleCount=analyzeSamples)
   else:
     print("Unrecognized mode: " + mode)
 
