@@ -1000,7 +1000,7 @@ class BigSolutionDisplay:
     R = Style.RESET_ALL
     N = Style.NORMAL
 
-    forward = f"{B}f{N} {D}or{N} {B + Style.ITALICS}space{R} or {B}⏎{N}/{B}→{N}/{B}↓{N}"
+    forward = f"{B}f{N} {D}or{N} {B + Style.ITALICS}space{R} {D}or{N} {B}⏎{N}/{B}→{N}/{B}↓{N}"
     backward = f"{B}b{N} {D}or{N} {B}p{N} {D}or{N} {B}←{N}/{B}↑{N}"
     quit = f"{B}q{N} {D}or{N} {B}Q{N}"
 
@@ -1744,7 +1744,7 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False, drainMode: b
       emptyRest = True
       i -= 1 # Place an empty value for this row
       if userInteraction:
-        numVials += len(vials) + _determineNumEmpty(len(vials))
+        numVials = len(vials) + _determineNumEmpty(len(vials))
       continue
 
     if response == ".":
@@ -1760,7 +1760,7 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False, drainMode: b
       # Mystery input mode where only the first color of each vial is observable
       for topColor in spaces:
         vials.append([topColor] + ["?"] * (NUM_SPACES_PER_VIAL - 1))
-      i = numVials # Jump forward for all the vials we created
+      i = len(vials) # Jump forward for all the vials we created
       numVials = len(vials) + _determineNumEmpty(len(vials))
       emptyRest = True
       continue
