@@ -1518,7 +1518,17 @@ class Solver:
                 break
             else:
               timeCheck = time()
-              print(f"QUEUE CHECK: \tresets: {self.solutionsAttempted} \titrs: {self.numIterations} \tmvs: {current._numMoves} \tq len: {len(q)} \tends: {self.numDeadEnds} \tdup games: {self.numDuplicateGames} \tmins: {round((timeCheck - self.solutionStart) / 60, 1)}")
+              stats = {
+                "resets": self.solutionsAttempted,
+                "itrs": self.numIterations,
+                "mvs": current._numMoves,
+                "q len": len(q),
+                "ends": self.numDeadEnds,
+                "dup games": self.numDuplicateGames,
+                "mins": round((timeCheck - self.solutionStart) / 60, 1)
+              }
+              stats_str = "\t".join(f"{stat}: {value}" for stat, value in stats.items())
+              print(f"QUEUE CHECK: \t{stats_str}")
               if SOLVE_METHOD == "MIX":
                 switchFaster = current.confirmPrompt("This is a lot. Would you like to switch to a faster approach?", defaultYes=False)
                 if switchFaster:
