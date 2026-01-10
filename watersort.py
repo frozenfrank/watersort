@@ -1592,13 +1592,11 @@ class Solver:
 
       if expectSolution and not self.minSolution:
         self.solutionEnd = time()
-        message = formatVialColor("er", "This game has no solution.")
-        message += " Type YES if you have corrected the game state and want to try searching again."
-        retryRsp = self.seedGame.requestVal(message, printOptions=True)
-        if retryRsp != "YES":
-          break # There are no solutions
-        else:
+        tryAgain = self._onImpossibleGame()
+        if tryAgain:
           self.solutionEnd = None
+        else:
+          break # There are no solutions
 
       pass
 
@@ -1616,6 +1614,12 @@ class Solver:
     else:
       raise Exception("Unrecognized solve method: " + SOLVE_METHOD)
 
+  def _onImpossibleGame(self) -> bool:
+    """Called when the it is detected that no solutions exist. Return true to reset and try again."""
+    message = formatVialColor("er", "This game has no solution.")
+    message += " Type YES if you have corrected the game state and want to try searching again."
+    retryRsp = self.seedGame.requestVal(message, printOptions=True)
+    return retryRsp == "YES"
 
   def reportGameAnalysis(self):
     secsAnalyzing, minsAnalyzing = Solver._getTimeRunning(self.solutionSetStart, self.solutionSetEnd)
