@@ -1363,19 +1363,31 @@ class Solver:
   SOLVE_METHODS = Literal["MIX","BFS","DFS","DFR"]
 
   # Inputs/parameters
-  seedGame: "Game"
+  seedGame: Game
   # solveMethod: "SOLVE_METHODS"
   # findSolutionCount = 0
   analyzeSampleCount = 0
   probeDFRSamples = 0
 
-  # Total Solver stats
+  # Solution Set stats
   solutionSetStart: float
+  solutionSetEnd: float
   solutionStart: float
   solutionEnd: float
-  solutionSetEnd: float
+
   minSolution: Game = None
-  numResets = -1
+  solutionsAttempted: int = 0
+  minSolutionUpdates: int
+  numSolutionsAbandoned: int
+
+  # Solution Solution status
+  numIterations: int
+  numDeadEnds: int
+  numPartialSolutionsGenerated: int
+  numUniqueStatesComputed: int
+  numDuplicateGames: int
+  maxQueueLength: int
+  endQueueLength: int
 
   # Analysis summary data structures
   partialDepth = defaultdict(int)
@@ -1416,25 +1428,27 @@ class Solver:
     self.solutionEnd = None
     self.solutionSetEnd = None
 
-    minSolutionUpdates = 0
-    numSolutionsAbandoned = 0
+    self.minSolutionUpdates = 0
+    self.numSolutionsAbandoned = 0
 
+    analysisSamplesRemaining = self.analyzeSampleCount
+    randomSamplesRemaining = self.probeDFRSamples
 
     # Analyzing variables
     self.solutionSetStart = time()
+    self.deadEndDepth[1]
     REPORT_ITERATION_FREQ = 10000 if SOLVE_METHOD == "BFS" else 1000
     QUEUE_CHECK_FREQ = REPORT_ITERATION_FREQ * 10
 
-    self.deadEndDepth[1]
-    analysisSamplesRemaining = self.analyzeSampleCount
+    # Time check setup
     timeCheck: float
     lastReportTime = 0
     REPORT_SEC_FREQ = 15
 
 
-    while Game.reset or not minSolution or (randomSamplesRemaining > 0 and SOLVE_METHOD == "DFR") or analysisSamplesRemaining > 0:
+    while Game.reset or not self.minSolution or (randomSamplesRemaining > 0 and SOLVE_METHOD == "DFR") or analysisSamplesRemaining > 0:
       Game.reset = False
-      self.numResets += 1
+      self.solutionsAttempted += 1
       if randomSamplesRemaining > 0:
         randomSamplesRemaining -= 1
       elif analysisSamplesRemaining > 0:
@@ -1465,11 +1479,11 @@ class Solver:
         q.append(self.seedGame)
         searchBFS = shouldSearchBFS()
 
-      numIterations = 0
-      numDeadEnds = 0
-      numPartialSolutionsGenerated = 0
-      numDuplicateGames = 0
-      maxQueueLength = 1
+      self.numIterations = 0
+      self.numDeadEnds = 0
+      self.numPartialSolutionsGenerated = 0
+      self.numDuplicateGames = 0
+      self.maxQueueLength = 1
 
       # CONSIDER: Switching our approach based on the state of the game
       # When we still have unknowns, we should find the shortest path to find an unknown,
@@ -1487,15 +1501,15 @@ class Solver:
         current = q.popleft() if searchBFS else q.pop()
 
         # Perform some work at some checkpoints
-        numIterations += 1
-        if numIterations % REPORT_ITERATION_FREQ == 0 and not self.analyzeSampleCount:
+        self.numIterations += 1
+        if self.numIterations % REPORT_ITERATION_FREQ == 0 and not self.analyzeSampleCount:
           if not searchBFS:
-            print(f"Checked {numIterations} iterations.")
+            print(f"Checked {self.numIterations} iterations.")
 
           if SOLVE_METHOD == "MIX" and searchBFS and current._numMoves >= MIX_SWITCH_THRESHOLD_MOVES:
             searchBFS = False
             print("Switching to DFS search for MIX solve method")
-          elif numIterations % QUEUE_CHECK_FREQ == 0:
+          elif self.numIterations % QUEUE_CHECK_FREQ == 0:
             if ENABLE_QUEUE_CHECKS and not searchBFS:
               continueSearching = current.confirmPrompt("This is a lot. Would you like to continue searching?")
               if not continueSearching:
@@ -1503,7 +1517,8 @@ class Solver:
                 analysisSamplesRemaining = 0
                 break
             else:
-              print(f"QUEUE CHECK: \tresets: {self.numResets} \titrs: {numIterations} \tmvs: {current._numMoves} \tq len: {len(q)} \tends: {numDeadEnds} \tdup games: {numDuplicateGames} \tmins: {round((time() - self.solutionStart) / 60, 1)}")
+              timeCheck = time()
+              print(f"QUEUE CHECK: \tresets: {self.solutionsAttempted} \titrs: {self.numIterations} \tmvs: {current._numMoves} \tq len: {len(q)} \tends: {self.numDeadEnds} \tdup games: {self.numDuplicateGames} \tmins: {round((timeCheck - self.solutionStart) / 60, 1)}")
               if SOLVE_METHOD == "MIX":
                 switchFaster = current.confirmPrompt("This is a lot. Would you like to switch to a faster approach?", defaultYes=False)
                 if switchFaster:
@@ -1513,8 +1528,8 @@ class Solver:
                   pass
 
         # Prune if we've found a cheaper solution
-        if not searchBFS and minSolution and minSolution._numMoves <= current._numMoves:
-          numSolutionsAbandoned += 1
+        if not searchBFS and self.minSolution and self.minSolution._numMoves <= current._numMoves:
+          self.numSolutionsAbandoned += 1
           break # Quit this attempt, and try a different one
 
         # Check all next moves
@@ -1527,11 +1542,11 @@ class Solver:
 
         if SHUFFLE_NEXT_MOVES: random.shuffle(nextGames)
         for nextGame in nextGames:
-          numPartialSolutionsGenerated += 1
+          self.numPartialSolutionsGenerated += 1
           self.partialDepth[nextGame._numMoves] += 1
 
           if nextGame in computed:
-            numDuplicateGames += 1
+            self.numDuplicateGames += 1
             self.dupGameDepth[nextGame._numMoves] += 1
             continue
           computed.add(nextGame)
@@ -1541,9 +1556,9 @@ class Solver:
             timeCheck = time()
             self.solutionEnd = timeCheck
             solution = nextGame
-            if not minSolution or solution._numMoves < minSolution._numMoves:
-              minSolution = solution
-              minSolutionUpdates += 1
+            if not self.minSolution or solution._numMoves < self.minSolution._numMoves:
+              self.minSolution = solution
+              self.minSolutionUpdates += 1
             self.solutionDepth[solution._numMoves] += 1
             self.solFindSeconds[int((timeCheck - self.solutionStart + 0.9) // 1)] += 1
 
@@ -1560,24 +1575,26 @@ class Solver:
             q.append(nextGame)
 
         # Maintain stats
-        maxQueueLength = max(maxQueueLength, len(q))
+        self.maxQueueLength = max(self.maxQueueLength, len(q))
         if not hasNextGame:
-          numDeadEnds += 1
+          self.numDeadEnds += 1
           self.deadEndDepth[current._numMoves] += 1
 
-      if expectSolution and not minSolution:
-        endTime = time()
+      if expectSolution and not self.minSolution:
+        self.solutionEnd = time()
         message = formatVialColor("er", "This game has no solution.")
         message += " Type YES if you have corrected the game state and want to try searching again."
         retryRsp = self.seedGame.requestVal(message, printOptions=True)
         if retryRsp != "YES":
           break # There are no solutions
         else:
-          endTime = None
+          self.solutionEnd = None
 
       pass
 
-    endTime = endTime or time()
+    self.solutionEnd = self.solutionEnd or time()
+    self.endQueueLength = len(q)
+    self.numUniqueStatesComputed = len(computed)
 
   def reportGameAnalysis(self):
     secsAnalyzing, minsAnalyzing = Solver._getTimeRunning(self.solutionSetStart, self.solutionSetEnd)
@@ -1627,33 +1644,34 @@ class Solver:
 
   def reportGameSolution(self):
     secsSearching, minsSearching = Solver._getTimeRunning(self.solutionStart, self.solutionEnd)
+    shortestSolutionLen = self.minSolution._numMoves if self.minSolution else "--"
 
     print(f"""
           Finished search algorithm:
 
             Overall:
             {SOLVE_METHOD                 }\t   Solving method
-            {numResets + 1                }\t   Num solutions attempted
-            {minSolution._numMoves if minSolution else "--"}\t   Shortest Solution
-            {minSolutionUpdates           }\t   Min solution updates
-            {numSolutionsAbandoned        }\t   Num solutions abandoned
+            {self.solutionsAttempted      }\t   Num solutions attempted
+            {shortestSolutionLen          }\t   Shortest Solution
+            {self.minSolutionUpdates      }\t   Min solution updates
+            {self.numSolutionsAbandoned   }\t   Num solutions abandoned
 
             Since last reset:
             {secsSearching                }\t   Seconds searching
             {minsSearching                }\t   Minutes searching
-            {numIterations                }\t   Num iterations
-            {len(q)                       }\t   Ending queue length
-            {maxQueueLength               }\t   Max queue length
-            {numDeadEnds                  }\t   Num dead ends
-            {numPartialSolutionsGenerated }\t   Partial solutions generated
-            {numDuplicateGames            }\t   Num duplicate games
-            {len(computed)                }\t   Num states computed
+            {self.numIterations           }\t   Num iterations
+            {self.endQueueLength          }\t   Ending queue length
+            {self.maxQueueLength          }\t   Max queue length
+            {self.numDeadEnds             }\t   Num dead ends
+            {self.numPartialSolutionsGenerated }\t   Partial solutions generated
+            {self.numDuplicateGames            }\t   Num duplicate games
+            {self.numUniqueStatesComputed      }\t   Num states computed
           """)
 
-    if minSolution:
-      BigSolutionDisplay(minSolution).start()
+    if self.minSolution:
+      BigSolutionDisplay(self.minSolution).start()
       # print(f"Found solution{' to level ' + game.level if game.level else ''}!")
-      # minSolution.printMoves()
+      # self.minSolution.printMoves()
     else:
       print(formatVialColor("er", "Cannot find solution."))
 
