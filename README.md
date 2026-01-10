@@ -31,6 +31,8 @@ git mv level.txt YEAR/level.txt
     - [ ] Add option to launch solver from any step
     - [x] Implement help menu
   - [ ] Reuse terminal space instead of bumping things out of the terminal history
+- Solver Refactor
+  - [x] Fix BFS continuation after discovering all unknowns. Currently "switches" to DFS 200 times before reporting "reset"
 - General
   - [x] Automatically store/retrieve monthly game files in annual sub-folders based on current year
   - [ ] Offer to automatically start analysis session of level (in the background)
@@ -39,3 +41,7 @@ git mv level.txt YEAR/level.txt
   - [ ] Analyze at what point the game is "safe" (no more dead ends)
     - [ ] Show the safe point on the big solution solver
   - [ ] Analyze which colors are used most frequently in levels (yellow is uncommon)
+  - [ ] Add support for leveraging the "UNDO" feature to look for new vials after discovering colors
+    - Only use UNDO if it would otherwise restart
+    - Include the configurable UNDO limit of 5 per game
+  - [ ] Forward unsupported game commands back a level to apply in the upper game level
