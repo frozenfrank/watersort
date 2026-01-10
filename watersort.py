@@ -1416,7 +1416,7 @@ class BaseSolver:
     if numSolutions < 1: numSolutions = 1
     self.findSolutionCount = numSolutions
     self._findSolutions(solveMethod)
-    self._onSolutionComplete()
+    self._onAfterFindSolutions()
     saveGame(self.seedGame)
 
   def _findSolutions(self, solveMethod: SOLVE_METHODS):
@@ -1534,22 +1534,8 @@ class BaseSolver:
           if nextGame.isFinished():
             timeCheck = time()
             self.solutionEnd = timeCheck
-            solution = nextGame
-            if not self.minSolution or solution._numMoves < self.minSolution._numMoves:
-              self.minSolution = solution
-              self.minSolutionUpdates += 1
-            self.solutionDepth[solution._numMoves] += 1
-            self.solFindSeconds[int((timeCheck - self.solutionStart + 0.9) // 1)] += 1
-
-            solutionHash = solution._completion_hash()
-            hashingList = self.uniqueSolutions[solutionHash]
-            if not len(hashingList):
-              self.uniqueSolsDepth[solution._numMoves] += 1
-              self.isUniqueList.append(True)
-            else:
-              self.isUniqueList.append(False)
-            hashingList.append(solution)
-            break # Finish searching
+            if self._onSolutionFound(nextGame):
+              break # Finish searching
           else:
             self._q.append(nextGame)
 
@@ -1589,6 +1575,25 @@ class BaseSolver:
       print(f"Checked {self.numIterations} iterations.")
     return True
 
+  def _onSolutionFound(self, solution: Game) -> bool:
+    """Called when a new solution is found. Return True to stop this attempt with the discovered solution"""
+    if not self.minSolution or solution._numMoves < self.minSolution._numMoves:
+      self.minSolution = solution
+      self.minSolutionUpdates += 1
+    self.solutionDepth[solution._numMoves] += 1
+    self.solFindSeconds[int((self.solutionEnd - self.solutionStart + 0.9) // 1)] += 1
+
+    solutionHash = solution._completion_hash()
+    hashingList = self.uniqueSolutions[solutionHash]
+    if not len(hashingList):
+      self.uniqueSolsDepth[solution._numMoves] += 1
+      self.isUniqueList.append(True)
+    else:
+      self.isUniqueList.append(False)
+    hashingList.append(solution)
+
+    return True
+
   def _printQueueCheck(self, current: Game) -> None:
     stats = {
       "resets": self.solutionsAttempted,
@@ -1609,7 +1614,7 @@ class BaseSolver:
     retryRsp = self.seedGame.requestVal(message, printOptions=True)
     return retryRsp == "YES"
 
-  def _onSolutionComplete(self) -> None:
+  def _onAfterFindSolutions(self) -> None:
     """Called after _findSolutions() completes. Use this to report on the discovered solution."""
 
     # Override me.
@@ -1638,7 +1643,7 @@ class AnalysisSolver(BaseSolver):
     return True
 
 
-  def _onSolutionComplete(self):
+  def _onAfterFindSolutions(self):
     secsAnalyzing, minsAnalyzing = BaseSolver._getTimeRunning(self.solutionSetStart, self.solutionSetEnd)
 
     # Print out interesting information to the console only
@@ -1715,7 +1720,7 @@ class SolutionSolver(BaseSolver):
     return True
 
 
-  def _onSolutionComplete(self):
+  def _onAfterFindSolutions(self):
     secsSearching, minsSearching = BaseSolver._getTimeRunning(self.solutionStart, self.solutionEnd)
     shortestSolutionLen = self.minSolution._numMoves if self.minSolution else "--"
 
@@ -1747,6 +1752,30 @@ class SolutionSolver(BaseSolver):
       # self.minSolution.printMoves()
     else:
       print(formatVialColor("er", "Cannot find solution."))
+
+class SafeGameSolver(BaseSolver):
+  """Specialized solver equipped to determine if a partially solved game has any remaining dead ends."""
+  numSolutionsLocated = 0
+
+  def _onInitSolutionAttempt(self):
+    if self.seedGame.getDepth() < 1:
+      print(formatVialColor("er", "Expected game near to completion.") + " This game is unsolved and certainly is not safe.")
+      return False
+    return True
+
+  def _onSolutionFound(self, solution):
+    self.numSolutionsLocated += 1
+    return False # Avoid registering this solution, and keep looking for dead-ends
+
+  def solveGame(self, solveMethod = "MIX", numSolutions = 1):
+    raise "Method not supported"
+
+  def searchForAnyDeadEnd(self) -> bool:
+    """Searches any combination of moves that would result in a dead end. Returns true if any are found."""
+    self.findSolutionCount = 1
+    self._findSolutions()
+    print(f"Searched {self.numIterations} total iterations and found {self.numDeadEnds} dead ends and {self.numSolutionsLocated} solutions")
+    return self.numDeadEnds > 0
 
 def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDFRSamples = 0):
   solver = AnalysisSolver(game) if analyzeSampleCount > 0 else SolutionSolver(game)
