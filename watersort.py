@@ -1425,9 +1425,9 @@ class BaseSolver:
     The game already handles asking for more information as required.
     """
     self.solutionSetStart = None
+    self.solutionSetEnd = None
     self.solutionStart = None
     self.solutionEnd = None
-    self.solutionSetEnd = None
 
     self.minSolutionUpdates = 0
     self.numSolutionsAbandoned = 0
@@ -1564,19 +1564,15 @@ class BaseSolver:
           self.numDeadEnds += 1
           self.deadEndDepth[current._numMoves] += 1
 
+      self.solutionEnd = time()
       if expectSolution and not self.minSolution:
-        self.solutionEnd = time()
         tryAgain = self._onImpossibleGame()
-        if tryAgain:
-          self.solutionEnd = None
-        else:
+        if not tryAgain:
           break # There are no solutions
 
       pass
 
-    timeCheck = time()
-    self.solutionEnd = self.solutionEnd or timeCheck
-    self.solutionSetEnd = timeCheck
+    self.solutionSetEnd = time()
     self.endQueueLength = len(self._q)
     self.numUniqueStatesComputed = len(computed)
 
