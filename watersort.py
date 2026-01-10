@@ -971,6 +971,8 @@ class BigSolutionDisplay:
           self.previous()
         elif USE_READCHAR and (k == key.UP or k == key.LEFT):
           self.previous()
+        elif k == 'E':
+          self.end()
         elif k == 'r':
           BigSolutionDisplay.__updateScreenWidth()
           self.displayCurrent()
@@ -998,7 +1000,7 @@ class BigSolutionDisplay:
     R = Style.RESET_ALL
     N = Style.NORMAL
 
-    forward = f"{B}f{N} {D}or{N} {B + Style.ITALICS}space{R} or {B}⏎{N}/{B}→{N}/{B}↓{N}"
+    forward = f"{B}f{N} {D}or{N} {B + Style.ITALICS}space{R} {D}or{N} {B}⏎{N}/{B}→{N}/{B}↓{N}"
     backward = f"{B}b{N} {D}or{N} {B}p{N} {D}or{N} {B}←{N}/{B}↑{N}"
     quit = f"{B}q{N} {D}or{N} {B}Q{N}"
 
@@ -1010,7 +1012,8 @@ class BigSolutionDisplay:
          f"   {backward   }           backward\n" +
          f"   {B}l{N}                       toggle blind mode{D}; in blind mode, each space must be moved individually{N}\n" +
          f"   {B}r{N}                       refresh display{D}; necessary if the terminal resizes{N}\n" +
-         f"   {B}R{N}                       restart solution {D}to the beginning{N}\n" +
+         f"   {B}R{N}                       restart solution {D}(to the beginning){N}\n" +
+         f"   {B}E{N}                       end solution {D}(to the end){N}\n" +
          f"   {B}-{N + Style.ITALICS}CMD{R}                    enter game command\n" +
          f"     {B}-help{N}                 print game command help\n")
   def __acceptGameCommand(self, command: str=""):
@@ -1086,8 +1089,10 @@ class BigSolutionDisplay:
   def _prepareGameLines(self, step: SolutionStep):
     lines = []
 
+    # Step counter
     lines.append(f"Step {self.__currentStep + 1} of {len(self._steps)}:")
 
+    # Additional info
     addlInfo = []
     addlInfo.append(COLOR_NAMES[step.colorMoved])
     addlInfo.append(f'{step.numMoved} space{"" if step.numMoved == 1 else "s"}')
@@ -1096,10 +1101,18 @@ class BigSolutionDisplay:
       addlInfo.append("Repeated path" if step.isSameAsPrevious else "New path")
     lines.append(" | ".join(addlInfo))
 
+    # Description
+    description = BigSolutionDisplay._getMoveDescription(step)
+    if description:
+      lines.append("")
+      lines.append(description)
+
+    # Main event
     start, end = step.move
     symbols = f"{start + 1}→{end + 1}"
     lines.extend(self._prepareBigCharLines(symbols))
 
+    # Space dots
     if self._usePerSpaceDots():
       if step.numMoved > 1:
         curMoved = self._currentSpacesMoved if self._currentSpacesMoved else 1
@@ -1121,6 +1134,19 @@ class BigSolutionDisplay:
       return "Occupy"
     else:
       return "Move"
+
+  @staticmethod
+  def _getMoveDescription(step: SolutionStep) -> str:
+    start, end = step.move
+    if step.isComplete:
+      return f"Complete vial {end+1}!"
+    elif step.vacatedVial:
+      return f"Vacate vial {start+1}!"
+    elif step.startedVial:
+      return f"Occupy vial {end+1}!"
+    else:
+      return ""
+
 
   def _prepareBigCharLines(self, symbols: str) -> None:
     bigChars = BigChar.FromSymbols(symbols)
@@ -1204,6 +1230,10 @@ class BigSolutionDisplay:
     self.__currentPoststep = 0
     self._currentSpacesMoved = 0
     self._currentStage = "GAME"
+    self.displayCurrent()
+  def end(self) -> None:
+    self.__currentPoststep = 0
+    self._currentStage = "POST"
     self.displayCurrent()
   def next(self, wholeStep=False) -> None:
     if not self._hasNext():
@@ -1714,7 +1744,7 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False, drainMode: b
       emptyRest = True
       i -= 1 # Place an empty value for this row
       if userInteraction:
-        numVials += len(vials) + _determineNumEmpty(len(vials))
+        numVials = len(vials) + _determineNumEmpty(len(vials))
       continue
 
     if response == ".":
@@ -1730,7 +1760,7 @@ def _readGame(nextLine: Callable[[], str], userInteraction = False, drainMode: b
       # Mystery input mode where only the first color of each vial is observable
       for topColor in spaces:
         vials.append([topColor] + ["?"] * (NUM_SPACES_PER_VIAL - 1))
-      i = numVials # Jump forward for all the vials we created
+      i = len(vials) # Jump forward for all the vials we created
       numVials = len(vials) + _determineNumEmpty(len(vials))
       emptyRest = True
       continue
