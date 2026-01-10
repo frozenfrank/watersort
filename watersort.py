@@ -1602,7 +1602,9 @@ class Solver:
 
       pass
 
-    self.solutionEnd = self.solutionEnd or time()
+    timeCheck = time()
+    self.solutionEnd = self.solutionEnd or timeCheck
+    self.solutionSetEnd = timeCheck
     self.endQueueLength = len(q)
     self.numUniqueStatesComputed = len(computed)
 
