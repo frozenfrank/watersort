@@ -988,6 +988,8 @@ class BigSolutionDisplay:
           if action is not None:
             print(formatVialColor("wn", "Command not fully supported in this context.") + " This command may not work here, even though it works at other prompts.")
             running = False
+        elif k == 't':
+          self.performTestCommand()
         else:
           self.printCenteredLines([f"Unrecognized key ({k})"])
           continue  # Keep waiting for a valid key
@@ -1016,6 +1018,7 @@ class BigSolutionDisplay:
          f"   {B}r{N}                       refresh display{D}; necessary if the terminal resizes{N}\n" +
          f"   {B}R{N}                       restart solution {D}(to the beginning){N}\n" +
          f"   {B}E{N}                       end solution {D}(to the end){N}\n" +
+         f"   {B}t{N}                       Test {D}; does whatever the programmer wants{N}\n" +
          f"   {B}-{N + Style.ITALICS}CMD{R}                    enter game command\n" +
          f"     {B}-help{N}                 print game command help\n")
   def __acceptGameCommand(self, command: str=""):
@@ -1328,6 +1331,8 @@ class BigSolutionDisplay:
     self.rootGame.modified = True
     saveGame(self.rootGame)
 
+  def performTestCommand(self) -> None:
+    print("Executing test command")
 
 def playGame(game: "Game"):
   currentGame = game
