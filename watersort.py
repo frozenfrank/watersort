@@ -1477,7 +1477,7 @@ class Solver:
         expectSolution = False
       else:
         q.append(self.seedGame)
-        searchBFS = shouldSearchBFS()
+        searchBFS = self._shouldSearchBFS()
 
       self.numIterations = 0
       self.numDeadEnds = 0
@@ -1608,6 +1608,15 @@ class Solver:
     self.endQueueLength = len(q)
     self.numUniqueStatesComputed = len(computed)
 
+  def _shouldSearchBFS() -> bool:
+    if SOLVE_METHOD == "BFS" or SOLVE_METHOD == "MIX":
+      return True
+    elif SOLVE_METHOD == "DFS" or SOLVE_METHOD == "DFR":
+      return False
+    else:
+      raise Exception("Unrecognized solve method: " + SOLVE_METHOD)
+
+
   def reportGameAnalysis(self):
     secsAnalyzing, minsAnalyzing = Solver._getTimeRunning(self.solutionSetStart, self.solutionSetEnd)
 
@@ -1699,13 +1708,7 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
   solver.probeDFRSamples = probeDFRSamples
   solver.solveGame()
   pass
-def shouldSearchBFS() -> bool:
-  if SOLVE_METHOD == "BFS" or SOLVE_METHOD == "MIX":
-    return True
-  elif SOLVE_METHOD == "DFS" or SOLVE_METHOD == "DFR":
-    return False
-  else:
-    raise Exception("Unrecognized solve method: " + SOLVE_METHOD)
+
 def testSolutionPrints(solution: "Game"):
   # Requires that the solution have at least 10 moves to solve
   solution.getNthParent(10).printMoves()
