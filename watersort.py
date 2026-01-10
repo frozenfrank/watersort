@@ -101,6 +101,7 @@ class Game:
   completionOrder: list[tuple[str, int]] # (color, depth)[] # Immutable
 
   # Flags set on the static class
+  # TODO: Move these static fields to the Solver class instead
   reset: bool = False
   quit: bool = False
   latest: "Game" = None
@@ -1327,7 +1328,6 @@ class BigSolutionDisplay:
     saveGame(self.rootGame)
 
 
-
 def playGame(game: "Game"):
   currentGame = game
   print("""
@@ -1358,26 +1358,22 @@ def playGame(game: "Game"):
     currentGame = currentGame.spawn((startVial, endVial))
 
   print("Goodbye.")
-def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDFRSamples = 0):
-  # Intelligent search through all the possible game states until we find a solution.
-  # The game already handles asking for more information as required
-  setSolveMethod(solveMethod)
 
+class Solver:
+  SOLVE_METHODS = Literal["MIX","BFS","DFS","DFR"]
+
+  # Inputs/parameters
+  seedGame: "Game"
+  # solveMethod: "SOLVE_METHODS"
+  # findSolutionCount = 0
+  analyzeSampleCount = 0
+  probeDFRSamples = 0
+
+  # Total Solver stats
   minSolution: Game = None
   numResets = -1
-  randomSamplesRemaining = probeDFRSamples
 
-  startTime: float = None
-  endTime: float = None
-
-  minSolutionUpdates = 0
-  numSolutionsAbandoned = 0
-
-
-  # Analyzing variables
-  analysisStart: float = time()
-  REPORT_ITERATION_FREQ = 10000 if SOLVE_METHOD == "BFS" else 1000
-  QUEUE_CHECK_FREQ = REPORT_ITERATION_FREQ * 10
+  # Analysis summary data structures
   partialDepth = defaultdict(int)
   dupGameDepth = defaultdict(int)
   deadEndDepth = defaultdict(int)
@@ -1387,162 +1383,195 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
   uniqueSolutions: defaultdict[int, list["Game"]] = defaultdict(list)
   isUniqueList: list[bool] = list()
 
-  deadEndDepth[1]
-  analysisSamplesRemaining = analyzeSampleCount
-  lastReportTime = 0
-  REPORT_SEC_FREQ = 15
+  def __init__(self, game: "Game", solveMethod: SOLVE_METHODS = "MIX"):
+    self.seedGame = game
+    setSolveMethod(solveMethod)
+    # self.solveMethod = solveMethod
 
-  # Temp only
-  timeCheck: float
+  def setSolveMethod(self, newSolveMethod: SOLVE_METHODS) -> None:
+    raise "Method not yet implemented"
 
-  while Game.reset or not minSolution or (randomSamplesRemaining > 0 and SOLVE_METHOD == "DFR") or analysisSamplesRemaining > 0:
-    Game.reset = False
-    numResets += 1
-    if randomSamplesRemaining > 0:
-      randomSamplesRemaining -= 1
-    elif analysisSamplesRemaining > 0:
-      timeCheck = time()
-      if analysisSamplesRemaining % 1000 == 0 or timeCheck - lastReportTime > REPORT_SEC_FREQ:
-        print(f"Searching for {analysisSamplesRemaining} more solutions. Running for {round(timeCheck - analysisStart, 1)} seconds. ")
-        lastReportTime = timeCheck
-      analysisSamplesRemaining -= 1
+  def solveGame(self) -> None:
+    self.findSolution()
 
-
-    # First correct any errors in the game
-    game.attemptCorrectErrors()
-
-    startTime = time()
-    expectSolution = True
-
-    # Setup our search
-    solution: Game | None = None
-    q: deque["Game"] = deque()
-    computed: set["Game"] = set()
-    searchBFS: bool = False
-    if Game.latest:
-      q.append(Game.latest)
-      Game.latest = None
-      searchBFS = True
-      expectSolution = False
+    if self.analyzeSampleCount > 0:
+      self.reportGameAnalysis()
     else:
-      q.append(game)
-      searchBFS = shouldSearchBFS()
+      self.reportGameSolution()
 
-    numIterations = 0
-    numDeadEnds = 0
-    numPartialSolutionsGenerated = 0
-    numDuplicateGames = 0
-    maxQueueLength = 1
 
-    # CONSIDER: Switching our approach based on the state of the game
-    # When we still have unknowns, we should find the shortest path to find an unknown,
-    # and continue in that same path until we reach a dead end.
-    # This makes it easier for a human to follow along in the game
+  def findSolution(self):
+    """
+    Intelligent search through all the possible game states until we find a solution.
+    The game already handles asking for more information as required.
+    """
+    startTime: float = None
+    endTime: float = None
 
-    # Perform the search
-    while q and not solution:
-      # Break out
-      if Game.reset or Game.quit:
+    minSolutionUpdates = 0
+    numSolutionsAbandoned = 0
+
+
+    # Analyzing variables
+    analysisStart: float = time()
+    REPORT_ITERATION_FREQ = 10000 if SOLVE_METHOD == "BFS" else 1000
+    QUEUE_CHECK_FREQ = REPORT_ITERATION_FREQ * 10
+
+    self.deadEndDepth[1]
+    analysisSamplesRemaining = self.analyzeSampleCount
+    timeCheck: float
+    lastReportTime = 0
+    REPORT_SEC_FREQ = 15
+
+
+    while Game.reset or not minSolution or (randomSamplesRemaining > 0 and SOLVE_METHOD == "DFR") or analysisSamplesRemaining > 0:
+      Game.reset = False
+      self.numResets += 1
+      if randomSamplesRemaining > 0:
+        randomSamplesRemaining -= 1
+      elif analysisSamplesRemaining > 0:
+        timeCheck = time()
+        if analysisSamplesRemaining % 1000 == 0 or timeCheck - lastReportTime > REPORT_SEC_FREQ:
+          print(f"Searching for {analysisSamplesRemaining} more solutions. Running for {round(timeCheck - analysisStart, 1)} seconds. ")
+          lastReportTime = timeCheck
+        analysisSamplesRemaining -= 1
+
+
+      # First correct any errors in the game
+      self.seedGame.attemptCorrectErrors()
+
+      startTime = time()
+      expectSolution = True
+
+      # Setup our search
+      solution: Game | None = None
+      q: deque["Game"] = deque()
+      computed: set["Game"] = set()
+      searchBFS: bool = False
+      if Game.latest:
+        q.append(Game.latest)
+        Game.latest = None
+        searchBFS = True
         expectSolution = False
-        break
-
-      # Taking from the front or the back makes all the difference between BFS and DFS
-      current = q.popleft() if searchBFS else q.pop()
-
-      # Perform some work at some checkpoints
-      numIterations += 1
-      if numIterations % REPORT_ITERATION_FREQ == 0 and not analyzeSampleCount:
-        if not searchBFS:
-          print(f"Checked {numIterations} iterations.")
-
-        if SOLVE_METHOD == "MIX" and searchBFS and current._numMoves >= MIX_SWITCH_THRESHOLD_MOVES:
-          searchBFS = False
-          print("Switching to DFS search for MIX solve method")
-        elif numIterations % QUEUE_CHECK_FREQ == 0:
-          if ENABLE_QUEUE_CHECKS and not searchBFS:
-            continueSearching = current.confirmPrompt("This is a lot. Would you like to continue searching?")
-            if not continueSearching:
-              expectSolution = False
-              analysisSamplesRemaining = 0
-              break
-          else:
-            print(f"QUEUE CHECK: \tresets: {numResets} \titrs: {numIterations} \tmvs: {current._numMoves} \tq len: {len(q)} \tends: {numDeadEnds} \tdup games: {numDuplicateGames} \tmins: {round((time() - startTime) / 60, 1)}")
-            if SOLVE_METHOD == "MIX":
-              switchFaster = current.confirmPrompt("This is a lot. Would you like to switch to a faster approach?", defaultYes=False)
-              if switchFaster:
-                searchBFS = False
-                setSolveMethod("DFS")
-              else:
-                pass
-
-      # Prune if we've found a cheaper solution
-      if not searchBFS and minSolution and minSolution._numMoves <= current._numMoves:
-        numSolutionsAbandoned += 1
-        break # Quit this attempt, and try a different one
-
-      # Check all next moves
-      hasNextGame = False
-      nextGames = current.generateNextGames()
-      # Break out after user input
-      if Game.reset or Game.quit:
-        expectSolution = False
-        break
-
-      if SHUFFLE_NEXT_MOVES: random.shuffle(nextGames)
-      for nextGame in nextGames:
-        numPartialSolutionsGenerated += 1
-        partialDepth[nextGame._numMoves] += 1
-
-        if nextGame in computed:
-          numDuplicateGames += 1
-          dupGameDepth[nextGame._numMoves] += 1
-          continue
-        computed.add(nextGame)
-
-        hasNextGame = True
-        if nextGame.isFinished():
-          solution = nextGame
-          if not minSolution or solution._numMoves < minSolution._numMoves:
-            minSolution = solution
-            minSolutionUpdates += 1
-          solutionDepth[solution._numMoves] += 1
-          timeCheck = time()
-          solFindSeconds[int((timeCheck - startTime + 0.9) // 1)] += 1
-
-          solutionHash = solution._completion_hash()
-          hashingList = uniqueSolutions[solutionHash]
-          if not len(hashingList):
-            uniqueSolsDepth[solution._numMoves] += 1
-            isUniqueList.append(True)
-          else:
-            isUniqueList.append(False)
-          hashingList.append(solution)
-          break # Finish searching
-        else:
-          q.append(nextGame)
-
-      # Maintain stats
-      maxQueueLength = max(maxQueueLength, len(q))
-      if not hasNextGame:
-        numDeadEnds += 1
-        deadEndDepth[current._numMoves] += 1
-
-    if expectSolution and not minSolution:
-      endTime = time()
-      message = formatVialColor("er", "This game has no solution.")
-      message += " Type YES if you have corrected the game state and want to try searching again."
-      retryRsp = game.requestVal(message, printOptions=True)
-      if retryRsp != "YES":
-        break # There are no solutions
       else:
-        endTime = None
+        q.append(self.seedGame)
+        searchBFS = shouldSearchBFS()
 
-  # End timer
-  endTime = endTime or time()
+      numIterations = 0
+      numDeadEnds = 0
+      numPartialSolutionsGenerated = 0
+      numDuplicateGames = 0
+      maxQueueLength = 1
 
-  # Print results
-  if analyzeSampleCount > 0:
-    secsAnalyzing, minsAnalyzing = getTimeRunning(analysisStart, endTime)
+      # CONSIDER: Switching our approach based on the state of the game
+      # When we still have unknowns, we should find the shortest path to find an unknown,
+      # and continue in that same path until we reach a dead end.
+      # This makes it easier for a human to follow along in the game
+
+      # Perform the search
+      while q and not solution:
+        # Break out
+        if Game.reset or Game.quit:
+          expectSolution = False
+          break
+
+        # Taking from the front or the back makes all the difference between BFS and DFS
+        current = q.popleft() if searchBFS else q.pop()
+
+        # Perform some work at some checkpoints
+        numIterations += 1
+        if numIterations % REPORT_ITERATION_FREQ == 0 and not self.analyzeSampleCount:
+          if not searchBFS:
+            print(f"Checked {numIterations} iterations.")
+
+          if SOLVE_METHOD == "MIX" and searchBFS and current._numMoves >= MIX_SWITCH_THRESHOLD_MOVES:
+            searchBFS = False
+            print("Switching to DFS search for MIX solve method")
+          elif numIterations % QUEUE_CHECK_FREQ == 0:
+            if ENABLE_QUEUE_CHECKS and not searchBFS:
+              continueSearching = current.confirmPrompt("This is a lot. Would you like to continue searching?")
+              if not continueSearching:
+                expectSolution = False
+                analysisSamplesRemaining = 0
+                break
+            else:
+              print(f"QUEUE CHECK: \tresets: {self.numResets} \titrs: {numIterations} \tmvs: {current._numMoves} \tq len: {len(q)} \tends: {numDeadEnds} \tdup games: {numDuplicateGames} \tmins: {round((time() - startTime) / 60, 1)}")
+              if SOLVE_METHOD == "MIX":
+                switchFaster = current.confirmPrompt("This is a lot. Would you like to switch to a faster approach?", defaultYes=False)
+                if switchFaster:
+                  searchBFS = False
+                  setSolveMethod("DFS")
+                else:
+                  pass
+
+        # Prune if we've found a cheaper solution
+        if not searchBFS and minSolution and minSolution._numMoves <= current._numMoves:
+          numSolutionsAbandoned += 1
+          break # Quit this attempt, and try a different one
+
+        # Check all next moves
+        hasNextGame = False
+        nextGames = current.generateNextGames()
+        # Break out after user input
+        if Game.reset or Game.quit:
+          expectSolution = False
+          break
+
+        if SHUFFLE_NEXT_MOVES: random.shuffle(nextGames)
+        for nextGame in nextGames:
+          numPartialSolutionsGenerated += 1
+          self.partialDepth[nextGame._numMoves] += 1
+
+          if nextGame in computed:
+            numDuplicateGames += 1
+            self.dupGameDepth[nextGame._numMoves] += 1
+            continue
+          computed.add(nextGame)
+
+          hasNextGame = True
+          if nextGame.isFinished():
+            solution = nextGame
+            if not minSolution or solution._numMoves < minSolution._numMoves:
+              minSolution = solution
+              minSolutionUpdates += 1
+            self.solutionDepth[solution._numMoves] += 1
+            timeCheck = time()
+            self.solFindSeconds[int((timeCheck - startTime + 0.9) // 1)] += 1
+
+            solutionHash = solution._completion_hash()
+            hashingList = self.uniqueSolutions[solutionHash]
+            if not len(hashingList):
+              self.uniqueSolsDepth[solution._numMoves] += 1
+              self.isUniqueList.append(True)
+            else:
+              self.isUniqueList.append(False)
+            hashingList.append(solution)
+            break # Finish searching
+          else:
+            q.append(nextGame)
+
+        # Maintain stats
+        maxQueueLength = max(maxQueueLength, len(q))
+        if not hasNextGame:
+          numDeadEnds += 1
+          self.deadEndDepth[current._numMoves] += 1
+
+      if expectSolution and not minSolution:
+        endTime = time()
+        message = formatVialColor("er", "This game has no solution.")
+        message += " Type YES if you have corrected the game state and want to try searching again."
+        retryRsp = self.seedGame.requestVal(message, printOptions=True)
+        if retryRsp != "YES":
+          break # There are no solutions
+        else:
+          endTime = None
+
+      pass
+
+    endTime = endTime or time()
+
+  def reportGameAnalysis(self):
+    secsAnalyzing, minsAnalyzing = Solver._getTimeRunning(analysisStart, endTime)
 
     # Print out interesting information to the console only
     print("")
@@ -1586,8 +1615,9 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
       partialDepth, dupGameDepth, deadEndDepth, solutionDepth, uniqueSolsDepth, \
       longestSolvesDict, uniqueDistributionDict, completionData, \
       solFindSeconds)
-  else:
-    secsSearching, minsSearching = getTimeRunning(startTime, endTime)
+
+  def reportGameSolution(self):
+    secsSearching, minsSearching = Solver._getTimeRunning(startTime, endTime)
 
     print(f"""
           Finished search algorithm:
@@ -1621,6 +1651,17 @@ def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDF
     if game.level:
       saveGame(game)
 
+  @staticmethod
+  def _getTimeRunning(startTime: float, endTime: float) -> tuple[float, float]: # (seconds, minutes)
+    seconds = round(endTime - startTime, 1)
+    minutes = round((endTime - startTime) / 60, 1)
+    return (seconds, minutes)
+
+def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDFRSamples = 0):
+  solver = Solver(game, solveMethod=solveMethod)
+  solver.analyzeSampleCount = analyzeSampleCount
+  solver.probeDFRSamples = probeDFRSamples
+  solver.solveGame()
   pass
 def shouldSearchBFS() -> bool:
   if SOLVE_METHOD == "BFS" or SOLVE_METHOD == "MIX":
@@ -1635,10 +1676,7 @@ def testSolutionPrints(solution: "Game"):
   solution.getNthParent(5).printMoves()
   solution.getNthParent(2).printMoves()
   solution.getNthParent(0).printMoves()
-def getTimeRunning(startTime: float, endTime: float) -> tuple[float, float]: # (seconds, minutes)
-  seconds = round(endTime - startTime, 1)
-  minutes = round((endTime - startTime) / 60, 1)
-  return (seconds, minutes)
+
 def analyzeCounterDictionary(dict: defaultdict[int]) -> tuple[int, int, int, int]: # (min, max, mode, total)
   minKey = min(dict.keys())
   maxKey = max(dict.keys())
