@@ -1406,24 +1406,25 @@ class BaseSolver:
   QUEUE_CHECK_FREQ: int
   REPORT_SEC_FREQ: int
 
-  def __init__(self, game: "Game", solveMethod: SOLVE_METHODS = "MIX"):
+  def __init__(self, game: "Game"):
     self.seedGame = game
-    setSolveMethod(solveMethod)
-    # self.solveMethod = solveMethod
 
   def setSolveMethod(self, newSolveMethod: SOLVE_METHODS) -> None:
     raise "Method not yet implemented"
 
-  def solveGame(self) -> None:
-    self.findSolution()
+  def solveGame(self, solveMethod: SOLVE_METHODS = "MIX") -> None:
+    self._findSolutions(solveMethod)
     self._onSolutionComplete()
     saveGame(self.seedGame)
 
-  def findSolution(self):
+  def _findSolutions(self, solveMethod: SOLVE_METHODS):
     """
     Intelligent search through all the possible game states until we find a solution.
     The game already handles asking for more information as required.
     """
+    setSolveMethod(solveMethod)
+    # self.solveMethod = solveMethod
+
     self.solutionSetStart = None
     self.solutionSetEnd = None
     self.solutionStart = None
@@ -1611,7 +1612,7 @@ class BaseSolver:
     return retryRsp == "YES"
 
   def _onSolutionComplete(self) -> None:
-    """Called after findSolution() completes. Use this to report on the discovered solution."""
+    """Called after _findSolutions() completes. Use this to report on the discovered solution."""
 
     # Override me.
     self._printQueueCheck()
@@ -1732,10 +1733,10 @@ class SolutionSolver(BaseSolver):
       print(formatVialColor("er", "Cannot find solution."))
 
 def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDFRSamples = 0):
-  solver = AnalysisSolver(game, solveMethod=solveMethod) if analyzeSampleCount > 0 else SolutionSolver(game, solveMethod)
+  solver = AnalysisSolver(game) if analyzeSampleCount > 0 else SolutionSolver(game)
   solver.analyzeSampleCount = analyzeSampleCount
   solver.probeDFRSamples = probeDFRSamples
-  solver.solveGame()
+  solver.solveGame(solveMethod)
   pass
 
 def testSolutionPrints(solution: "Game"):
