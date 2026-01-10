@@ -1412,7 +1412,9 @@ class BaseSolver:
   def setSolveMethod(self, newSolveMethod: SOLVE_METHODS) -> None:
     raise "Method not yet implemented"
 
-  def solveGame(self, solveMethod: SOLVE_METHODS = "MIX") -> None:
+  def solveGame(self, solveMethod: SOLVE_METHODS = "MIX", numSolutions: int = 1) -> None:
+    if numSolutions < 1: numSolutions = 1
+    self.findSolutionCount = numSolutions
     self._findSolutions(solveMethod)
     self._onSolutionComplete()
     saveGame(self.seedGame)
@@ -1748,8 +1750,7 @@ class SolutionSolver(BaseSolver):
 
 def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDFRSamples = 0):
   solver = AnalysisSolver(game) if analyzeSampleCount > 0 else SolutionSolver(game)
-  solver.findSolutionCount = analyzeSampleCount or probeDFRSamples
-  solver.solveGame(solveMethod)
+  solver.solveGame(solveMethod, numSolutions=analyzeSampleCount or probeDFRSamples)
   pass
 
 def testSolutionPrints(solution: "Game"):
