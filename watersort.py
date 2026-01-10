@@ -1365,9 +1365,7 @@ class BaseSolver:
   # Inputs/parameters
   seedGame: Game
   # solveMethod: "SOLVE_METHODS"
-  # findSolutionCount = 0
-  analyzeSampleCount = 0
-  probeDFRSamples = 0
+  findSolutionCount = 1
 
   # Solution Set stats
   solutionSetStart: float
@@ -1402,6 +1400,7 @@ class BaseSolver:
   # Solving data
   _searchBFS: bool
   _q: deque["Game"]
+  _findSolutionsRemaining: int
   REPORT_ITERATION_FREQ: int
   QUEUE_CHECK_FREQ: int
   REPORT_SEC_FREQ: int
@@ -1433,8 +1432,7 @@ class BaseSolver:
     self.minSolutionUpdates = 0
     self.numSolutionsAbandoned = 0
 
-    analysisSamplesRemaining = self.analyzeSampleCount
-    randomSamplesRemaining = self.probeDFRSamples
+    self._findSolutionsRemaining = self.findSolutionCount
 
     # Analyzing variables
     self.solutionSetStart = time()
@@ -1446,21 +1444,15 @@ class BaseSolver:
 
     # Time check setup
     timeCheck: float
-    lastReportTime = 0
 
 
-    while Game.reset or not self.minSolution or (randomSamplesRemaining > 0 and SOLVE_METHOD == "DFR") or analysisSamplesRemaining > 0:
+    while Game.reset or not self.minSolution or self._findSolutionsRemaining > 0:
       Game.reset = False
-      self.solutionsAttempted += 1
-      if randomSamplesRemaining > 0:
-        randomSamplesRemaining -= 1
-      elif analysisSamplesRemaining > 0:
-        timeCheck = time()
-        if analysisSamplesRemaining % 1000 == 0 or timeCheck - lastReportTime > self.REPORT_SEC_FREQ:
-          print(f"Searching for {analysisSamplesRemaining} more solutions. Running for {round(timeCheck - self.solutionSetStart, 1)} seconds. ")
-          lastReportTime = timeCheck
-        analysisSamplesRemaining -= 1
+      if not self._onInitSolutionAttempt():
+        break
 
+      self.solutionsAttempted += 1
+      self._findSolutionsRemaining -= 1
 
       # First correct any errors in the game
       self.seedGame.attemptCorrectErrors()
@@ -1509,8 +1501,7 @@ class BaseSolver:
           continueSearching = self._onIterationReport(current)
           if not continueSearching:
             expectSolution = False
-            randomSamplesRemaining = 0
-            analysisSamplesRemaining = 0
+            self._findSolutionsRemaining = 0
 
         # Prune if we've found a cheaper solution
         if not self._searchBFS and self.minSolution and self.minSolution._numMoves <= current._numMoves:
@@ -1585,6 +1576,10 @@ class BaseSolver:
     else:
       raise Exception("Unrecognized solve method: " + SOLVE_METHOD)
 
+  def _onInitSolutionAttempt(self) -> bool:
+    """Called before attempting a new solution. Return True to proceed with the solution."""
+    return True
+
   def _onIterationReport(self, current: Game) -> bool:
     """Called when the iteration search count exceeds REPORT_ITERATION_FREQ. Return True to continue searching."""
     if not self._searchBFS:
@@ -1625,6 +1620,15 @@ class BaseSolver:
     return (seconds, minutes)
 
 class AnalysisSolver(BaseSolver):
+  lastReportTime = 0
+
+  def _onInitSolutionAttempt(self):
+    timeCheck = time()
+    if self._findSolutionsRemaining % 1000 == 0 or timeCheck - self.lastReportTime > self.REPORT_SEC_FREQ:
+      print(f"Searching for {self._findSolutionsRemaining} more solutions. Running for {round(timeCheck - self.solutionSetStart, 1)} seconds. ")
+      self.lastReportTime = timeCheck
+    return True
+
   def _onIterationReport(self, current):
     # Suppress the default status check behavior
     # super()._onIterationReport(current)
@@ -1638,7 +1642,7 @@ class AnalysisSolver(BaseSolver):
     print("")
     minSolutionMoves, maxSolutionMoves, modeSolutionMoves, countUniqueSols = analyzeCounterDictionary(self.uniqueSolsDepth)
     minDeadEnd, lastDeadEnd, modeDeadEnds, _ = analyzeCounterDictionary(self.deadEndDepth)
-    nDupSols = self.analyzeSampleCount - countUniqueSols
+    nDupSols = self.findSolutionCount - countUniqueSols
     minFindTime, maxFindTime, modeFindTime, _ = analyzeCounterDictionary(self.solFindSeconds)
 
     # printUniqueSolutions(uniqueSolutions)
@@ -1651,7 +1655,7 @@ class AnalysisSolver(BaseSolver):
             the same states from multiple distinct samples found the same sets of game states.
 
           Report:
-          {self.analyzeSampleCount      }\t   Analysis samples
+          {self.findSolutionCount       }\t   Analysis samples
           {secsAnalyzing                }\t   Seconds analyzing
           {minsAnalyzing                }\t   Minutes analyzing
           {maxFindTime                  }\t   Maximum solution find time
@@ -1662,7 +1666,7 @@ class AnalysisSolver(BaseSolver):
           {modeSolutionMoves            }\t   Solution moves (Mode)
           {maxSolutionMoves             }\t   Solution moves (Max)
           {countUniqueSols              }\t   Unique solutions
-          {fPercent(nDupSols, self.analyzeSampleCount)}\t   Percent duplicated solutions
+          {fPercent(nDupSols, self.findSolutionCount)}\t   Percent duplicated solutions
           """)
 
     # Identify and prepare some extra data
@@ -1672,7 +1676,7 @@ class AnalysisSolver(BaseSolver):
     completionData = prepareCompletionOrderData(self.seedGame, self.uniqueSolutions)
 
     saveAnalysisResults(\
-      self.seedGame, self.solutionSetEnd - self.solutionSetStart, self.analyzeSampleCount, \
+      self.seedGame, self.solutionSetEnd - self.solutionSetStart, self.findSolutionCount, \
       self.partialDepth, self.dupGameDepth, self.deadEndDepth, self.solutionDepth, self.uniqueSolsDepth, \
       longestSolvesDict, uniqueDistributionDict, completionData, \
       self.solFindSeconds)
@@ -1734,8 +1738,7 @@ class SolutionSolver(BaseSolver):
 
 def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDFRSamples = 0):
   solver = AnalysisSolver(game) if analyzeSampleCount > 0 else SolutionSolver(game)
-  solver.analyzeSampleCount = analyzeSampleCount
-  solver.probeDFRSamples = probeDFRSamples
+  solver.findSolutionCount = analyzeSampleCount or probeDFRSamples
   solver.solveGame(solveMethod)
   pass
 
