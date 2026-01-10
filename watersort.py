@@ -1584,14 +1584,14 @@ class Solver:
 
     # Print out interesting information to the console only
     print("")
-    minSolutionMoves, maxSolutionMoves, modeSolutionMoves, countUniqueSols = analyzeCounterDictionary(uniqueSolsDepth)
-    minDeadEnd, lastDeadEnd, modeDeadEnds, _ = analyzeCounterDictionary(deadEndDepth)
-    nDupSols = analyzeSampleCount - countUniqueSols
-    minFindTime, maxFindTime, modeFindTime, _ = analyzeCounterDictionary(solFindSeconds)
+    minSolutionMoves, maxSolutionMoves, modeSolutionMoves, countUniqueSols = analyzeCounterDictionary(self.uniqueSolsDepth)
+    minDeadEnd, lastDeadEnd, modeDeadEnds, _ = analyzeCounterDictionary(self.deadEndDepth)
+    nDupSols = self.analyzeSampleCount - countUniqueSols
+    minFindTime, maxFindTime, modeFindTime, _ = analyzeCounterDictionary(self.solFindSeconds)
 
     # printUniqueSolutions(uniqueSolutions)
 
-    printCounterDict(solFindSeconds, title="Time to find Solutions:")
+    printCounterDict(self.solFindSeconds, title="Time to find Solutions:")
 
     print(f"""
         Finished analyzing solution space:
@@ -1599,7 +1599,7 @@ class Solver:
             the same states from multiple distinct samples found the same sets of game states.
 
           Report:
-          {analyzeSampleCount           }\t   Analysis samples
+          {self.analyzeSampleCount      }\t   Analysis samples
           {secsAnalyzing                }\t   Seconds analyzing
           {minsAnalyzing                }\t   Minutes analyzing
           {maxFindTime                  }\t   Maximum solution find time
@@ -1610,20 +1610,20 @@ class Solver:
           {modeSolutionMoves            }\t   Solution moves (Mode)
           {maxSolutionMoves             }\t   Solution moves (Max)
           {countUniqueSols              }\t   Unique solutions
-          {fPercent(nDupSols, analyzeSampleCount)}\t   Percent duplicated solutions
+          {fPercent(nDupSols, self.analyzeSampleCount)}\t   Percent duplicated solutions
           """)
 
     # Identify and prepare some extra data
-    extraDataLen = identifyExtraDataLength(partialDepth)
-    longestSolvesDict = prepareLongestSolves(extraDataLen, solFindSeconds)
-    uniqueDistributionDict = prepareUniqueDistribution(extraDataLen, isUniqueList)
-    completionData = prepareCompletionOrderData(game, uniqueSolutions)
+    extraDataLen = identifyExtraDataLength(self.partialDepth)
+    longestSolvesDict = prepareLongestSolves(extraDataLen, self.solFindSeconds)
+    uniqueDistributionDict = prepareUniqueDistribution(extraDataLen, self.isUniqueList)
+    completionData = prepareCompletionOrderData(self.seedGame, self.uniqueSolutions)
 
     saveAnalysisResults(\
-      game, self.solutionSetEnd - self.solutionSetStart, analyzeSampleCount, \
-      partialDepth, dupGameDepth, deadEndDepth, solutionDepth, uniqueSolsDepth, \
+      self.seedGame, self.solutionSetEnd - self.solutionSetStart, self.analyzeSampleCount, \
+      self.partialDepth, self.dupGameDepth, self.deadEndDepth, self.solutionDepth, self.uniqueSolsDepth, \
       longestSolvesDict, uniqueDistributionDict, completionData, \
-      solFindSeconds)
+      self.solFindSeconds)
 
   def reportGameSolution(self):
     secsSearching, minsSearching = Solver._getTimeRunning(self.solutionStart, self.solutionEnd)
