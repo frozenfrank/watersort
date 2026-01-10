@@ -1370,6 +1370,10 @@ class Solver:
   probeDFRSamples = 0
 
   # Total Solver stats
+  solutionSetStart: float
+  solutionStart: float
+  solutionEnd: float
+  solutionSetEnd: float
   minSolution: Game = None
   numResets = -1
 
@@ -1407,15 +1411,17 @@ class Solver:
     Intelligent search through all the possible game states until we find a solution.
     The game already handles asking for more information as required.
     """
-    startTime: float = None
-    endTime: float = None
+    self.solutionSetStart = None
+    self.solutionStart = None
+    self.solutionEnd = None
+    self.solutionSetEnd = None
 
     minSolutionUpdates = 0
     numSolutionsAbandoned = 0
 
 
     # Analyzing variables
-    analysisStart: float = time()
+    self.solutionSetStart = time()
     REPORT_ITERATION_FREQ = 10000 if SOLVE_METHOD == "BFS" else 1000
     QUEUE_CHECK_FREQ = REPORT_ITERATION_FREQ * 10
 
@@ -1434,7 +1440,7 @@ class Solver:
       elif analysisSamplesRemaining > 0:
         timeCheck = time()
         if analysisSamplesRemaining % 1000 == 0 or timeCheck - lastReportTime > REPORT_SEC_FREQ:
-          print(f"Searching for {analysisSamplesRemaining} more solutions. Running for {round(timeCheck - analysisStart, 1)} seconds. ")
+          print(f"Searching for {analysisSamplesRemaining} more solutions. Running for {round(timeCheck - self.solutionSetStart, 1)} seconds. ")
           lastReportTime = timeCheck
         analysisSamplesRemaining -= 1
 
@@ -1442,7 +1448,7 @@ class Solver:
       # First correct any errors in the game
       self.seedGame.attemptCorrectErrors()
 
-      startTime = time()
+      self.solutionStart = time()
       expectSolution = True
 
       # Setup our search
@@ -1497,7 +1503,7 @@ class Solver:
                 analysisSamplesRemaining = 0
                 break
             else:
-              print(f"QUEUE CHECK: \tresets: {self.numResets} \titrs: {numIterations} \tmvs: {current._numMoves} \tq len: {len(q)} \tends: {numDeadEnds} \tdup games: {numDuplicateGames} \tmins: {round((time() - startTime) / 60, 1)}")
+              print(f"QUEUE CHECK: \tresets: {self.numResets} \titrs: {numIterations} \tmvs: {current._numMoves} \tq len: {len(q)} \tends: {numDeadEnds} \tdup games: {numDuplicateGames} \tmins: {round((time() - self.solutionStart) / 60, 1)}")
               if SOLVE_METHOD == "MIX":
                 switchFaster = current.confirmPrompt("This is a lot. Would you like to switch to a faster approach?", defaultYes=False)
                 if switchFaster:
@@ -1532,13 +1538,14 @@ class Solver:
 
           hasNextGame = True
           if nextGame.isFinished():
+            timeCheck = time()
+            self.solutionEnd = timeCheck
             solution = nextGame
             if not minSolution or solution._numMoves < minSolution._numMoves:
               minSolution = solution
               minSolutionUpdates += 1
             self.solutionDepth[solution._numMoves] += 1
-            timeCheck = time()
-            self.solFindSeconds[int((timeCheck - startTime + 0.9) // 1)] += 1
+            self.solFindSeconds[int((timeCheck - self.solutionStart + 0.9) // 1)] += 1
 
             solutionHash = solution._completion_hash()
             hashingList = self.uniqueSolutions[solutionHash]
@@ -1573,7 +1580,7 @@ class Solver:
     endTime = endTime or time()
 
   def reportGameAnalysis(self):
-    secsAnalyzing, minsAnalyzing = Solver._getTimeRunning(analysisStart, endTime)
+    secsAnalyzing, minsAnalyzing = Solver._getTimeRunning(self.solutionSetStart, self.solutionSetEnd)
 
     # Print out interesting information to the console only
     print("")
@@ -1613,13 +1620,13 @@ class Solver:
     completionData = prepareCompletionOrderData(game, uniqueSolutions)
 
     saveAnalysisResults(\
-      game, endTime - analysisStart, analyzeSampleCount, \
+      game, self.solutionSetEnd - self.solutionSetStart, analyzeSampleCount, \
       partialDepth, dupGameDepth, deadEndDepth, solutionDepth, uniqueSolsDepth, \
       longestSolvesDict, uniqueDistributionDict, completionData, \
       solFindSeconds)
 
   def reportGameSolution(self):
-    secsSearching, minsSearching = Solver._getTimeRunning(startTime, endTime)
+    secsSearching, minsSearching = Solver._getTimeRunning(self.solutionStart, self.solutionEnd)
 
     print(f"""
           Finished search algorithm:
