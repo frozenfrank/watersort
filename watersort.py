@@ -151,9 +151,8 @@ class Game:
     self._numMoves = 0 if self.__isRoot else prev._numMoves + 1
     self.completionOrder = list() if self.__isRoot else prev.completionOrder
 
-  # Returns the nth-parent of the game,
-  # or None if n is greater than the number of parents
   def getNthParent(self, n: int) -> "Game":
+    """Returns the nth-parent of the game, or None if n is greater than the number of parents."""
     out = self
     for _ in range(n):
       if out.prev:
@@ -163,8 +162,8 @@ class Game:
     return out
   def hasError(self) -> bool:
     return self._colorError # Or other errors
-  # Attempts to correct any errors, and then returns a bool indicating if errors still exist
   def attemptCorrectErrors(self) -> bool:
+    """Attempts to correct any errors, and then returns a bool indicating if errors still exist"""
     if not self.hasError():
       return False
 
@@ -1334,6 +1333,11 @@ class BigSolutionDisplay:
   def performTestCommand(self) -> None:
     print("Executing test command")
 
+    currentGame = self._getCurStep().game
+    print(f"Searching for dead ends from current point")
+    hasDeadEnds = SafeGameSolver(currentGame).searchForAnyDeadEnd()
+    print("☠️ Dead ends ahead" if hasDeadEnds else "🟢 All clear")
+
 def playGame(game: "Game"):
   currentGame = game
   print("""
@@ -1462,9 +1466,6 @@ class BaseSolver:
       self.solutionsAttempted += 1
       self._findSolutionsRemaining -= 1
 
-      # First correct any errors in the game
-      self.seedGame.attemptCorrectErrors()
-
       self.solutionStart = time()
       expectSolution = True
 
@@ -1570,8 +1571,11 @@ class BaseSolver:
     else:
       raise Exception("Unrecognized solve method: " + SOLVE_METHOD)
 
-  def _onInitSolutionAttempt(self) -> bool:
+  def _onInitSolutionAttempt(self, bypassErrorCorrection = False) -> bool:
     """Called before attempting a new solution. Return True to proceed with the solution."""
+    # First correct any errors in the game
+    if not bypassErrorCorrection and self.seedGame.attemptCorrectErrors():
+      return False
     return True
 
   def _onIterationReport(self, current: Game) -> bool:
@@ -1616,7 +1620,7 @@ class BaseSolver:
     """Called when the it is detected that no solutions exist. Return true to reset and try again."""
     message = formatVialColor("er", "This game has no solution.")
     message += " Type YES if you have corrected the game state and want to try searching again."
-    retryRsp = self.seedGame.requestVal(message, printOptions=True)
+    retryRsp = self.seedGame.requestVal(message, printOptions=True, printState=False)
     return retryRsp == "YES"
 
   def _onAfterFindSolutions(self) -> None:
@@ -1636,6 +1640,9 @@ class AnalysisSolver(BaseSolver):
   lastReportTime = 0
 
   def _onInitSolutionAttempt(self):
+    if not super()._onInitSolutionAttempt(bypassErrorCorrection=True):
+      return False
+
     timeCheck = time()
     if self._findSolutionsRemaining % 1000 == 0 or timeCheck - self.lastReportTime > self.REPORT_SEC_FREQ:
       print(f"Searching for {self._findSolutionsRemaining} more solutions. Running for {round(timeCheck - self.solutionSetStart, 1)} seconds. ")
@@ -1699,6 +1706,9 @@ class SolutionSolver(BaseSolver):
   MysteryContinuation = False
 
   def _onInitSolutionAttempt(self):
+    if not super()._onInitSolutionAttempt(bypassErrorCorrection=True):
+      return False
+
     if self.minSolution and SolutionSolver.MysteryContinuation:
       # NOTE: If self._searchBFS has already been turned off, we ended up in DFR mode.
       # Consider allowing the additional search attempts to proceed in this case.
@@ -1763,6 +1773,7 @@ class SafeGameSolver(BaseSolver):
   numSolutionsLocated = 0
 
   def _onInitSolutionAttempt(self):
+    # Bypass
     if self.seedGame.getDepth() < 1:
       print(formatVialColor("er", "Expected game near to completion.") + " This game is unsolved and certainly is not safe.")
       return False
@@ -1772,13 +1783,16 @@ class SafeGameSolver(BaseSolver):
     self.numSolutionsLocated += 1
     return False # Avoid registering this solution, and keep looking for dead-ends
 
+  def _onImpossibleGame(self):
+    pass # This solver never saves solutions, and will always report "impossible"
+
   def solveGame(self, solveMethod = "MIX", numSolutions = 1):
     raise "Method not supported"
 
   def searchForAnyDeadEnd(self) -> bool:
     """Searches any combination of moves that would result in a dead end. Returns true if any are found."""
     self.findSolutionCount = 1
-    self._findSolutions()
+    self._findSolutions("BFS")
     print(f"Searched {self.numIterations} total iterations and found {self.numDeadEnds} dead ends and {self.numSolutionsLocated} solutions")
     return self.numDeadEnds > 0
 
