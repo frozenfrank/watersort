@@ -307,6 +307,7 @@ class Game:
         Game.latest = None
       else:
         Game.reset = False
+        SolutionSolver.MysteryContinuation = True
 
     saveGame(root)
     return val
@@ -1682,6 +1683,15 @@ class AnalysisSolver(BaseSolver):
       self.solFindSeconds)
 
 class SolutionSolver(BaseSolver):
+  # Static
+  MysteryContinuation = False
+
+  def _onInitSolutionAttempt(self):
+    if self.minSolution and SolutionSolver.MysteryContinuation:
+      # NOTE: If self._searchBFS has already been turned off, we ended up in DFR mode.
+      # Consider allowing the additional search attempts to proceed in this case.
+      return False
+    return True
   def _onIterationReport(self, current):
     if not super()._onIterationReport(current):
       return False

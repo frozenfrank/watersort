@@ -32,7 +32,7 @@ git mv level.txt YEAR/level.txt
     - [x] Implement help menu
   - [ ] Reuse terminal space instead of bumping things out of the terminal history
 - Solver Refactor
-  - [ ] Fix BFS continuation after discovering all unknowns. Currently "switches" to DFS 200 times before reporting "reset"
+  - [x] Fix BFS continuation after discovering all unknowns. Currently "switches" to DFS 200 times before reporting "reset"
 - General
   - [x] Automatically store/retrieve monthly game files in annual sub-folders based on current year
   - [ ] Offer to automatically start analysis session of level (in the background)
