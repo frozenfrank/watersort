@@ -1416,14 +1416,8 @@ class BaseSolver:
 
   def solveGame(self) -> None:
     self.findSolution()
-
-    if self.analyzeSampleCount > 0:
-      self.reportGameAnalysis()
-    else:
-      self.reportGameSolution()
-
-    if self.seedGame.level:
-      saveGame(self.seedGame)
+    self._onSolutionComplete()
+    saveGame(self.seedGame)
 
   def findSolution(self):
     """
@@ -1620,8 +1614,28 @@ class BaseSolver:
     retryRsp = self.seedGame.requestVal(message, printOptions=True)
     return retryRsp == "YES"
 
-  def reportGameAnalysis(self):
-    secsAnalyzing, minsAnalyzing = Solver._getTimeRunning(self.solutionSetStart, self.solutionSetEnd)
+  def _onSolutionComplete(self) -> None:
+    """Called after findSolution() completes. Use this to report on the discovered solution."""
+
+    # Override me.
+    self._printQueueCheck()
+    print(f"Found solution requiring {self.minSolution.getDepth()} moves.")
+
+  @staticmethod
+  def _getTimeRunning(startTime: float, endTime: float) -> tuple[float, float]: # (seconds, minutes)
+    seconds = round(endTime - startTime, 1)
+    minutes = round((endTime - startTime) / 60, 1)
+    return (seconds, minutes)
+
+class AnalysisSolver(BaseSolver):
+  def _onIterationReport(self, current):
+    # Suppress the default status check behavior
+    # super()._onIterationReport(current)
+    return True
+
+
+  def _onSolutionComplete(self):
+    secsAnalyzing, minsAnalyzing = BaseSolver._getTimeRunning(self.solutionSetStart, self.solutionSetEnd)
 
     # Print out interesting information to the console only
     print("")
@@ -1666,7 +1680,29 @@ class BaseSolver:
       longestSolvesDict, uniqueDistributionDict, completionData, \
       self.solFindSeconds)
 
-  def reportGameSolution(self):
+class SolutionSolver(BaseSolver):
+  def _onIterationReport(self, current):
+    if not super()._onIterationReport(current):
+      return False
+
+    if SOLVE_METHOD == "MIX" and self._searchBFS and current._numMoves >= MIX_SWITCH_THRESHOLD_MOVES:
+      self._searchBFS = False
+      print("Switching to DFS search for MIX solve method")
+    elif self.numIterations % self.QUEUE_CHECK_FREQ == 0:
+      if ENABLE_QUEUE_CHECKS and not self._searchBFS:
+        return current.confirmPrompt("This is a lot. Would you like to continue searching?")
+
+      self._printQueueCheck(current)
+      if SOLVE_METHOD == "MIX":
+        switchFaster = current.confirmPrompt("This is a lot. Would you like to switch to a faster approach?", defaultYes=False)
+        if switchFaster:
+          self._searchBFS = False
+          setSolveMethod("DFS")
+
+    return True
+
+
+  def _onSolutionComplete(self):
     secsSearching, minsSearching = BaseSolver._getTimeRunning(self.solutionStart, self.solutionEnd)
     shortestSolutionLen = self.minSolution._numMoves if self.minSolution else "--"
 
@@ -1698,39 +1734,6 @@ class BaseSolver:
       # self.minSolution.printMoves()
     else:
       print(formatVialColor("er", "Cannot find solution."))
-
-  @staticmethod
-  def _getTimeRunning(startTime: float, endTime: float) -> tuple[float, float]: # (seconds, minutes)
-    seconds = round(endTime - startTime, 1)
-    minutes = round((endTime - startTime) / 60, 1)
-    return (seconds, minutes)
-
-class AnalysisSolver(BaseSolver):
-  def _onIterationReport(self, current):
-    # Suppress the default status check behavior
-    # super()._onIterationReport(current)
-    return True
-
-class SolutionSolver(BaseSolver):
-  def _onIterationReport(self, current):
-    if not super()._onIterationReport(current):
-      return False
-
-    if SOLVE_METHOD == "MIX" and self._searchBFS and current._numMoves >= MIX_SWITCH_THRESHOLD_MOVES:
-      self._searchBFS = False
-      print("Switching to DFS search for MIX solve method")
-    elif self.numIterations % self.QUEUE_CHECK_FREQ == 0:
-      if ENABLE_QUEUE_CHECKS and not self._searchBFS:
-        return current.confirmPrompt("This is a lot. Would you like to continue searching?")
-
-      self._printQueueCheck(current)
-      if SOLVE_METHOD == "MIX":
-        switchFaster = current.confirmPrompt("This is a lot. Would you like to switch to a faster approach?", defaultYes=False)
-        if switchFaster:
-          self._searchBFS = False
-          setSolveMethod("DFS")
-
-    return True
 
 def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDFRSamples = 0):
   solver = AnalysisSolver(game, solveMethod=solveMethod) if analyzeSampleCount > 0 else SolutionSolver(game, solveMethod)
@@ -2047,7 +2050,7 @@ def debugLevel(level,dfrSearchAttempts=DFR_SEARCH_ATTEMPTS):
   saveGame(originalGame)
 
 def saveGame(game: "Game", forceSave = False) -> None:
-  if not game or (not forceSave and not game.modified):
+  if not game or not game.level or (not forceSave and not game.modified):
     return None # No saving necessary
   fileName = generateFileName(game.level)
   result = generateFileContents(game)
