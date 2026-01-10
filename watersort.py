@@ -1399,6 +1399,8 @@ class Solver:
     else:
       self.reportGameSolution()
 
+    if self.seedGame.level:
+      saveGame(self.seedGame)
 
   def findSolution(self):
     """
@@ -1647,9 +1649,6 @@ class Solver:
       # minSolution.printMoves()
     else:
       print(formatVialColor("er", "Cannot find solution."))
-
-    if game.level:
-      saveGame(game)
 
   @staticmethod
   def _getTimeRunning(startTime: float, endTime: float) -> tuple[float, float]: # (seconds, minutes)
