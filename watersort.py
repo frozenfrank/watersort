@@ -957,7 +957,7 @@ class BigSolutionDisplay:
       self.movesFinishGame = self._steps[-1].game.isFinished()
       self.__init_presteps()
       self.__init_poststeps()
-      self.__init_precomputeThread()
+      self._launchDeadEndComputationBackground()
 
     BigSolutionDisplay.__updateScreenWidth()
   def __init_presteps(self):
@@ -981,29 +981,6 @@ class BigSolutionDisplay:
   def __init_poststeps(self):
     bigText = "DONE✅" if self.movesFinishGame else "COLOR?"
     self._poststeps.append(SolutionStep(bigText=bigText, game=self.targetGame))
-  def __init_precomputeThread(self) -> None:
-    """Safely launches at most one background thread to perform dead end searching."""
-    if not self.__needsComputeDeadEndResults():
-      print("Skipping thread launch because no work necessary")
-      return
-
-    with self.__spawnThreadLock:
-      if self.__hasSpawnedThread:
-        if self.debugInformation:
-          print(formatVialColor("er", "Thread already running.") + " Not creating an extra thread.")
-        return
-
-      if not self.__needsComputeDeadEndResults():
-        print(formatVialColor("wn", "Unexpected discovery of no work needed.") + "After an initial verification, we acquired a lock and then found no remaining work to do.")
-        return
-
-      if self.debugInformation:
-        print("Starting dead processing in a background thread")
-      t = threading.Thread(target=self.__computeDeadEndResults)
-      t.daemon = True
-      t.start()
-
-      self.__hasSpawnedThread = True
 
   def start(self):
     if not self._steps:
@@ -1050,8 +1027,9 @@ class BigSolutionDisplay:
           self.debugInformation = not self.debugInformation
           if self.debugInformation:
             self.detailInformation = True
-            self.__init_precomputeThread()
           self.displayCurrent()
+          if self.debugInformation:
+            self._launchDeadEndComputationBackground(verbose=True)
         elif k == '-' or k.startswith('-'):
           action = self.__acceptGameCommand(k)
           if action is not None:
@@ -1253,6 +1231,7 @@ class BigSolutionDisplay:
 
 
     return newIntroLines
+
   @staticmethod
   def _getMoveDescriptor(step: SolutionStep) -> str:
     if step.isComplete:
@@ -1359,6 +1338,30 @@ class BigSolutionDisplay:
     # Recombine and return
     return style + content
 
+
+  def _launchDeadEndComputationBackground(self, verbose=False) -> None:
+    """Safely launches at most one background thread to perform dead end searching."""
+    if not self.__needsComputeDeadEndResults():
+      if verbose: print("Skipping thread launch because no work necessary")
+      return
+
+    with self.__spawnThreadLock:
+      if self.__hasSpawnedThread:
+        if verbose or self.debugInformation:
+          print(formatVialColor("er", "Thread already running.") + " Not creating an extra thread.")
+        return
+
+      if not self.__needsComputeDeadEndResults():
+        print(formatVialColor("wn", "Unexpected discovery of no work needed.") + "After an initial verification, we acquired a lock and then found no remaining work to do.")
+        return
+
+      if verbose or self.debugInformation:
+        print("Starting dead processing in a background thread")
+      t = threading.Thread(target=self.__computeDeadEndResults)
+      t.daemon = True
+      t.start()
+
+      self.__hasSpawnedThread = True
   def __needsComputeDeadEndResults(self) -> bool:
     if not self.movesFinishGame or self.__finishedDeadEndsSearch:
       return False
