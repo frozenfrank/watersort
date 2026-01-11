@@ -1157,10 +1157,14 @@ class BigSolutionDisplay:
     lines.append(" | ".join(addlInfo))
 
     # Description
-    description = BigSolutionDisplay._getMoveDescription(step)
-    if description:
+    sentences = [
+      BigSolutionDisplay._getMoveDescription(step),
+      BigSolutionDisplay._getDeadEndSummary(step),
+    ]
+    sentences = [s for s in sentences if s]
+    if sentences:
       lines.append("")
-      lines.append(description)
+      lines.extend(sentences)
 
     # Main event
     start, end = step.move
@@ -1245,6 +1249,17 @@ class BigSolutionDisplay:
       return f"Occupy vial {end+1}!"
     else:
       return ""
+
+  @staticmethod
+  def _getDeadEndSummary(step: SolutionStep) -> str:
+    r = step.deadEndsSearch
+    if not r or not r.searchDataAvailable:
+      return ""
+    elif not r.hasDeadEnds:
+      return "No dead ends - all clear!"
+    else:
+      return ""
+
 
 
   def _prepareBigCharLines(self, symbols: str) -> None:
