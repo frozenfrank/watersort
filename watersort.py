@@ -1185,20 +1185,27 @@ class BigSolutionDisplay:
     if deadEndsResults and deadEndsResults.searchDataAvailable:
       newIntroLines.append("")
 
-      emoji = "☠️" if deadEndsResults.hasDeadEnds else "🟢"
-      newIntroLines.append(f"Can die? ​{emoji}")
       if not self.detailInformation:
         deadEndsTxt = "99+" if deadEndsResults.numDeadEnds > 99 else deadEndsResults.numDeadEnds
         newIntroLines.append(f"Dead ends: {deadEndsTxt}")
       else:
         if not step.deadEndsSearch:
-          newIntroLines.append(f"Max dead ends: {deadEndsResults.numDeadEnds}")
-          newIntroLines.append(f"Computed step: {deadEndsResults.game.getDepth()}")
+          detailsDict = {
+            "Max dead ends": deadEndsResults.numDeadEnds,
+            "Computed step": deadEndsResults.game.getDepth(),
+          }
         else:
-          newIntroLines.append(f"Iterations: {deadEndsResults.searchIterations}")
-          newIntroLines.append(f"Dead ends: {deadEndsResults.numDeadEnds}")
-          newIntroLines.append(f"Solutions: {deadEndsResults.numEventualSolutions}")
-          newIntroLines.append(f"Search (s): {deadEndsResults.searchSeconds}")
+          detailsDict = {
+            "Dead ends": deadEndsResults.numDeadEnds,
+            "Solutions": deadEndsResults.numEventualSolutions,
+            "Search (s)": deadEndsResults.searchSeconds,
+            "Iterations": deadEndsResults.searchIterations,
+          }
+
+        labelLen = max(map(len, detailsDict.keys())) + 1 # Add one for the colon
+        valueLen = max(map(len, map(str, detailsDict.values())))
+        for label, value in detailsDict.items():
+          newIntroLines.append((label + ":").ljust(labelLen) + " " + str(value).rjust(valueLen))
 
 
     return newIntroLines
