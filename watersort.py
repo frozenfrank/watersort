@@ -924,6 +924,7 @@ class BigSolutionDisplay:
   debugInformation = False
 
   _maxDeadEnds: DeadEndSearchResults|None = None
+  __simpleDeadEndsMax = 99
 
   @staticmethod
   def __updateScreenWidth() -> None:
@@ -1190,7 +1191,8 @@ class BigSolutionDisplay:
       newIntroLines.append("")
 
       if not self.detailInformation:
-        deadEndsTxt = "99+" if deadEndsResults.numDeadEnds > 99 else deadEndsResults.numDeadEnds
+        maxDisplay = self.__simpleDeadEndsMax
+        deadEndsTxt = f"{maxDisplay}+" if deadEndsResults.numDeadEnds > maxDisplay else deadEndsResults.numDeadEnds
         newIntroLines.append(f"Dead ends: {deadEndsTxt}")
       else:
         if not step.deadEndsSearch:
@@ -1361,6 +1363,11 @@ class BigSolutionDisplay:
       if self._currentStage == "POST" or (self._currentStage == "GAME" and self._getCurStep().game.getDepth() >= step.game.getDepth()):
         if self.debugInformation:
           print(formatVialColor("wn", "Stopping dead end search.") + " User has already passed this step.")
+        break
+
+      if not self.detailInformation and results.numDeadEnds > self.__simpleDeadEndsMax:
+        if self.debugInformation:
+          print(formatVialColor("wn", "Stopping dead end search.") + " We've gathered enough information for the simple view.")
         break
 
 
