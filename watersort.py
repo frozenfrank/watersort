@@ -1104,9 +1104,9 @@ class BigSolutionDisplay:
       return
 
     stepNum = int(command[1:]) # Assumes a valid integer
-    stepIdx = stepNum - 1
+    stepIdx = len(self._steps) + stepNum if stepNum < 0 else stepNum - 1
     if stepIdx < 0 or stepIdx > maxIdx:
-      print(formatVialColor("er", "Invalid input.") + f" Must enter a number between 1 and {len(self._steps)}.")
+      print(formatVialColor("er", "Invalid input.") + f" Must enter a number between 1 and {len(self._steps)}. Negative values represent moves from the end of the solution.")
       return
 
     self._currentStage = "GAME"
