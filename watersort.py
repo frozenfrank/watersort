@@ -1490,12 +1490,12 @@ class BaseSolver:
     self._onAfterFindSolutions()
     saveGame(self.seedGame)
 
-  def _findSolutions(self, solveMethod: SOLVE_METHODS):
+  def _findSolutions(self, solveMethod: SOLVE_METHODS, suppressSolveMethodNotification=False):
     """
     Intelligent search through all the possible game states until we find a solution.
     The game already handles asking for more information as required.
     """
-    setSolveMethod(solveMethod)
+    setSolveMethod(solveMethod, suppressNotification=suppressSolveMethodNotification)
     # self.solveMethod = solveMethod
 
     self.solutionSetStart = None
@@ -1857,7 +1857,7 @@ class SafeGameSolver(BaseSolver):
     if self.seedGame.isFinished():
       return False
     self.findSolutionCount = 1
-    self._findSolutions("BFS")
+    self._findSolutions("BFS", suppressSolveMethodNotification=True)
     return self.numDeadEnds > 0
 
   def analyzeDeadEndStates(self) -> DeadEndSearchResults:
@@ -2246,7 +2246,7 @@ def _autoSwitchForUnknowns(applyState: bool, newState="MIX") -> None:
   else:
     setSolveMethod(AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD)
     AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD = None
-def setSolveMethod(method: str) -> bool:
+def setSolveMethod(method: str, suppressNotification=False) -> bool:
   method = method.upper()
   if method not in VALID_SOLVE_METHODS:
     print(f"Solve method '{method}' is not a valid input. Choose one of the following instead: " + ", ".join(VALID_SOLVE_METHODS))
@@ -2262,7 +2262,7 @@ def setSolveMethod(method: str) -> bool:
   else:
     DFR_SEARCH_ATTEMPTS = 0
 
-  print("Set solve method to " + method)
+  if not suppressNotification: print("Set solve method to " + method)
   return True
 
 def generateAnalysisResultsName(level: str, absolutePath: bool = None) -> str:
