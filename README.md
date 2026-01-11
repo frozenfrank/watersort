@@ -42,6 +42,7 @@ git mv level.txt YEAR/level.txt
     - [ ] Show the safe point on the big solution solver
     - [ ] Install an early exit after discovering 999 dead ends
     - [ ] Show the number of dead ends from each step forward
+    - [ ] Create mechanisms for viewing the paths to dead ends
   - [ ] Analyze which colors are used most frequently in levels (yellow is uncommon)
   - [ ] Add support for leveraging the "UNDO" feature to look for new vials after discovering colors
     - Only use UNDO if it would otherwise restart

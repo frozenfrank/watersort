@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime
 import signal
 import os
@@ -49,6 +50,21 @@ Vials = list[list[str]]
 Move = tuple[int, int]
 """ (startVialIndex, endVialIndex) """
 
+@dataclass(frozen=True)
+class DeadEndSearchResults:
+  origin: "Game"
+  searchIterations: int
+  searchSeconds: float
+  numDeadEnds: int
+  numEventualSolutions: int
+
+  searchDataAvailable: bool = True
+
+  @property
+  def hasDeadEnds(self):
+    return self.numDeadEnds>0
+
+
 class SolutionStep:
   game: "Game"
   move: Move
@@ -66,6 +82,9 @@ class SolutionStep:
 
   # Comparison to previously reported solution
   isSameAsPrevious: bool|None
+
+  # Pre-compute stat values
+  deadEndsSearch: DeadEndSearchResults|None = None
 
   def __init__(self, game: "Game"=None, info: "Game.MoveInfo"=None, bigText: str = None):
     self.bigText = bigText
@@ -1336,21 +1355,17 @@ class BigSolutionDisplay:
     currentGame = self._getCurStep().game
     print(f"Searching for dead ends from current point")
 
-    safeSolver = SafeGameSolver(currentGame)
-    hasDeadEnds = safeSolver.searchForAnyDeadEnd()
+    r = SafeGameSolver(currentGame).analyzeDeadEndStates()
 
-    try:
-      iterations = formatVialColor("bold", f"{safeSolver.numIterations} iterations")
-      deadEnds = formatVialColor("er" if hasDeadEnds else "wn", f"{safeSolver.numDeadEnds} dead ends")
-      solutions = formatVialColor("bold", f"{safeSolver.numSolutionsLocated} solutions")
-      searchSeconds, _ = SafeGameSolver._getTimeRunning(safeSolver.solutionSetStart, safeSolver.solutionSetEnd)
-      searchTime = formatVialColor("bold", f"{searchSeconds} seconds")
+    if r.searchDataAvailable:
+      iterations = formatVialColor("bold", f"{r.searchIterations} iterations")
+      deadEnds = formatVialColor("er" if r.hasDeadEnds else "wn", f"{r.numDeadEnds} dead ends")
+      solutions = formatVialColor("bold", f"{r.numEventualSolutions} solutions")
+      searchTime = formatVialColor("bold", f"{r.searchSeconds} seconds")
 
       print(f"Searched {iterations} and found {deadEnds} and {solutions} in {searchTime}")
-    except:
-      pass # Not all of these properties are available when the came is complete
 
-    print("☠️ Dead ends ahead" if hasDeadEnds else "🟢 All clear")
+    print("☠️ Dead ends ahead" if r.hasDeadEnds else "🟢 All clear")
 
 def playGame(game: "Game"):
   currentGame = game
@@ -1810,6 +1825,21 @@ class SafeGameSolver(BaseSolver):
     self.findSolutionCount = 1
     self._findSolutions("BFS")
     return self.numDeadEnds > 0
+
+  def analyzeDeadEndStates(self) -> DeadEndSearchResults:
+    """Searches any combination of moves that would result in a dead end. Returns {DeadEndSearchResults} representing the findings."""
+    self.searchForAnyDeadEnd()
+    return self.exportDeadEndSearchResults()
+
+  def exportDeadEndSearchResults(self) -> DeadEndSearchResults:
+    try:
+      searchSeconds, _ = SafeGameSolver._getTimeRunning(self.solutionSetStart, self.solutionSetEnd)
+      return DeadEndSearchResults(self.seedGame, self.numIterations, searchSeconds, self.numDeadEnds, self.numSolutionsLocated)
+    except:
+      # Not all of these properties are available when the game is complete
+      return DeadEndSearchResults(self.seedGame, 0, 0, 0, 0, searchDataAvailable=False)
+
+
 
 def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDFRSamples = 0):
   solver = AnalysisSolver(game) if analyzeSampleCount > 0 else SolutionSolver(game)
