@@ -920,6 +920,9 @@ class BigSolutionDisplay:
   SCREEN_WIDTH = 80
   SCREEN_HEIGHT = 20
 
+  detailInformation = False
+  debugInformation = False
+
   @staticmethod
   def __updateScreenWidth() -> None:
     termSize = os.get_terminal_size()
@@ -970,7 +973,8 @@ class BigSolutionDisplay:
     bigText = "DONE✅" if self.movesFinishGame else "COLOR?"
     self._poststeps.append(SolutionStep(bigText=bigText, game=self.targetGame))
   def __init_precomputeThread(self):
-    print("Starting dead processing in a background thread")
+    if self.debugInformation:
+      print("Starting dead processing in a background thread")
     t = threading.Thread(target=self._computeDeadEndResults)
     t.daemon = True
     t.start()
@@ -1011,6 +1015,14 @@ class BigSolutionDisplay:
         elif k == 'l':
           self.toggleBlindMode()
           self.displayCurrent()
+        elif k == 'd':
+          self.detailInformation = not self.detailInformation
+          if not self.detailInformation:
+            self.debugInformation = False
+        elif k == 'D':
+          self.debugInformation = not self.debugInformation
+          if self.debugInformation:
+            self.detailInformation = True
         elif k == '-' or k.startswith('-'):
           action = self.__acceptGameCommand(k)
           if action is not None:
@@ -1046,6 +1058,8 @@ class BigSolutionDisplay:
          f"   {B}r{N}                       refresh display{D}; necessary if the terminal resizes{N}\n" +
          f"   {B}R{N}                       restart solution {D}(to the beginning){N}\n" +
          f"   {B}E{N}                       end solution {D}(to the end){N}\n" +
+         f"   {B}d{N}                       details {D}; reveals in-depth game stats{N}\n" +
+         f"   {B}D{N}                       debug {D}; shows programmer level status updates{N}\n" +
          f"   {B}t{N}                       Test {D}; does whatever the programmer wants{N}\n" +
          f"   {B}-{N + Style.ITALICS}CMD{R}                    enter game command\n" +
          f"     {B}-help{N}                 print game command help\n")
@@ -1256,18 +1270,27 @@ class BigSolutionDisplay:
     if not self.movesFinishGame:
       return
 
-    print("Computing dead end results for final game states")
+    if self.debugInformation:
+      print("Computing dead end results for final game states")
     for step in reversed(self._steps):
       if step.game.getDepth() <= 2:
         continue # Never process the first two moves
 
       results = SafeGameSolver(step.game).analyzeDeadEndStates()
       step.deadEndsSearch = results
-      BigSolutionDisplay.PrintDeadEndSearchResults(results)
+      if self.debugInformation:
+        BigSolutionDisplay.PrintDeadEndSearchResults(results)
 
-      if results.numDeadEnds > 9999 or results.searchSeconds > 120:
-        print(formatVialColor("wn", "Stopping dead end search.") + " Results are taking too long.")
+      if results.numDeadEnds > 9999 or results.searchSeconds > 30:
+        if self.debugInformation:
+          print(formatVialColor("wn", "Stopping dead end search.") + " Results are taking too long.")
         break
+
+      if self._currentStage == "POST" or (self._currentStage == "GAME" and self._getCurStep().game.getDepth() >= step.game.getDepth()):
+        if self.debugInformation:
+          print(formatVialColor("wn", "Stopping dead end search.") + " User has already passed this step.")
+        break
+
 
   def restart(self) -> None:
     BigSolutionDisplay.__updateScreenWidth()

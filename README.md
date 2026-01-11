@@ -48,3 +48,5 @@ git mv level.txt YEAR/level.txt
     - Only use UNDO if it would otherwise restart
     - Include the configurable UNDO limit of 5 per game
   - [ ] Forward unsupported game commands back a level to apply in the upper game level
+  - [ ] Save/load certain user-level settings from a file
+    - BigSolution detail/debug mode preferences
