@@ -1242,11 +1242,11 @@ class BigSolutionDisplay:
   def _getMoveDescription(step: SolutionStep) -> str:
     start, end = step.move
     if step.isComplete:
-      return f"Complete vial {end+1}!"
+      return f"Complete vial {end+1}"
     elif step.vacatedVial:
-      return f"Vacate vial {start+1}!"
+      return f"Vacate vial {start+1}"
     elif step.startedVial:
-      return f"Occupy vial {end+1}!"
+      return f"Occupy vial {end+1}"
     else:
       return ""
 
@@ -1256,7 +1256,7 @@ class BigSolutionDisplay:
     if not r or not r.searchDataAvailable:
       return ""
     elif not r.hasDeadEnds:
-      return "No dead ends - all clear!"
+      return "No dead ends - all clear"
     else:
       return ""
 
