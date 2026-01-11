@@ -1409,7 +1409,6 @@ class BaseSolver:
   numUniqueStatesComputed: int
   numDuplicateGames: int
   maxQueueLength: int
-  endQueueLength: int
 
   # Analysis summary data structures
   partialDepth = defaultdict(int)
@@ -1470,6 +1469,7 @@ class BaseSolver:
 
     # Time check setup
     timeCheck: float
+    computed: set["Game"]|None = None
 
 
     while Game.reset or not self.minSolution or self._findSolutionsRemaining > 0:
@@ -1486,7 +1486,7 @@ class BaseSolver:
       # Setup our search
       solution: Game | None = None
       self._q = deque()
-      computed: set["Game"] = set()
+      computed = set()
       self._searchBFS = False
       if Game.latest:
         self._q.append(Game.latest)
@@ -1574,8 +1574,7 @@ class BaseSolver:
       pass
 
     self.solutionSetEnd = time()
-    self.endQueueLength = len(self._q)
-    self.numUniqueStatesComputed = len(computed)
+    self.numUniqueStatesComputed = len(computed) if computed else 0
 
   def _shouldSearchBFS(self) -> bool:
     if SOLVE_METHOD == "BFS" or SOLVE_METHOD == "MIX":
@@ -1767,7 +1766,7 @@ class SolutionSolver(BaseSolver):
             {secsSearching                }\t   Seconds searching
             {minsSearching                }\t   Minutes searching
             {self.numIterations           }\t   Num iterations
-            {self.endQueueLength          }\t   Ending queue length
+            {len(self._q)                 }\t   Ending queue length
             {self.maxQueueLength          }\t   Max queue length
             {self.numDeadEnds             }\t   Num dead ends
             {self.numPartialSolutionsGenerated }\t   Partial solutions generated
@@ -1788,8 +1787,9 @@ class SafeGameSolver(BaseSolver):
 
   def _onInitSolutionAttempt(self):
     # Bypass
-    if self.seedGame.getDepth() < 1:
-      print(formatVialColor("er", "Expected game near to completion.") + " This game is unsolved and certainly is not safe.")
+    if self.seedGame.getDepth() <= 1:
+      self.numDeadEnds = 1 # Initialize to avoid errors
+      print(formatVialColor("er", "Expected game near completion.") + " This game is unsolved and certainly is not safe.")
       return False
     return True
 
@@ -1805,6 +1805,8 @@ class SafeGameSolver(BaseSolver):
 
   def searchForAnyDeadEnd(self) -> bool:
     """Searches any combination of moves that would result in a dead end. Returns true if any are found."""
+    if self.seedGame.isFinished():
+      return False
     self.findSolutionCount = 1
     self._findSolutions("BFS")
     return self.numDeadEnds > 0
