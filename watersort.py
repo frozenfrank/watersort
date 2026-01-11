@@ -1,16 +1,18 @@
-from datetime import datetime
-import signal
+import copy
+import itertools
 import os
-from collections import deque, defaultdict
-from resources import COLOR_CODES, COLOR_FOREGROUND, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar, BigShades, Style
-from math import floor, log, ceil
 import random
+import signal
+import sys
+import threading
+from collections import deque, defaultdict
 from colorama import Fore
+from dataclasses import dataclass
+from datetime import datetime
+from math import floor, log, ceil
+from resources import COLOR_CODES, COLOR_FOREGROUND, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar, BigShades, Style
 from time import time
 from typing import Callable, Literal
-import copy;
-import itertools;
-import sys;
 
 USE_READCHAR = True
 if USE_READCHAR:
@@ -49,6 +51,21 @@ Vials = list[list[str]]
 Move = tuple[int, int]
 """ (startVialIndex, endVialIndex) """
 
+@dataclass(frozen=True)
+class DeadEndSearchResults:
+  game: "Game"
+  searchIterations: int
+  searchSeconds: float
+  numDeadEnds: int
+  numEventualSolutions: int
+
+  searchDataAvailable: bool = True
+
+  @property
+  def hasDeadEnds(self):
+    return self.numDeadEnds>0
+
+
 class SolutionStep:
   game: "Game"
   move: Move
@@ -66,6 +83,9 @@ class SolutionStep:
 
   # Comparison to previously reported solution
   isSameAsPrevious: bool|None
+
+  # Pre-compute stat values
+  deadEndsSearch: DeadEndSearchResults|None = None
 
   def __init__(self, game: "Game"=None, info: "Game.MoveInfo"=None, bigText: str = None):
     self.bigText = bigText
@@ -151,9 +171,8 @@ class Game:
     self._numMoves = 0 if self.__isRoot else prev._numMoves + 1
     self.completionOrder = list() if self.__isRoot else prev.completionOrder
 
-  # Returns the nth-parent of the game,
-  # or None if n is greater than the number of parents
   def getNthParent(self, n: int) -> "Game":
+    """Returns the nth-parent of the game, or None if n is greater than the number of parents."""
     out = self
     for _ in range(n):
       if out.prev:
@@ -163,8 +182,8 @@ class Game:
     return out
   def hasError(self) -> bool:
     return self._colorError # Or other errors
-  # Attempts to correct any errors, and then returns a bool indicating if errors still exist
   def attemptCorrectErrors(self) -> bool:
+    """Attempts to correct any errors, and then returns a bool indicating if errors still exist"""
     if not self.hasError():
       return False
 
@@ -884,6 +903,7 @@ class Game:
 class BigSolutionDisplay:
   rootGame: "Game"
   targetGame: "Game"
+  movesFinishGame: bool
   _presteps: deque[SolutionStep]
   _steps: deque[SolutionStep]
   _poststeps: deque[SolutionStep]
@@ -900,6 +920,18 @@ class BigSolutionDisplay:
   SCREEN_WIDTH = 80
   SCREEN_HEIGHT = 20
 
+  detailInformation = False
+  debugInformation = False
+
+  _maxDeadEnds: DeadEndSearchResults|None = None
+  __simpleDeadEndsMax = 99
+  __spawnThreadLock = threading.Lock()
+  __hasSpawnedThread = False
+  """This critical, shared source indicates if we have a lock. Only access this variable while holding __spawnThreadLock!"""
+  __finishedDeadEndsSearch = False
+  """Indicates if there is still potential for the worker thread to compute more states."""
+  __lastComputedDeadEndStepDepth: int|None = None
+
   @staticmethod
   def __updateScreenWidth() -> None:
     termSize = os.get_terminal_size()
@@ -914,6 +946,7 @@ class BigSolutionDisplay:
     self._steps = game._prepareSolutionSteps()
     self._poststeps = deque()
 
+
     self.__currentPrestep = 0
     self.__currentStep = 0
     self.__currentPoststep = 0
@@ -921,8 +954,10 @@ class BigSolutionDisplay:
     self._currentSpacesMoved = 0
 
     if self._steps:
+      self.movesFinishGame = self._steps[-1].game.isFinished()
       self.__init_presteps()
       self.__init_poststeps()
+      self._launchDeadEndComputationBackground()
 
     BigSolutionDisplay.__updateScreenWidth()
   def __init_presteps(self):
@@ -944,7 +979,7 @@ class BigSolutionDisplay:
     self._presteps.append(SolutionStep(bigText=bigText, game=self.targetGame))
     self._currentStage = "PRE"
   def __init_poststeps(self):
-    bigText = "DONE✅" if self._steps[-1].game.isFinished() else "COLOR?"
+    bigText = "DONE✅" if self.movesFinishGame else "COLOR?"
     self._poststeps.append(SolutionStep(bigText=bigText, game=self.targetGame))
 
   def start(self):
@@ -983,11 +1018,25 @@ class BigSolutionDisplay:
         elif k == 'l':
           self.toggleBlindMode()
           self.displayCurrent()
+        elif k == 'd':
+          self.detailInformation = not self.detailInformation
+          if not self.detailInformation:
+            self.debugInformation = False
+          self.displayCurrent()
+        elif k == 'D':
+          self.debugInformation = not self.debugInformation
+          if self.debugInformation:
+            self.detailInformation = True
+          self.displayCurrent()
+          if self.debugInformation:
+            self._launchDeadEndComputationBackground(verbose=True)
         elif k == '-' or k.startswith('-'):
           action = self.__acceptGameCommand(k)
           if action is not None:
             print(formatVialColor("wn", "Command not fully supported in this context.") + " This command may not work here, even though it works at other prompts.")
             running = False
+        elif k == 't':
+          self.performTestCommand()
         else:
           self.printCenteredLines([f"Unrecognized key ({k})"])
           continue  # Keep waiting for a valid key
@@ -1016,6 +1065,9 @@ class BigSolutionDisplay:
          f"   {B}r{N}                       refresh display{D}; necessary if the terminal resizes{N}\n" +
          f"   {B}R{N}                       restart solution {D}(to the beginning){N}\n" +
          f"   {B}E{N}                       end solution {D}(to the end){N}\n" +
+         f"   {B}d{N}                       details {D}; reveals in-depth game stats{N}\n" +
+         f"   {B}D{N}                       debug {D}; shows programmer level status updates{N}\n" +
+         f"   {B}t{N}                       Test {D}; does whatever the programmer wants{N}\n" +
          f"   {B}-{N + Style.ITALICS}CMD{R}                    enter game command\n" +
          f"     {B}-help{N}                 print game command help\n")
   def __acceptGameCommand(self, command: str=""):
@@ -1038,7 +1090,7 @@ class BigSolutionDisplay:
     introLines: list[str] = []
     exitLines: list[str] = []
 
-    SIDE_PADDING = " " * 2
+    SIDE_PADDING = " " * 5
 
     ### INTRO LINES ###
 
@@ -1048,8 +1100,8 @@ class BigSolutionDisplay:
       introLines.append("[Drain Mode]")
     if self.rootGame.blindMode:
       introLines.append("[Blind Mode]")
-
-    introLines = [chr(3) + line.ljust(15) + SIDE_PADDING for line in introLines]
+    if self.rootGame.hadMysterySpaces:
+      introLines.append("[Mystery Mode]")
 
     ### MAIN CONTENT ###
 
@@ -1063,6 +1115,7 @@ class BigSolutionDisplay:
       stageLines, color = self._preparePreLines(step)
     elif self._currentStage == "GAME":
       stageLines, color = self._prepareGameLines(step)
+      introLines.extend(self._extendIntroLinesGame(step))
     elif self._currentStage == "POST":
       stageLines, color = self._preparePostLines(step)
     else:
@@ -1077,10 +1130,13 @@ class BigSolutionDisplay:
     ### EXIT LINES ###
 
     if self._hasNext():
-      exitLines.append("Press Space to advance. Press 'h' for help. Press 'q' to quit.")
+      exitLines.append(Style.DIM + chr(1) + "Press Space to advance. Press 'h' for help. Press 'q' to quit.")
     exitLines.append("")
 
     ### Print ###
+
+    maxWidth = max(map(len, introLines))
+    introLines = [chr(3) + line.ljust(maxWidth) + SIDE_PADDING for line in introLines]
 
     self.printCenteredLines(lines, linePrefix=formatVialColor(color), linePostfix=Style.RESET_ALL, fullScreenBufferLines=3, introLines=introLines, exitLines=exitLines)
     print("")
@@ -1092,7 +1148,7 @@ class BigSolutionDisplay:
     lines = []
 
     # Step counter
-    lines.append(f"Step {self.__currentStep + 1} of {len(self._steps)}:")
+    lines.append(Style.BRIGHT + chr(1) + f"Step {self.__currentStep + 1} of {len(self._steps)}:")
 
     # Additional info
     addlInfo = []
@@ -1104,10 +1160,14 @@ class BigSolutionDisplay:
     lines.append(" | ".join(addlInfo))
 
     # Description
-    description = BigSolutionDisplay._getMoveDescription(step)
-    if description:
+    sentences = [
+      BigSolutionDisplay._getMoveDescription(step),
+      BigSolutionDisplay._getDeadEndSummary(step),
+    ]
+    sentences = [Style.ITALICS + chr(1) + s for s in sentences if s]
+    if sentences:
       lines.append("")
-      lines.append(description)
+      lines.extend(sentences)
 
     # Main event
     start, end = step.move
@@ -1125,6 +1185,52 @@ class BigSolutionDisplay:
     return (lines, step.colorMoved)
   def _preparePostLines(self, step: SolutionStep):
     return self._preparePreLines(step)
+  def _extendIntroLinesGame(self, step: SolutionStep) -> list[str]:
+    newIntroLines = []
+
+    deadEndsResults = step.deadEndsSearch or self._maxDeadEnds
+    if deadEndsResults and deadEndsResults.searchDataAvailable:
+      newIntroLines.append("")
+
+      if not self.detailInformation:
+        maxDisplay = self.__simpleDeadEndsMax
+        deadEndsTxt = f"{maxDisplay}+" if deadEndsResults.numDeadEnds > maxDisplay else deadEndsResults.numDeadEnds
+        newIntroLines.append(f"Dead ends: {deadEndsTxt}")
+      else:
+        if not step.deadEndsSearch:
+          detailsDict = {
+            "Max dead ends": deadEndsResults.numDeadEnds,
+            "Computed step": deadEndsResults.game.getDepth(),
+          }
+        else:
+          prevStep = self._getCurStep(offset=-1)
+          prevDeadEnds = None
+          if prevStep.deadEndsSearch and prevStep.deadEndsSearch.searchDataAvailable:
+            prevDeadEnds = prevStep.deadEndsSearch.numDeadEnds
+
+          deltaEnds = "--"
+          if prevDeadEnds is not None:
+            deltaEnds = deadEndsResults.numDeadEnds - prevDeadEnds
+            if deltaEnds > 0:
+              # Negative case already appears properly
+              # Zero case should not have a sign
+              deltaEnds = "+" + str(deltaEnds)
+
+          detailsDict = {
+            "Dead ends": deadEndsResults.numDeadEnds,
+            "Delta": deltaEnds,
+            "Solutions": deadEndsResults.numEventualSolutions,
+            "Search (s)": deadEndsResults.searchSeconds,
+            "Iterations": deadEndsResults.searchIterations,
+          }
+
+        labelLen = max(map(len, detailsDict.keys())) + 1 # Add one for the colon
+        valueLen = max(map(len, map(str, detailsDict.values())))
+        for label, value in detailsDict.items():
+          newIntroLines.append((label + ":").ljust(labelLen) + " " + str(value).rjust(valueLen))
+
+
+    return newIntroLines
 
   @staticmethod
   def _getMoveDescriptor(step: SolutionStep) -> str:
@@ -1141,13 +1247,24 @@ class BigSolutionDisplay:
   def _getMoveDescription(step: SolutionStep) -> str:
     start, end = step.move
     if step.isComplete:
-      return f"Complete vial {end+1}!"
+      return f"Complete vial {end+1}"
     elif step.vacatedVial:
-      return f"Vacate vial {start+1}!"
+      return f"Vacate vial {start+1}"
     elif step.startedVial:
-      return f"Occupy vial {end+1}!"
+      return f"Occupy vial {end+1}"
     else:
       return ""
+
+  @staticmethod
+  def _getDeadEndSummary(step: SolutionStep) -> str:
+    r = step.deadEndsSearch
+    if not r or not r.searchDataAvailable:
+      return ""
+    elif not r.hasDeadEnds:
+      return "No dead ends - all clear"
+    else:
+      return ""
+
 
 
   def _prepareBigCharLines(self, symbols: str) -> None:
@@ -1220,6 +1337,86 @@ class BigSolutionDisplay:
 
     # Recombine and return
     return style + content
+
+
+  def _launchDeadEndComputationBackground(self, verbose=False) -> None:
+    """Safely launches at most one background thread to perform dead end searching."""
+    if not self.__needsComputeDeadEndResults():
+      if verbose: print("Skipping thread launch because no work necessary")
+      return
+
+    with self.__spawnThreadLock:
+      if self.__hasSpawnedThread:
+        if verbose or self.debugInformation:
+          print(formatVialColor("er", "Thread already running.") + " Not creating an extra thread.")
+        return
+
+      if not self.__needsComputeDeadEndResults():
+        print(formatVialColor("wn", "Unexpected discovery of no work needed.") + "After an initial verification, we acquired a lock and then found no remaining work to do.")
+        return
+
+      if verbose or self.debugInformation:
+        print("Starting dead processing in a background thread")
+      t = threading.Thread(target=self.__computeDeadEndResults)
+      t.daemon = True
+      t.start()
+
+      self.__hasSpawnedThread = True
+  def __needsComputeDeadEndResults(self) -> bool:
+    if not self.movesFinishGame or self.__finishedDeadEndsSearch:
+      return False
+    if self.__hasAdvancedBeyondStep(self.__lastComputedDeadEndStepDepth):
+      return False
+    return True
+  def __hasAdvancedBeyondStep(self, referenceStepDepth: int|None):
+    if self._currentStage == "POST":
+      return True
+    if referenceStepDepth is None:
+      return False
+    if self._currentStage == "GAME" and self._getCurStep().game.getDepth() >= referenceStepDepth:
+      return True
+    return False
+  def __computeDeadEndResults(self):
+    if self.debugInformation:
+      print("Computing dead end results for final game states")
+
+    for step in reversed(self._steps):
+      if step.deadEndsSearch is not None:
+        continue # Avoid duplicative work
+      if step.game.getDepth() <= 2:
+        self.__finishedDeadEndsSearch = True
+        break # We made it all the way to the beginning
+
+      stepDepth = step.game.getDepth()
+      results = SafeGameSolver(step.game).analyzeDeadEndStates()
+      self.__updateDeadEndResults(step, results)
+      self.__lastComputedDeadEndStepDepth = stepDepth
+      if self.debugInformation:
+        BigSolutionDisplay.PrintDeadEndSearchResults(results)
+
+      if results.numDeadEnds > 9999 or results.searchSeconds > 30:
+        self.__finishedDeadEndsSearch = True
+        if self.debugInformation:
+          print(formatVialColor("wn", "Stopping dead end search.") + " Results are taking too long.")
+        break
+
+      if self.__hasAdvancedBeyondStep(stepDepth):
+        if self.debugInformation:
+          print(formatVialColor("wn", "Stopping dead end search.") + " User has already passed this step.")
+        break
+
+      if not self.detailInformation and results.numDeadEnds > self.__simpleDeadEndsMax:
+        if self.debugInformation:
+          print(formatVialColor("wn", "Stopping dead end search.") + " We've gathered enough information for the simple view.")
+        break
+
+    if self.debugInformation:
+      print("Computation thread exiting")
+    self.__hasSpawnedThread = False
+  def __updateDeadEndResults(self, step: SolutionStep, results: DeadEndSearchResults) -> None:
+    step.deadEndsSearch = results
+    if not self._maxDeadEnds or results.numDeadEnds > self._maxDeadEnds.numDeadEnds:
+      self._maxDeadEnds = results
 
 
   def restart(self) -> None:
@@ -1308,9 +1505,9 @@ class BigSolutionDisplay:
       return (self.__currentPoststep, self._poststeps)
     else:
       raise "Unknown current stage: " + self._currentStage
-  def _getCurStep(self) -> SolutionStep:
+  def _getCurStep(self, offset: int = 0) -> SolutionStep:
     curStep, steps = self._getQueue()
-    return steps[curStep]
+    return steps[curStep + offset]
   def _setStep(self, newStep) -> None:
     if self._currentStage == "PRE":
       self.__currentPrestep = newStep
@@ -1328,6 +1525,31 @@ class BigSolutionDisplay:
     self.rootGame.modified = True
     saveGame(self.rootGame)
 
+  def performTestCommand(self) -> None:
+    print("Executing test command")
+
+    curStep = self._getCurStep()
+    print(f"Searching for dead ends from current point")
+
+    r = SafeGameSolver(curStep.game).analyzeDeadEndStates()
+    self.__updateDeadEndResults(curStep, r)
+    if r.searchDataAvailable:
+      BigSolutionDisplay.PrintDeadEndSearchResults(r)
+
+    print("☠️ Dead ends ahead" if r.hasDeadEnds else "🟢 All clear")
+
+  @staticmethod
+  def PrintDeadEndSearchResults(r: DeadEndSearchResults) -> None:
+    if not r.searchDataAvailable:
+      print(f"Did not search. Has dead ends={r.hasDeadEnds} (step {r.game.getDepth()})")
+      return
+
+    iterations = formatVialColor("bold", f"{r.searchIterations} iterations")
+    deadEnds = formatVialColor("er" if r.hasDeadEnds else "wn", f"{r.numDeadEnds} dead ends")
+    solutions = formatVialColor("bold", f"{r.numEventualSolutions} solutions")
+    searchTime = formatVialColor("bold", f"{r.searchSeconds} seconds")
+
+    print(f"Searched {iterations} and found {deadEnds} and {solutions} in {searchTime} (step {r.game.getDepth()})")
 
 def playGame(game: "Game"):
   currentGame = game
@@ -1386,7 +1608,6 @@ class BaseSolver:
   numUniqueStatesComputed: int
   numDuplicateGames: int
   maxQueueLength: int
-  endQueueLength: int
 
   # Analysis summary data structures
   partialDepth = defaultdict(int)
@@ -1412,17 +1633,19 @@ class BaseSolver:
   def setSolveMethod(self, newSolveMethod: SOLVE_METHODS) -> None:
     raise "Method not yet implemented"
 
-  def solveGame(self, solveMethod: SOLVE_METHODS = "MIX") -> None:
+  def solveGame(self, solveMethod: SOLVE_METHODS = "MIX", numSolutions: int = 1) -> None:
+    if numSolutions < 1: numSolutions = 1
+    self.findSolutionCount = numSolutions
     self._findSolutions(solveMethod)
-    self._onSolutionComplete()
+    self._onAfterFindSolutions()
     saveGame(self.seedGame)
 
-  def _findSolutions(self, solveMethod: SOLVE_METHODS):
+  def _findSolutions(self, solveMethod: SOLVE_METHODS, suppressSolveMethodNotification=False):
     """
     Intelligent search through all the possible game states until we find a solution.
     The game already handles asking for more information as required.
     """
-    setSolveMethod(solveMethod)
+    setSolveMethod(solveMethod, suppressNotification=suppressSolveMethodNotification)
     # self.solveMethod = solveMethod
 
     self.solutionSetStart = None
@@ -1445,6 +1668,7 @@ class BaseSolver:
 
     # Time check setup
     timeCheck: float
+    computed: set["Game"]|None = None
 
 
     while Game.reset or not self.minSolution or self._findSolutionsRemaining > 0:
@@ -1455,16 +1679,13 @@ class BaseSolver:
       self.solutionsAttempted += 1
       self._findSolutionsRemaining -= 1
 
-      # First correct any errors in the game
-      self.seedGame.attemptCorrectErrors()
-
       self.solutionStart = time()
       expectSolution = True
 
       # Setup our search
       solution: Game | None = None
       self._q = deque()
-      computed: set["Game"] = set()
+      computed = set()
       self._searchBFS = False
       if Game.latest:
         self._q.append(Game.latest)
@@ -1532,22 +1753,8 @@ class BaseSolver:
           if nextGame.isFinished():
             timeCheck = time()
             self.solutionEnd = timeCheck
-            solution = nextGame
-            if not self.minSolution or solution._numMoves < self.minSolution._numMoves:
-              self.minSolution = solution
-              self.minSolutionUpdates += 1
-            self.solutionDepth[solution._numMoves] += 1
-            self.solFindSeconds[int((timeCheck - self.solutionStart + 0.9) // 1)] += 1
-
-            solutionHash = solution._completion_hash()
-            hashingList = self.uniqueSolutions[solutionHash]
-            if not len(hashingList):
-              self.uniqueSolsDepth[solution._numMoves] += 1
-              self.isUniqueList.append(True)
-            else:
-              self.isUniqueList.append(False)
-            hashingList.append(solution)
-            break # Finish searching
+            if self._onSolutionFound(nextGame):
+              break # Finish searching
           else:
             self._q.append(nextGame)
 
@@ -1566,8 +1773,7 @@ class BaseSolver:
       pass
 
     self.solutionSetEnd = time()
-    self.endQueueLength = len(self._q)
-    self.numUniqueStatesComputed = len(computed)
+    self.numUniqueStatesComputed = len(computed) if computed else 0
 
   def _shouldSearchBFS(self) -> bool:
     if SOLVE_METHOD == "BFS" or SOLVE_METHOD == "MIX":
@@ -1577,14 +1783,36 @@ class BaseSolver:
     else:
       raise Exception("Unrecognized solve method: " + SOLVE_METHOD)
 
-  def _onInitSolutionAttempt(self) -> bool:
+  def _onInitSolutionAttempt(self, bypassErrorCorrection = False) -> bool:
     """Called before attempting a new solution. Return True to proceed with the solution."""
+    # First correct any errors in the game
+    if not bypassErrorCorrection and self.seedGame.attemptCorrectErrors():
+      return False
     return True
 
   def _onIterationReport(self, current: Game) -> bool:
     """Called when the iteration search count exceeds REPORT_ITERATION_FREQ. Return True to continue searching."""
     if not self._searchBFS:
       print(f"Checked {self.numIterations} iterations.")
+    return True
+
+  def _onSolutionFound(self, solution: Game) -> bool:
+    """Called when a new solution is found. Return True to stop this attempt with the discovered solution"""
+    if not self.minSolution or solution._numMoves < self.minSolution._numMoves:
+      self.minSolution = solution
+      self.minSolutionUpdates += 1
+    self.solutionDepth[solution._numMoves] += 1
+    self.solFindSeconds[int((self.solutionEnd - self.solutionStart + 0.9) // 1)] += 1
+
+    solutionHash = solution._completion_hash()
+    hashingList = self.uniqueSolutions[solutionHash]
+    if not len(hashingList):
+      self.uniqueSolsDepth[solution._numMoves] += 1
+      self.isUniqueList.append(True)
+    else:
+      self.isUniqueList.append(False)
+    hashingList.append(solution)
+
     return True
 
   def _printQueueCheck(self, current: Game) -> None:
@@ -1604,10 +1832,10 @@ class BaseSolver:
     """Called when the it is detected that no solutions exist. Return true to reset and try again."""
     message = formatVialColor("er", "This game has no solution.")
     message += " Type YES if you have corrected the game state and want to try searching again."
-    retryRsp = self.seedGame.requestVal(message, printOptions=True)
+    retryRsp = self.seedGame.requestVal(message, printOptions=True, printState=False)
     return retryRsp == "YES"
 
-  def _onSolutionComplete(self) -> None:
+  def _onAfterFindSolutions(self) -> None:
     """Called after _findSolutions() completes. Use this to report on the discovered solution."""
 
     # Override me.
@@ -1624,6 +1852,9 @@ class AnalysisSolver(BaseSolver):
   lastReportTime = 0
 
   def _onInitSolutionAttempt(self):
+    if not super()._onInitSolutionAttempt(bypassErrorCorrection=True):
+      return False
+
     timeCheck = time()
     if self._findSolutionsRemaining % 1000 == 0 or timeCheck - self.lastReportTime > self.REPORT_SEC_FREQ:
       print(f"Searching for {self._findSolutionsRemaining} more solutions. Running for {round(timeCheck - self.solutionSetStart, 1)} seconds. ")
@@ -1636,7 +1867,7 @@ class AnalysisSolver(BaseSolver):
     return True
 
 
-  def _onSolutionComplete(self):
+  def _onAfterFindSolutions(self):
     secsAnalyzing, minsAnalyzing = BaseSolver._getTimeRunning(self.solutionSetStart, self.solutionSetEnd)
 
     # Print out interesting information to the console only
@@ -1687,6 +1918,9 @@ class SolutionSolver(BaseSolver):
   MysteryContinuation = False
 
   def _onInitSolutionAttempt(self):
+    if not super()._onInitSolutionAttempt(bypassErrorCorrection=True):
+      return False
+
     if self.minSolution and SolutionSolver.MysteryContinuation:
       # NOTE: If self._searchBFS has already been turned off, we ended up in DFR mode.
       # Consider allowing the additional search attempts to proceed in this case.
@@ -1713,7 +1947,7 @@ class SolutionSolver(BaseSolver):
     return True
 
 
-  def _onSolutionComplete(self):
+  def _onAfterFindSolutions(self):
     secsSearching, minsSearching = BaseSolver._getTimeRunning(self.solutionStart, self.solutionEnd)
     shortestSolutionLen = self.minSolution._numMoves if self.minSolution else "--"
 
@@ -1731,7 +1965,7 @@ class SolutionSolver(BaseSolver):
             {secsSearching                }\t   Seconds searching
             {minsSearching                }\t   Minutes searching
             {self.numIterations           }\t   Num iterations
-            {self.endQueueLength          }\t   Ending queue length
+            {len(self._q)                 }\t   Ending queue length
             {self.maxQueueLength          }\t   Max queue length
             {self.numDeadEnds             }\t   Num dead ends
             {self.numPartialSolutionsGenerated }\t   Partial solutions generated
@@ -1746,10 +1980,54 @@ class SolutionSolver(BaseSolver):
     else:
       print(formatVialColor("er", "Cannot find solution."))
 
+class SafeGameSolver(BaseSolver):
+  """Specialized solver equipped to determine if a partially solved game has any remaining dead ends."""
+  numSolutionsLocated = 0
+
+  def _onInitSolutionAttempt(self):
+    # Bypass
+    if self.seedGame.getDepth() <= 1:
+      self.numDeadEnds = 1 # Initialize to avoid errors
+      print(formatVialColor("er", "Expected game near completion.") + " This game is unsolved and certainly is not safe.")
+      return False
+    return True
+
+  def _onSolutionFound(self, solution):
+    self.numSolutionsLocated += 1
+    return False # Avoid registering this solution, and keep looking for dead-ends
+
+  def _onImpossibleGame(self):
+    pass # This solver never saves solutions, and will always report "impossible"
+
+  def solveGame(self, solveMethod = "MIX", numSolutions = 1):
+    raise "Method not supported"
+
+  def searchForAnyDeadEnd(self) -> bool:
+    """Searches any combination of moves that would result in a dead end. Returns true if any are found."""
+    if self.seedGame.isFinished():
+      return False
+    self.findSolutionCount = 1
+    self._findSolutions("BFS", suppressSolveMethodNotification=True)
+    return self.numDeadEnds > 0
+
+  def analyzeDeadEndStates(self) -> DeadEndSearchResults:
+    """Searches any combination of moves that would result in a dead end. Returns {DeadEndSearchResults} representing the findings."""
+    self.searchForAnyDeadEnd()
+    return self.exportDeadEndSearchResults()
+
+  def exportDeadEndSearchResults(self) -> DeadEndSearchResults:
+    try:
+      searchSeconds, _ = SafeGameSolver._getTimeRunning(self.solutionSetStart, self.solutionSetEnd)
+      return DeadEndSearchResults(self.seedGame, self.numIterations, searchSeconds, self.numDeadEnds, self.numSolutionsLocated)
+    except:
+      # Not all of these properties are available when the game is complete
+      return DeadEndSearchResults(self.seedGame, 0, 0, 0, 0, searchDataAvailable=False)
+
+
+
 def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDFRSamples = 0):
   solver = AnalysisSolver(game) if analyzeSampleCount > 0 else SolutionSolver(game)
-  solver.findSolutionCount = analyzeSampleCount or probeDFRSamples
-  solver.solveGame(solveMethod)
+  solver.solveGame(solveMethod, numSolutions=analyzeSampleCount or probeDFRSamples)
   pass
 
 def testSolutionPrints(solution: "Game"):
@@ -2118,7 +2396,7 @@ def _autoSwitchForUnknowns(applyState: bool, newState="MIX") -> None:
   else:
     setSolveMethod(AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD)
     AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD = None
-def setSolveMethod(method: str) -> bool:
+def setSolveMethod(method: str, suppressNotification=False) -> bool:
   method = method.upper()
   if method not in VALID_SOLVE_METHODS:
     print(f"Solve method '{method}' is not a valid input. Choose one of the following instead: " + ", ".join(VALID_SOLVE_METHODS))
@@ -2134,7 +2412,7 @@ def setSolveMethod(method: str) -> bool:
   else:
     DFR_SEARCH_ATTEMPTS = 0
 
-  print("Set solve method to " + method)
+  if not suppressNotification: print("Set solve method to " + method)
   return True
 
 def generateAnalysisResultsName(level: str, absolutePath: bool = None) -> str:
