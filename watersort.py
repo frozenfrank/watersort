@@ -1127,7 +1127,7 @@ class BigSolutionDisplay:
     ### EXIT LINES ###
 
     if self._hasNext():
-      exitLines.append("Press Space to advance. Press 'h' for help. Press 'q' to quit.")
+      exitLines.append(Style.DIM + chr(1) + "Press Space to advance. Press 'h' for help. Press 'q' to quit.")
     exitLines.append("")
 
     ### Print ###
@@ -1145,7 +1145,7 @@ class BigSolutionDisplay:
     lines = []
 
     # Step counter
-    lines.append(f"Step {self.__currentStep + 1} of {len(self._steps)}:")
+    lines.append(Style.BRIGHT + chr(1) + f"Step {self.__currentStep + 1} of {len(self._steps)}:")
 
     # Additional info
     addlInfo = []
@@ -1161,7 +1161,7 @@ class BigSolutionDisplay:
       BigSolutionDisplay._getMoveDescription(step),
       BigSolutionDisplay._getDeadEndSummary(step),
     ]
-    sentences = [s for s in sentences if s]
+    sentences = [Style.ITALICS + chr(1) + s for s in sentences if s]
     if sentences:
       lines.append("")
       lines.extend(sentences)
