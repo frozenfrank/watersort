@@ -52,7 +52,7 @@ Move = tuple[int, int]
 
 @dataclass(frozen=True)
 class DeadEndSearchResults:
-  origin: "Game"
+  game: "Game"
   searchIterations: int
   searchSeconds: float
   numDeadEnds: int
@@ -902,6 +902,7 @@ class Game:
 class BigSolutionDisplay:
   rootGame: "Game"
   targetGame: "Game"
+  movesFinishGame: bool
   _presteps: deque[SolutionStep]
   _steps: deque[SolutionStep]
   _poststeps: deque[SolutionStep]
@@ -932,6 +933,7 @@ class BigSolutionDisplay:
     self._steps = game._prepareSolutionSteps()
     self._poststeps = deque()
 
+
     self.__currentPrestep = 0
     self.__currentStep = 0
     self.__currentPoststep = 0
@@ -939,6 +941,7 @@ class BigSolutionDisplay:
     self._currentSpacesMoved = 0
 
     if self._steps:
+      self.movesFinishGame = self._steps[-1].game.isFinished()
       self.__init_presteps()
       self.__init_poststeps()
 
@@ -962,13 +965,15 @@ class BigSolutionDisplay:
     self._presteps.append(SolutionStep(bigText=bigText, game=self.targetGame))
     self._currentStage = "PRE"
   def __init_poststeps(self):
-    bigText = "DONE✅" if self._steps[-1].game.isFinished() else "COLOR?"
+    bigText = "DONE✅" if self.movesFinishGame else "COLOR?"
     self._poststeps.append(SolutionStep(bigText=bigText, game=self.targetGame))
 
   def start(self):
     if not self._steps:
       print("No steps to display.")
       return
+
+    self._computeDeadEndResults() # Temporary - Construct these immediately, while blocking the presentation of the moves.
 
     running = True
     self.displayCurrent()
@@ -1242,6 +1247,22 @@ class BigSolutionDisplay:
     # Recombine and return
     return style + content
 
+  def _computeDeadEndResults(self):
+    if not self.movesFinishGame:
+      return
+
+    print("Computing dead end results for final game states")
+    for step in reversed(self._steps):
+      if step.game.getDepth() <= 2:
+        continue # Never process the first two moves
+
+      results = SafeGameSolver(step.game).analyzeDeadEndStates()
+      step.deadEndsSearch = results
+      BigSolutionDisplay.PrintDeadEndSearchResults(results)
+
+      if results.numDeadEnds > 9999 or results.searchSeconds > 120:
+        print(formatVialColor("wn", "Stopping dead end search.") + " Results are taking too long.")
+        break
 
   def restart(self) -> None:
     BigSolutionDisplay.__updateScreenWidth()
@@ -1358,14 +1379,22 @@ class BigSolutionDisplay:
     r = SafeGameSolver(currentGame).analyzeDeadEndStates()
 
     if r.searchDataAvailable:
-      iterations = formatVialColor("bold", f"{r.searchIterations} iterations")
-      deadEnds = formatVialColor("er" if r.hasDeadEnds else "wn", f"{r.numDeadEnds} dead ends")
-      solutions = formatVialColor("bold", f"{r.numEventualSolutions} solutions")
-      searchTime = formatVialColor("bold", f"{r.searchSeconds} seconds")
-
-      print(f"Searched {iterations} and found {deadEnds} and {solutions} in {searchTime}")
+      BigSolutionDisplay.PrintDeadEndSearchResults(r)
 
     print("☠️ Dead ends ahead" if r.hasDeadEnds else "🟢 All clear")
+
+  @staticmethod
+  def PrintDeadEndSearchResults(r: DeadEndSearchResults) -> None:
+    if not r.searchDataAvailable:
+      print(f"Did not search. Has dead ends={r.hasDeadEnds} (step {r.game.getDepth()})")
+      return
+
+    iterations = formatVialColor("bold", f"{r.searchIterations} iterations")
+    deadEnds = formatVialColor("er" if r.hasDeadEnds else "wn", f"{r.numDeadEnds} dead ends")
+    solutions = formatVialColor("bold", f"{r.numEventualSolutions} solutions")
+    searchTime = formatVialColor("bold", f"{r.searchSeconds} seconds")
+
+    print(f"Searched {iterations} and found {deadEnds} and {solutions} in {searchTime} (step {r.game.getDepth()})")
 
 def playGame(game: "Game"):
   currentGame = game
