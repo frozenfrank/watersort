@@ -32,6 +32,7 @@ COLOR_CODES = defaultdict(str, {
   "bl": Back.BLACK + Fore.LIGHTWHITE_EX,          # Black (system)
   "er": Style.BRIGHT + Fore.RED,                  # Error (system)
   "wn": Style.BRIGHT + Fore.YELLOW,               # Warning (system)
+  "bold": Style.BRIGHT,                           # Bold (system)
 
   # The actual color from the game as the background. An HSL inverted color to 20/80% Luminosity
   "m": ANSI_BACK(98, 214, 124) + ANSI_FORE(21, 81, 34),       # Mint

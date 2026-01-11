@@ -1335,7 +1335,21 @@ class BigSolutionDisplay:
 
     currentGame = self._getCurStep().game
     print(f"Searching for dead ends from current point")
-    hasDeadEnds = SafeGameSolver(currentGame).searchForAnyDeadEnd()
+
+    safeSolver = SafeGameSolver(currentGame)
+    hasDeadEnds = safeSolver.searchForAnyDeadEnd()
+
+    try:
+      iterations = formatVialColor("bold", f"{safeSolver.numIterations} iterations")
+      deadEnds = formatVialColor("er" if hasDeadEnds else "wn", f"{safeSolver.numDeadEnds} dead ends")
+      solutions = formatVialColor("bold", f"{safeSolver.numSolutionsLocated} solutions")
+      searchSeconds, _ = SafeGameSolver._getTimeRunning(safeSolver.solutionSetStart, safeSolver.solutionSetEnd)
+      searchTime = formatVialColor("bold", f"{searchSeconds} seconds")
+
+      print(f"Searched {iterations} and found {deadEnds} and {solutions} in {searchTime}")
+    except:
+      pass # Not all of these properties are available when the came is complete
+
     print("☠️ Dead ends ahead" if hasDeadEnds else "🟢 All clear")
 
 def playGame(game: "Game"):
@@ -1793,7 +1807,6 @@ class SafeGameSolver(BaseSolver):
     """Searches any combination of moves that would result in a dead end. Returns true if any are found."""
     self.findSolutionCount = 1
     self._findSolutions("BFS")
-    print(f"Searched {self.numIterations} total iterations and found {self.numDeadEnds} dead ends and {self.numSolutionsLocated} solutions")
     return self.numDeadEnds > 0
 
 def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDFRSamples = 0):
