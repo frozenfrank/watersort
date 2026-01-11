@@ -925,6 +925,12 @@ class BigSolutionDisplay:
 
   _maxDeadEnds: DeadEndSearchResults|None = None
   __simpleDeadEndsMax = 99
+  __spawnThreadLock = threading.Lock()
+  __hasSpawnedThread = False
+  """This critical, shared source indicates if we have a lock. Only access this variable while holding __spawnThreadLock!"""
+  __finishedDeadEndsSearch = False
+  """Indicates if there is still potential for the worker thread to compute more states."""
+  __lastComputedDeadEndStepDepth: int|None = None
 
   @staticmethod
   def __updateScreenWidth() -> None:
@@ -975,12 +981,29 @@ class BigSolutionDisplay:
   def __init_poststeps(self):
     bigText = "DONE✅" if self.movesFinishGame else "COLOR?"
     self._poststeps.append(SolutionStep(bigText=bigText, game=self.targetGame))
-  def __init_precomputeThread(self):
-    if self.debugInformation:
-      print("Starting dead processing in a background thread")
-    t = threading.Thread(target=self._computeDeadEndResults)
-    t.daemon = True
-    t.start()
+  def __init_precomputeThread(self) -> None:
+    """Safely launches at most one background thread to perform dead end searching."""
+    if not self.__needsComputeDeadEndResults():
+      print("Skipping thread launch because no work necessary")
+      return
+
+    with self.__spawnThreadLock:
+      if self.__hasSpawnedThread:
+        if self.debugInformation:
+          print(formatVialColor("er", "Thread already running.") + " Not creating an extra thread.")
+        return
+
+      if not self.__needsComputeDeadEndResults():
+        print(formatVialColor("wn", "Unexpected discovery of no work needed.") + "After an initial verification, we acquired a lock and then found no remaining work to do.")
+        return
+
+      if self.debugInformation:
+        print("Starting dead processing in a background thread")
+      t = threading.Thread(target=self.__computeDeadEndResults)
+      t.daemon = True
+      t.start()
+
+      self.__hasSpawnedThread = True
 
   def start(self):
     if not self._steps:
@@ -1027,6 +1050,7 @@ class BigSolutionDisplay:
           self.debugInformation = not self.debugInformation
           if self.debugInformation:
             self.detailInformation = True
+            self.__init_precomputeThread()
           self.displayCurrent()
         elif k == '-' or k.startswith('-'):
           action = self.__acceptGameCommand(k)
@@ -1335,32 +1359,45 @@ class BigSolutionDisplay:
     # Recombine and return
     return style + content
 
-  def _computeDeadEndResults(self):
-    if not self.movesFinishGame:
-      return
-
+  def __needsComputeDeadEndResults(self) -> bool:
+    if not self.movesFinishGame or self.__finishedDeadEndsSearch:
+      return False
+    if self.__hasAdvancedBeyondStep(self.__lastComputedDeadEndStepDepth):
+      return False
+    return True
+  def __hasAdvancedBeyondStep(self, referenceStepDepth: int|None):
+    if self._currentStage == "POST":
+      return True
+    if referenceStepDepth is None:
+      return False
+    if self._currentStage == "GAME" and self._getCurStep().game.getDepth() >= referenceStepDepth:
+      return True
+    return False
+  def __computeDeadEndResults(self):
     if self.debugInformation:
       print("Computing dead end results for final game states")
+
     for step in reversed(self._steps):
       if step.deadEndsSearch is not None:
         continue # Avoid duplicative work
       if step.game.getDepth() <= 2:
-        continue # Never process the first two moves
+        self.__finishedDeadEndsSearch = True
+        break # We made it all the way to the beginning
 
+      stepDepth = step.game.getDepth()
       results = SafeGameSolver(step.game).analyzeDeadEndStates()
-      step.deadEndsSearch = results
+      self.__updateDeadEndResults(step, results)
+      self.__lastComputedDeadEndStepDepth = stepDepth
       if self.debugInformation:
         BigSolutionDisplay.PrintDeadEndSearchResults(results)
 
-      if not self._maxDeadEnds or results.numDeadEnds > self._maxDeadEnds.numDeadEnds:
-        self._maxDeadEnds = results
-
       if results.numDeadEnds > 9999 or results.searchSeconds > 30:
+        self.__finishedDeadEndsSearch = True
         if self.debugInformation:
           print(formatVialColor("wn", "Stopping dead end search.") + " Results are taking too long.")
         break
 
-      if self._currentStage == "POST" or (self._currentStage == "GAME" and self._getCurStep().game.getDepth() >= step.game.getDepth()):
+      if self.__hasAdvancedBeyondStep(stepDepth):
         if self.debugInformation:
           print(formatVialColor("wn", "Stopping dead end search.") + " User has already passed this step.")
         break
@@ -1369,6 +1406,14 @@ class BigSolutionDisplay:
         if self.debugInformation:
           print(formatVialColor("wn", "Stopping dead end search.") + " We've gathered enough information for the simple view.")
         break
+
+    if self.debugInformation:
+      print("Computation thread exiting")
+    self.__hasSpawnedThread = False
+  def __updateDeadEndResults(self, step: SolutionStep, results: DeadEndSearchResults) -> None:
+    step.deadEndsSearch = results
+    if not self._maxDeadEnds or results.numDeadEnds > self._maxDeadEnds.numDeadEnds:
+      self._maxDeadEnds = results
 
 
   def restart(self) -> None:
@@ -1480,11 +1525,11 @@ class BigSolutionDisplay:
   def performTestCommand(self) -> None:
     print("Executing test command")
 
-    currentGame = self._getCurStep().game
+    curStep = self._getCurStep()
     print(f"Searching for dead ends from current point")
 
-    r = SafeGameSolver(currentGame).analyzeDeadEndStates()
-
+    r = SafeGameSolver(curStep.game).analyzeDeadEndStates()
+    self.__updateDeadEndResults(curStep, r)
     if r.searchDataAvailable:
       BigSolutionDisplay.PrintDeadEndSearchResults(r)
 
