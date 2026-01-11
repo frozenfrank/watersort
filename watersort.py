@@ -1,17 +1,18 @@
+import copy
+import itertools
+import os
+import random
+import signal
+import sys
+import threading
+from collections import deque, defaultdict
+from colorama import Fore
 from dataclasses import dataclass
 from datetime import datetime
-import signal
-import os
-from collections import deque, defaultdict
-from resources import COLOR_CODES, COLOR_FOREGROUND, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar, BigShades, Style
 from math import floor, log, ceil
-import random
-from colorama import Fore
+from resources import COLOR_CODES, COLOR_FOREGROUND, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar, BigShades, Style
 from time import time
 from typing import Callable, Literal
-import copy;
-import itertools;
-import sys;
 
 USE_READCHAR = True
 if USE_READCHAR:
@@ -944,6 +945,7 @@ class BigSolutionDisplay:
       self.movesFinishGame = self._steps[-1].game.isFinished()
       self.__init_presteps()
       self.__init_poststeps()
+      self.__init_precomputeThread()
 
     BigSolutionDisplay.__updateScreenWidth()
   def __init_presteps(self):
@@ -967,13 +969,16 @@ class BigSolutionDisplay:
   def __init_poststeps(self):
     bigText = "DONE✅" if self.movesFinishGame else "COLOR?"
     self._poststeps.append(SolutionStep(bigText=bigText, game=self.targetGame))
+  def __init_precomputeThread(self):
+    print("Starting dead processing in a background thread")
+    t = threading.Thread(target=self._computeDeadEndResults)
+    t.daemon = True
+    t.start()
 
   def start(self):
     if not self._steps:
       print("No steps to display.")
       return
-
-    self._computeDeadEndResults() # Temporary - Construct these immediately, while blocking the presentation of the moves.
 
     running = True
     self.displayCurrent()
