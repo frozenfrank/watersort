@@ -527,9 +527,9 @@ class Game:
   MoveInfo = tuple[str, int, bool, bool, bool]
   """ (colorMoved, numMoved, isComplete, vacatedVial, startedVial) OR None """
 
-  def printMoves(self) -> None:
+  def printMoves(self, fromGame: "Game" = None) -> None:
     """Prints out the moves taken to reach this game state."""
-    steps: deque[SolutionStep] = self._prepareSolutionSteps()
+    steps: deque[SolutionStep] = self._prepareSolutionSteps(fromGame)
 
     NEW_LINE = "\n  "
     SEPARATOR = "\t "
@@ -552,7 +552,7 @@ class Game:
     print(introduction + ":" + NEW_LINE + NEW_LINE.join(lines))
 
   __prevPrintedMoves: deque[Move] = None
-  def _prepareSolutionSteps(self) -> deque[SolutionStep]:
+  def _prepareSolutionSteps(self, fromGame: "Game" = None) -> deque[SolutionStep]:
     """Prepares the solution steps to be printed, including comparison to previous printed solution."""
     steps = deque()
     if not self.move:
@@ -563,6 +563,9 @@ class Game:
     curGame = self
     moves = deque()
     while curGame and curGame.move:
+      if curGame == fromGame:
+        return steps # Skip comparison against previous prints
+
       info = curGame.__getMoveInfo()
       moves.appendleft(curGame.move)
       steps.appendleft(SolutionStep(curGame, info))
@@ -1557,12 +1560,20 @@ class BigSolutionDisplay:
     curStep = self._getCurStep()
     print(f"Searching for dead ends from current point")
 
-    r = SafeGameSolver(curStep.game).analyzeDeadEndStates()
+    safeSolver = SafeGameSolver(curStep.game)
+    r = safeSolver.analyzeDeadEndStates()
     self.__updateDeadEndResults(curStep, r)
     if r.searchDataAvailable:
       BigSolutionDisplay.PrintDeadEndSearchResults(r)
 
+    if safeSolver.deadEndsLocated:
+      deadEnd = safeSolver.deadEndsLocated[0] # TODO: Allow dynamic selection
+      deadEnd.printVials()
+      deadEnd.printMoves(curStep.game)
+
     print("☠️ Dead ends ahead" if r.hasDeadEnds else "🟢 All clear")
+  def _reportDeadEnd(self, seed: "Game", deadEnd: "Game") -> None:
+    deadEnd.printMoves()
 
   @staticmethod
   def PrintDeadEndSearchResults(r: DeadEndSearchResults) -> None:
@@ -1787,8 +1798,7 @@ class BaseSolver:
         # Maintain stats
         self.maxQueueLength = max(self.maxQueueLength, len(self._q))
         if not hasNextGame:
-          self.numDeadEnds += 1
-          self.deadEndDepth[current._numMoves] += 1
+          self._onDeadEndFound(current)
 
       self.solutionEnd = time()
       if expectSolution and not self.minSolution:
@@ -1840,6 +1850,10 @@ class BaseSolver:
     hashingList.append(solution)
 
     return True
+
+  def _onDeadEndFound(self, deadEnd: Game) -> None:
+    self.numDeadEnds += 1
+    self.deadEndDepth[deadEnd._numMoves] += 1
 
   def _printQueueCheck(self, current: Game) -> None:
     stats = {
@@ -2009,6 +2023,7 @@ class SolutionSolver(BaseSolver):
 class SafeGameSolver(BaseSolver):
   """Specialized solver equipped to determine if a partially solved game has any remaining dead ends."""
   numSolutionsLocated = 0
+  deadEndsLocated: list["Game"] = []
 
   def _onInitSolutionAttempt(self):
     # Bypass
@@ -2021,6 +2036,10 @@ class SafeGameSolver(BaseSolver):
   def _onSolutionFound(self, solution):
     self.numSolutionsLocated += 1
     return False # Avoid registering this solution, and keep looking for dead-ends
+
+  def _onDeadEndFound(self, deadEnd):
+    super()._onDeadEndFound(deadEnd)
+    self.deadEndsLocated.append(deadEnd)
 
   def _onImpossibleGame(self):
     pass # This solver never saves solutions, and will always report "impossible"
