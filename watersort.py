@@ -483,8 +483,8 @@ class Game:
     print(f"Gameplay mode '{mode}' {'enabled' if newVal else 'disabled'}. Resetting to resolve.")
   def saveOtherColor(self, input: str) -> None:
     flag, o_vial, o_space, color = input.split()
-    vial = int(o_vial) - 1
-    space = int(o_space) - 1
+    vial = int(o_vial) - 1 # Assumes a valid integer
+    space = int(o_space) - 1 # Assumes a valid integer
     Game.reset = True
     self.root.modified = True
     self.root.vials[vial][space] = color
@@ -498,7 +498,7 @@ class Game:
     print(f"Saved new level ({o_level}). Continue on.")
   def saveNewVials(self, input: str) -> None:
     flag, o_vials = input.split()
-    numVials = int(o_vials)
+    numVials = int(o_vials) # Assumes a valid integer
 
     target = self.root
     if numVials > len(target.vials):
@@ -1018,6 +1018,8 @@ class BigSolutionDisplay:
         elif k == 'l':
           self.toggleBlindMode()
           self.displayCurrent()
+        elif k == 'g':
+          self._acceptGotoCommand(k)
         elif k == 'd':
           self.detailInformation = not self.detailInformation
           if not self.detailInformation:
@@ -1084,6 +1086,30 @@ class BigSolutionDisplay:
       return None
 
     return curGame._handleSpecialOption(command)
+
+  def _acceptGotoCommand(self, command: str="") -> None:
+    maxIdx = len(self._steps) - 1
+    if maxIdx <= 0:
+      print(formatVialColor("wn", "Goto unavailable.") + " There are no steps to select from.")
+      return
+
+    if len(command) <= 1:  # Accept a command received previously, otherwise, receive the rest of the command
+      command = "g" + input(Style.BRIGHT + "Goto step #" + Style.NORMAL)
+
+    if not command or len(command) <= 1:
+      print("No step received.")
+      return
+
+    stepNum = int(command[1:]) # Assumes a valid integer
+    stepIdx = stepNum - 1
+    if stepIdx < 0 or stepIdx > maxIdx:
+      print(formatVialColor("er", "Invalid input.") + f" Must enter a number between 1 and {len(self._steps)}.")
+      return
+
+    self._currentStage = "GAME"
+    self.__currentStep = stepIdx
+    self._currentSpacesMoved = 0
+    self.displayCurrent()
 
   def displayCurrent(self) -> None:
     lines: list[str] = []
