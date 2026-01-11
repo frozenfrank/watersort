@@ -1195,8 +1195,22 @@ class BigSolutionDisplay:
             "Computed step": deadEndsResults.game.getDepth(),
           }
         else:
+          prevStep = self._getCurStep(offset=-1)
+          prevDeadEnds = None
+          if prevStep.deadEndsSearch and prevStep.deadEndsSearch.searchDataAvailable:
+            prevDeadEnds = prevStep.deadEndsSearch.numDeadEnds
+
+          deltaEnds = "--"
+          if prevDeadEnds is not None:
+            deltaEnds = deadEndsResults.numDeadEnds - prevDeadEnds
+            if deltaEnds > 0:
+              # Negative case already appears properly
+              # Zero case should not have a sign
+              deltaEnds = "+" + str(deltaEnds)
+
           detailsDict = {
             "Dead ends": deadEndsResults.numDeadEnds,
+            "Delta": deltaEnds,
             "Solutions": deadEndsResults.numEventualSolutions,
             "Search (s)": deadEndsResults.searchSeconds,
             "Iterations": deadEndsResults.searchIterations,
@@ -1421,9 +1435,9 @@ class BigSolutionDisplay:
       return (self.__currentPoststep, self._poststeps)
     else:
       raise "Unknown current stage: " + self._currentStage
-  def _getCurStep(self) -> SolutionStep:
+  def _getCurStep(self, offset: int = 0) -> SolutionStep:
     curStep, steps = self._getQueue()
-    return steps[curStep]
+    return steps[curStep + offset]
   def _setStep(self, newStep) -> None:
     if self._currentStage == "PRE":
       self.__currentPrestep = newStep
