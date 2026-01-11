@@ -923,6 +923,8 @@ class BigSolutionDisplay:
   detailInformation = False
   debugInformation = False
 
+  _maxDeadEnds: DeadEndSearchResults|None = None
+
   @staticmethod
   def __updateScreenWidth() -> None:
     termSize = os.get_terminal_size()
@@ -1019,10 +1021,12 @@ class BigSolutionDisplay:
           self.detailInformation = not self.detailInformation
           if not self.detailInformation:
             self.debugInformation = False
+          self.displayCurrent()
         elif k == 'D':
           self.debugInformation = not self.debugInformation
           if self.debugInformation:
             self.detailInformation = True
+          self.displayCurrent()
         elif k == '-' or k.startswith('-'):
           action = self.__acceptGameCommand(k)
           if action is not None:
@@ -1083,7 +1087,7 @@ class BigSolutionDisplay:
     introLines: list[str] = []
     exitLines: list[str] = []
 
-    SIDE_PADDING = " " * 2
+    SIDE_PADDING = " " * 5
 
     ### INTRO LINES ###
 
@@ -1093,8 +1097,8 @@ class BigSolutionDisplay:
       introLines.append("[Drain Mode]")
     if self.rootGame.blindMode:
       introLines.append("[Blind Mode]")
-
-    introLines = [chr(3) + line.ljust(15) + SIDE_PADDING for line in introLines]
+    if self.rootGame.hadMysterySpaces:
+      introLines.append("[Mystery Mode]")
 
     ### MAIN CONTENT ###
 
@@ -1108,6 +1112,7 @@ class BigSolutionDisplay:
       stageLines, color = self._preparePreLines(step)
     elif self._currentStage == "GAME":
       stageLines, color = self._prepareGameLines(step)
+      introLines.extend(self._extendIntroLinesGame(step))
     elif self._currentStage == "POST":
       stageLines, color = self._preparePostLines(step)
     else:
@@ -1126,6 +1131,9 @@ class BigSolutionDisplay:
     exitLines.append("")
 
     ### Print ###
+
+    maxWidth = max(map(len, introLines))
+    introLines = [chr(3) + line.ljust(maxWidth) + SIDE_PADDING for line in introLines]
 
     self.printCenteredLines(lines, linePrefix=formatVialColor(color), linePostfix=Style.RESET_ALL, fullScreenBufferLines=3, introLines=introLines, exitLines=exitLines)
     print("")
@@ -1170,7 +1178,30 @@ class BigSolutionDisplay:
     return (lines, step.colorMoved)
   def _preparePostLines(self, step: SolutionStep):
     return self._preparePreLines(step)
+  def _extendIntroLinesGame(self, step: SolutionStep) -> list[str]:
+    newIntroLines = []
 
+    deadEndsResults = step.deadEndsSearch or self._maxDeadEnds
+    if deadEndsResults and deadEndsResults.searchDataAvailable:
+      newIntroLines.append("")
+
+      emoji = "☠️" if deadEndsResults.hasDeadEnds else "🟢"
+      newIntroLines.append(f"Can die? ​{emoji}")
+      if not self.detailInformation:
+        deadEndsTxt = "99+" if deadEndsResults.numDeadEnds > 99 else deadEndsResults.numDeadEnds
+        newIntroLines.append(f"Dead ends: {deadEndsTxt}")
+      else:
+        if not step.deadEndsSearch:
+          newIntroLines.append(f"Max dead ends: {deadEndsResults.numDeadEnds}")
+          newIntroLines.append(f"Computed step: {deadEndsResults.game.getDepth()}")
+        else:
+          newIntroLines.append(f"Iterations: {deadEndsResults.searchIterations}")
+          newIntroLines.append(f"Dead ends: {deadEndsResults.numDeadEnds}")
+          newIntroLines.append(f"Solutions: {deadEndsResults.numEventualSolutions}")
+          newIntroLines.append(f"Search (s): {deadEndsResults.searchSeconds}")
+
+
+    return newIntroLines
   @staticmethod
   def _getMoveDescriptor(step: SolutionStep) -> str:
     if step.isComplete:
@@ -1273,6 +1304,8 @@ class BigSolutionDisplay:
     if self.debugInformation:
       print("Computing dead end results for final game states")
     for step in reversed(self._steps):
+      if step.deadEndsSearch is not None:
+        continue # Avoid duplicative work
       if step.game.getDepth() <= 2:
         continue # Never process the first two moves
 
@@ -1280,6 +1313,9 @@ class BigSolutionDisplay:
       step.deadEndsSearch = results
       if self.debugInformation:
         BigSolutionDisplay.PrintDeadEndSearchResults(results)
+
+      if not self._maxDeadEnds or results.numDeadEnds > self._maxDeadEnds.numDeadEnds:
+        self._maxDeadEnds = results
 
       if results.numDeadEnds > 9999 or results.searchSeconds > 30:
         if self.debugInformation:
