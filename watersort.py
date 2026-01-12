@@ -620,8 +620,12 @@ class Game:
     vacatedVial = numMoved + startEmptySpaces == NUM_SPACES_PER_VIAL
     startedVial = NUM_SPACES_PER_VIAL - numMoved == endEmptySpaces
     return (colorMoved, numMoved, complete, vacatedVial, startedVial)
-  def printVials(self) -> None:
+  def printVials(self, numberSpaces=False) -> None:
     lines = [list() for _ in range(NUM_SPACES_PER_VIAL + 1)]
+
+    if numberSpaces:
+      for lineIndex in range(NUM_SPACES_PER_VIAL + 1):
+        lines[lineIndex].append(" " if lineIndex==0 else str(lineIndex))
 
     for i in range(self.__numVials):
       lines[0].append("\t" + str(i + 1))
