@@ -139,6 +139,17 @@ class Game:
   hadMysterySpaces: bool = False
   """Automatically flagged when mystery tiles are discovered."""
 
+  @property
+  def activeModes(self) -> list[str]:
+    modes = []
+    if self.root.drainMode:
+      modes.append("drain")
+    if self.root.blindMode:
+      modes.append("blind")
+    if self.root.hadMysterySpaces:
+      modes.append("mystery")
+    return modes
+
   # Cached for single use calculation
   _COMPLETE_TERM = "complete"
   _VACATED_TERM = "vacated"
@@ -1966,7 +1977,7 @@ class AnalysisSolver(BaseSolver):
 
     saveAnalysisResults(\
       self.seedGame, self.solutionSetEnd - self.solutionSetStart, self.findSolutionCount, \
-      self.partialDepth, self.dupGameDepth, self.deadEndDepth, self.solutionDepth, self.uniqueSolsDepth, \
+      self.partialDepth, self.dupGameDepth, self.deadEndDepth, self.solutionDepth, self.uniqueSolsDepth, self.swallowedDepth, \
       longestSolvesDict, uniqueDistributionDict, completionData, \
       self.solFindSeconds)
 
@@ -2422,12 +2433,8 @@ def generateFileContents(game: "Game") -> str:
   lines.append("i")
 
   levelLine = str(game.level)
-  if game.root.drainMode:
-    levelLine += " drain"
-  if game.root.blindMode:
-    levelLine += " blind"
-  if game.root.hadMysterySpaces:
-    levelLine += " mystery"
+  levelModes = game.activeModes
+  if levelModes: levelLine += " " + " ".join(levelModes)
 
   lines.append(levelLine)
   lines.append(str(len(game.vials)))
@@ -2481,7 +2488,7 @@ def generateAnalysisResultsName(level: str, absolutePath: bool = None) -> str:
   annualizedName = annualizeDailyPuzzleFileName(level)
   return os.path.join(getBasePath(absolutePath), "wsanalysis", f"{annualizedName}-{round(time())}.csv")
 def saveAnalysisResults(rootGame: Game, seconds: float, samples: int,
-                        partialStates, dupStates, deadStates, solStates, uniqueSolStates,
+                        partialStates, dupStates, deadStates, solStates, uniqueSolStates, swallowedGames,
                         longestSolves, uniqueSolsDistribution, completionData: tuple[defaultdict[int, str], defaultdict[int, str]],
                         solveTimes: defaultdict[int] = None) -> None:
   # Generates a CSV file with data
@@ -2504,6 +2511,7 @@ def saveAnalysisResults(rootGame: Game, seconds: float, samples: int,
     ("Solver Version", SOLVER_VERSION),
     ("Analyzer Version", ANALYZER_VERSION),
     ("Extra Data Length", extraDataLength),
+    ("Modes", ";".join(rootGame.activeModes)),
   ]
   if solveTimes:
     headers.append(("Max Solution Seconds", max(solveTimes.keys())))
@@ -2518,6 +2526,7 @@ def saveAnalysisResults(rootGame: Game, seconds: float, samples: int,
     ("Unique Sol Distribution", uniqueSolsDistribution),
     ("Color Completion Data", completionData[0]),
     ("Depth Completion Data", completionData[1]),
+    ("Swallowed Game States", swallowedGames)
   ]
   saveCSVFile(fileName, columns, headers, keyColumnName="Depth")
   print("Saved analysis results to file: " + fileName)
