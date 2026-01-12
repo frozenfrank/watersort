@@ -1025,7 +1025,7 @@ class BigSolutionDisplay:
         elif k == 'l':
           self.toggleBlindMode()
           self.displayCurrent()
-        elif k == 'g':
+        elif k == 'g' or k.startswith('g'):
           self._acceptGotoCommand(k)
         elif k == 'd':
           self.detailInformation = not self.detailInformation
