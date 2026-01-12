@@ -1798,6 +1798,8 @@ class BaseSolver:
         # Maintain stats
         self.maxQueueLength = max(self.maxQueueLength, len(self._q))
         if not hasNextGame:
+          self.numDeadEnds += 1
+          self.deadEndDepth[current._numMoves] += 1
           self._onDeadEndFound(current)
 
       self.solutionEnd = time()
@@ -1852,8 +1854,7 @@ class BaseSolver:
     return True
 
   def _onDeadEndFound(self, deadEnd: Game) -> None:
-    self.numDeadEnds += 1
-    self.deadEndDepth[deadEnd._numMoves] += 1
+    pass
 
   def _printQueueCheck(self, current: Game) -> None:
     stats = {
@@ -2038,7 +2039,6 @@ class SafeGameSolver(BaseSolver):
     return False # Avoid registering this solution, and keep looking for dead-ends
 
   def _onDeadEndFound(self, deadEnd):
-    super()._onDeadEndFound(deadEnd)
     self.deadEndsLocated.append(deadEnd)
 
   def _onImpossibleGame(self):
