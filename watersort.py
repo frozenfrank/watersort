@@ -1028,6 +1028,8 @@ class BigSolutionDisplay:
           if not self.detailInformation:
             self.debugInformation = False
           self.displayCurrent()
+          if self.detailInformation:
+            self._launchDeadEndComputationBackground()
         elif k == 'D':
           self.debugInformation = not self.debugInformation
           if self.debugInformation:
@@ -1131,6 +1133,10 @@ class BigSolutionDisplay:
       introLines.append("[Blind Mode]")
     if self.rootGame.hadMysterySpaces:
       introLines.append("[Mystery Mode]")
+    if self.detailInformation:
+      introLines.append("{Details}")
+    if self.debugInformation:
+      introLines.append("{Debug}")
 
     ### MAIN CONTENT ###
 
