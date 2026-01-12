@@ -1807,7 +1807,7 @@ class BaseSolver:
 
         # Maintain stats
         self.maxQueueLength = max(self.maxQueueLength, len(self._q))
-        if not hasNextGame:
+        if len(nextGames) == 0:
           self.numDeadEnds += 1
           self.deadEndDepth[current._numMoves] += 1
           self._onDeadEndFound(current)
