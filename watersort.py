@@ -1652,6 +1652,7 @@ class BaseSolver:
   numIterations: int
   numDeadEnds: int
   numPartialSolutionsGenerated: int
+  numSwallowedGamesFound: int
   numUniqueStatesComputed: int
   numDuplicateGames: int
   maxQueueLength: int
@@ -1659,6 +1660,7 @@ class BaseSolver:
   # Analysis summary data structures
   partialDepth = defaultdict(int)
   dupGameDepth = defaultdict(int)
+  swallowedDepth = defaultdict(int)
   deadEndDepth = defaultdict(int)
   solutionDepth = defaultdict(int)
   uniqueSolsDepth = defaultdict(int)
@@ -1746,6 +1748,7 @@ class BaseSolver:
       self.numIterations = 0
       self.numDeadEnds = 0
       self.numPartialSolutionsGenerated = 0
+      self.numSwallowedGamesFound = 0
       self.numDuplicateGames = 0
       self.maxQueueLength = 1
 
@@ -1778,10 +1781,10 @@ class BaseSolver:
           break # Quit this attempt, and try a different one
 
         # Check all next moves
-        hasNextGame = False
+        hasNetNewNextGame = False
         nextGames = current.generateNextGames()
-        # Break out after user input
         if Game.reset or Game.quit:
+          # Break out after user input
           expectSolution = False
           break
 
@@ -1796,7 +1799,7 @@ class BaseSolver:
             continue
           computed.add(nextGame)
 
-          hasNextGame = True
+          hasNetNewNextGame = True
           if nextGame.isFinished():
             timeCheck = time()
             self.solutionEnd = timeCheck
@@ -1811,6 +1814,9 @@ class BaseSolver:
           self.numDeadEnds += 1
           self.deadEndDepth[current._numMoves] += 1
           self._onDeadEndFound(current)
+        elif not hasNetNewNextGame:
+          self.numSwallowedGamesFound += 1
+          self.swallowedDepth[current._numMoves] += 1
 
       self.solutionEnd = time()
       if expectSolution and not self.minSolution:
@@ -2020,6 +2026,7 @@ class SolutionSolver(BaseSolver):
             {self.maxQueueLength          }\t   Max queue length
             {self.numDeadEnds             }\t   Num dead ends
             {self.numPartialSolutionsGenerated }\t   Partial solutions generated
+            {self.numSwallowedGamesFound       }\t   Num swallowed games
             {self.numDuplicateGames            }\t   Num duplicate games
             {self.numUniqueStatesComputed      }\t   Num states computed
           """)
