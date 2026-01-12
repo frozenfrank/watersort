@@ -140,7 +140,7 @@ class Game:
   """Automatically flagged when mystery tiles are discovered."""
 
   @property
-  def activeModes(self) -> list[str]:
+  def specialModes(self) -> list[str]:
     modes = []
     if self.root.drainMode:
       modes.append("drain")
@@ -2433,7 +2433,7 @@ def generateFileContents(game: "Game") -> str:
   lines.append("i")
 
   levelLine = str(game.level)
-  levelModes = game.activeModes
+  levelModes = game.specialModes
   if levelModes: levelLine += " " + " ".join(levelModes)
 
   lines.append(levelLine)
@@ -2500,6 +2500,7 @@ def saveAnalysisResults(rootGame: Game, seconds: float, samples: int,
     max(uniqueSolsDistribution.keys()))
 
   fileName = generateAnalysisResultsName(rootGame.level)
+  specialModes = rootGame.specialModes
   headers = [
     ("Level", rootGame.level),
     ("Num Vials", rootGame.getNumVials()),
@@ -2511,7 +2512,7 @@ def saveAnalysisResults(rootGame: Game, seconds: float, samples: int,
     ("Solver Version", SOLVER_VERSION),
     ("Analyzer Version", ANALYZER_VERSION),
     ("Extra Data Length", extraDataLength),
-    ("Modes", ";".join(rootGame.activeModes)),
+    ("Modes", ";".join(specialModes) if specialModes else "normal"),
   ]
   if solveTimes:
     headers.append(("Max Solution Seconds", max(solveTimes.keys())))
