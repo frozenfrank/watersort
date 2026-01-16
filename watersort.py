@@ -2051,8 +2051,14 @@ class SolutionSolver(BaseSolver):
 
 class SafeGameSolver(BaseSolver):
   """Specialized solver equipped to determine if a partially solved game has any remaining dead ends."""
-  numSolutionsLocated = 0
-  deadEndsLocated: list["Game"] = []
+  numSolutionsLocated: int
+  deadEndsLocated: list["Game"]
+
+  def __init__(self, game):
+    super().__init__(game)
+
+    self.numSolutionsLocated = 0
+    self.deadEndsLocated = []
 
   def _onInitSolutionAttempt(self):
     # Bypass
