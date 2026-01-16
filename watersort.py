@@ -729,18 +729,29 @@ class Game:
     startIsComplete, startOnlyColor, startNumOnTop, startEmptySpaces = self.__countOnTop(startColor, startVial, bottom=self.root.drainMode)
     if startIsComplete:
       return INVALID_MOVE # Start is fully filled
-    if endColor == "-" and (startOnlyColor or self.__findSoloVial(startColor) is not None):
-      return INVALID_MOVE # Never move to an empty contain when it isn't helpful
     if startNumOnTop > endEmptySpaces:
       # CONSIDER: This may not actually be an invalid move
       return INVALID_MOVE # Only pour when it can all be received
+    if endColor == "-" and (startOnlyColor or self.__findSoloVial(startColor, skipVial=startVial) is not None):
+      return INVALID_MOVE # Never occupy a new container when we already have one
 
     # Compute additional fields
     willComplete = endOnlyColor and startNumOnTop == endEmptySpaces
+    compareVialFillLevel = False
 
     # When completing a vial, never move more spaces than necessary
     if startOnlyColor and endOnlyColor:
-      # Break ties by preferring vials towards the end of the list
+      compareVialFillLevel = True
+    # When vacating a vial, always prefer to move into an existing "only" vial
+    elif startOnlyColor:
+      otherSoloVial = self.__findSoloVial(startColor, skipVial=startVial)
+      if otherSoloVial is not None and endVial != otherSoloVial:
+        return INVALID_MOVE # We should not be vacating a vial if we could be combining with another solo vial instead
+      compareVialFillLevel = True
+
+    # Avoid moving a large number of squares onto a small number of squares
+    # Break ties by preferring vials towards the end of the list
+    if compareVialFillLevel:
       startCompVal = startNumOnTop + (startVial / 1000)
       endCompVal = endNumOnTop + (endVial / 1000)
       if startCompVal > endCompVal:
@@ -773,9 +784,10 @@ class Game:
         numOnTop += 1
 
     return (isComplete, onlyColor, numOnTop, emptySpaces)
-  def __findSoloVial(self, forColor: str) -> int | None:
+  def __findSoloVial(self, forColor: str, skipVial=None) -> int | None:
     """Locates a vial that contains *only* the specified color. If no vial exists, returns None."""
     for searchVial in range(len(self.vials)):
+      if searchVial == skipVial: continue
       _, isOnlyColor, numOnTop, _ = self.__countOnTop(forColor, searchVial)
       if isOnlyColor and numOnTop > 0:
         return searchVial
