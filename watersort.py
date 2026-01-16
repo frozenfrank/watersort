@@ -93,6 +93,9 @@ class SolutionStep:
     self.game = game
     self.move = game.move if game else None
 
+    if info is None and game is not None:
+      info = game.getMoveInfo()
+
     if info:
       self.info = info
       self.colorMoved = info[0]
@@ -550,9 +553,7 @@ class Game:
       lines.append("None")
     else:
       for step in steps:
-        start, end = step.move
-        moveString = formatVialColor(step.colorMoved, f"{start+1}->{end+1}", ljust=8)
-        moveString += self._getMoveString(step.info)
+        moveString = self.getMoveString(step)
         if step.isSameAsPrevious != None:
           moveString += SEPARATOR + ("(same)" if step.isSameAsPrevious else "(different)")
         lines.append(moveString)
@@ -577,9 +578,8 @@ class Game:
       if curGame == fromGame:
         return steps # Skip comparison against previous prints
 
-      info = curGame.__getMoveInfo()
       moves.appendleft(curGame.move)
-      steps.appendleft(SolutionStep(curGame, info))
+      steps.appendleft(SolutionStep(curGame))
       curGame = curGame.prev
 
     # Compare to previous printed moves
@@ -597,10 +597,16 @@ class Game:
     Game.__prevPrintedMoves = moves
     return steps
 
-  def _getMoveString(self, info: MoveInfo = None) -> str:
-
+  def getMoveString(self, step: SolutionStep) -> str:
+    """Returns a string with a fixed justification, including escape character for formatting, that describes the move."""
+    start, end = step.move
+    result = formatVialColor(step.colorMoved, f"{start+1}->{end+1}", ljust=8)
+    result += self._getMoveInfoString(step.info)
+    return result
+  def _getMoveInfoString(self, info: MoveInfo = None) -> str:
     if not info:
-      info = self.__getMoveInfo()
+      info = self.getMoveInfo()
+
     result: str
     if info is None:
       result = ""
@@ -619,7 +625,7 @@ class Game:
       result = f"({numStr} {color}{extraStr})"
 
     return result.ljust(Game.TOTAL_MOVE_PRINT_WIDTH)
-  def __getMoveInfo(self) -> MoveInfo:
+  def getMoveInfo(self) -> MoveInfo:
     if not self.move:
       return None
     start, end = self.move
@@ -1050,6 +1056,8 @@ class BigSolutionDisplay:
           self.displayCurrent()
         elif k == 'g' or k.startswith('g'):
           self._acceptGotoCommand(k)
+        elif k == 'm':
+          self.printValidMoves()
         elif k == 'd':
           self.detailInformation = not self.detailInformation
           if not self.detailInformation:
@@ -1099,6 +1107,7 @@ class BigSolutionDisplay:
          f"   {B}r{N}                       refresh display{D}; necessary if the terminal resizes{N}\n" +
          f"   {B}R{N}                       restart solution {D}(to the beginning){N}\n" +
          f"   {B}E{N}                       end solution {D}(to the end){N}\n" +
+         f"   {B}m{N}                       moves {D}; print valid moves from the game state{N}\n" +
          f"   {B}d{N}                       details {D}; reveals in-depth game stats{N}\n" +
          f"   {B}D{N}                       debug {D}; shows programmer level status updates{N}\n" +
          f"   {B}t{N}                       Test {D}; does whatever the programmer wants{N}\n" +
@@ -1607,6 +1616,17 @@ class BigSolutionDisplay:
     print("☠️ Dead ends ahead" if r.hasDeadEnds else "🟢 All clear")
   def _reportDeadEnd(self, seed: "Game", deadEnd: "Game") -> None:
     deadEnd.printMoves()
+
+  def printValidMoves(self) -> None:
+    lines = []
+    curGame = self._getCurStep().game
+    nextGames = curGame.generateNextGames()
+
+    lines.append(f"All valid moves ({len(nextGames)}):")
+    lines.extend(["  " + game.getMoveString(SolutionStep(game)) for game in nextGames])
+
+    curGame.printVials()
+    print("\n".join(lines))
 
   @staticmethod
   def PrintDeadEndSearchResults(r: DeadEndSearchResults) -> None:
