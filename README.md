@@ -38,11 +38,19 @@ git mv level.txt YEAR/level.txt
   - [ ] Offer to automatically start analysis session of level (in the background)
   - [x] Rename "pour mode" to "drain mode" internally
   - [ ] Introduce intelligent search with heuristics that potentially discover multiple values at once
-  - [ ] Analyze at what point the game is "safe" (no more dead ends)
-    - [ ] Show the safe point on the big solution solver
-    - [ ] Install an early exit after discovering 999 dead ends
-    - [ ] Show the number of dead ends from each step forward
-    - [ ] Create mechanisms for viewing the paths to dead ends
+  - [x] Analyze at what point the game is "safe" (no more dead ends)
+    - [x] Show the safe point on the big solution solver
+    - [x] Install an early exit after discovering 999 dead ends
+    - [x] Show the number of dead ends from each step forward
+    - [x] Create mechanisms for viewing the paths to dead ends
+  - [ ] Maintain a cache of the colors that occupy an 'only' color.
+      - Moving these colors always triggers `requireMaxSoloVial`
+      - The cache only needs to be updated when spawning new games
+        - Only the start/end vials need to be inspected
+        - If a vial is vacated, a color could be removed from the set
+        - If a new vial is occupied, a color could be added to the set
+        - If a vial is exposed, it could now be an only color
+        - If two only vials are combined, there the color should still be on the list
   - [ ] Analyze which colors are used most frequently in levels (yellow is uncommon)
   - [ ] Add support for leveraging the "UNDO" feature to look for new vials after discovering colors
     - Only use UNDO if it would otherwise restart
