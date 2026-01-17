@@ -1449,11 +1449,11 @@ class BigSolutionDisplay:
     with self.__spawnThreadLock:
       if self.__hasSpawnedThread:
         if verbose or self.debugInformation:
-          print(formatVialColor("er", "Thread already running.") + " Not creating an extra thread.")
+          print(formatVialColor("wn", "Thread already running.") + " Not creating an extra thread.")
         return
 
       if not self.__needsComputeDeadEndResults():
-        print(formatVialColor("wn", "Unexpected discovery of no work needed.") + "After an initial verification, we acquired a lock and then found no remaining work to do.")
+        print(formatVialColor("er", "Unexpected discovery of no work needed.") + "After an initial verification, we acquired a lock and then found no remaining work to do.")
         return
 
       if verbose or self.debugInformation:
