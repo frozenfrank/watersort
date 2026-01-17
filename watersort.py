@@ -1173,7 +1173,7 @@ class BigSolutionDisplay:
 
     introLines.append("")
     introLines.append("Level: " + self.rootGame.level)
-    if self._earliestSafeStep:
+    if self._earliestSafeStep and self._maxDeadEnds.hasDeadEnds:
       introLines.append(f"Safe step: {self._earliestSafeStep.game.getDepth()}")
     if self.rootGame.drainMode:
       introLines.append("[Drain Mode]")
@@ -1627,7 +1627,7 @@ class BigSolutionDisplay:
       printInformation = True
       while displayIndex < len(safeSolver.deadEndsLocated) and displayIndex >= 0:
         if printInformation:
-          print(f"\nDisplaying dead end {displayIndex+1} of {len(safeSolver.deadEndsLocated)}: {Style.DIM}(Next, Prev. 'Enter' exits){Style.NORMAL}")
+          print(f"\nDisplaying dead end {Style.BRIGHT}{displayIndex+1}{Style.NORMAL} of {Style.BRIGHT}{len(safeSolver.deadEndsLocated)}{Style.NORMAL}: {Style.DIM}(Next, Prev. 'Enter' exits){Style.NORMAL}")
           deadEnd = safeSolver.deadEndsLocated[displayIndex]
           deadEnd.printVials()
           deadEnd.printMoves(curStep.game)
@@ -1637,7 +1637,7 @@ class BigSolutionDisplay:
         k = readkey() if USE_READCHAR else input().strip()
         if k == '' or k == 'q' or k == 'Q' or (USE_READCHAR and k == key.ENTER):
           break
-        elif k == 'n' or k == 'f':
+        elif k == 'n' or k == 'f' or k == ' ':
           if displayIndex>=len(safeSolver.deadEndsLocated)-1:
             print("No next dead ends to explore.")
             printInformation=False
