@@ -388,6 +388,7 @@ class Game:
     @returns None when no action is required, otherwise a value with which to immediately return as if entered as a normal value
     """
     root = self.root
+    prev = self.prev
 
     # Program mechanics
     if rsp == "-q" or rsp == "-quit" or rsp == "quit":
@@ -408,7 +409,7 @@ class Game:
     elif rsp == "-p" or rsp == "-print":
       root.printVials()
     elif rsp == "-pc":
-      self.printVials()
+      prev.printVials()
     elif rsp == "-m" or rsp == "-moves":
       self.printMoves()
     elif rsp == "-b":
@@ -1191,7 +1192,7 @@ class BigSolutionDisplay:
     introLines.append("")
     introLines.append("Level: " + self.rootGame.level)
     if self._earliestSafeStep and (self._maxDeadEnds.hasDeadEnds or not self.__hasSpawnedThread):
-      introLines.append(f"Safe step: {self._earliestSafeStep.game.getDepth()}")
+      introLines.append(f"Safe step: {self._earliestSafeStep.game.getDepth()+1}")  # It's not safe until *after* we make the move
       if self.detailInformation:
         secs, _ = BaseSolver._getTimeRunning(self.__firstSpawnTimestamp, self._earliestSafeStep.generatedInstant)
         introLines.append(f"Safe calc: {secs}s")
@@ -1489,12 +1490,14 @@ class BigSolutionDisplay:
     for step in reversed(self._steps):
       if step.deadEndsSearch is not None:
         continue # Avoid duplicative work
-      if step.game.getDepth() <= 2:
+
+      curGame = step.game.prev # Perform computations from *before* the step is performed
+      if curGame.getDepth() <= 2:
         self.__finishedDeadEndsSearch = True
         break # We made it all the way to the beginning
 
-      stepDepth = step.game.getDepth()
-      results = SafeGameSolver(step.game).analyzeDeadEndStates()
+      stepDepth = curGame.getDepth()
+      results = SafeGameSolver(curGame).analyzeDeadEndStates()
       self.__updateDeadEndResults(step, results)
       self.__lastComputedDeadEndStepDepth = stepDepth
       if self.debugInformation:
@@ -1637,9 +1640,10 @@ class BigSolutionDisplay:
     print("Executing test command")
 
     curStep = self._getCurStep()
+    curGame = curStep.game.prev # Behave as if we have not yet made the move
     print(f"Searching for dead ends from current point")
 
-    safeSolver = SafeGameSolver(curStep.game)
+    safeSolver = SafeGameSolver(curGame)
     r = safeSolver.analyzeDeadEndStates()
     self.__updateDeadEndResults(curStep, r)
     if r.searchDataAvailable:
@@ -1653,7 +1657,7 @@ class BigSolutionDisplay:
           print(f"\nDisplaying dead end {Style.BRIGHT}{displayIndex+1}{Style.NORMAL} of {Style.BRIGHT}{len(safeSolver.deadEndsLocated)}{Style.NORMAL}: {Style.DIM}(Next, Prev. 'Enter' exits){Style.NORMAL}")
           deadEnd = safeSolver.deadEndsLocated[displayIndex]
           deadEnd.printVials()
-          deadEnd.printMoves(curStep.game)
+          deadEnd.printMoves(fromGame=curGame)
         printInformation=True
 
         print("% ", end="", flush=True)
