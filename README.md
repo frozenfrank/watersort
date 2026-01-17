@@ -23,9 +23,9 @@ git mv level.txt YEAR/level.txt
   - [x] Indicate current level in top corner of box
   - [ ] Show number of moves until next color is complete
   - [ ] Show whether path eventually diverges, or extends. Indicate when crossing into new territory.
-  - [ ] Indicate whether the steps are discovering a new value or leading to eventual solution
+  - [x] Indicate whether the steps are discovering a new value or leading to eventual solution
     - This could be implemented with a context-provided message by the code launching the solution stepper
-    - [ ] Show summary of color analysis results... surface abnormal colors
+    - [x] Show summary of color analysis results... surface abnormal colors
   - [x] Allow leveraging game solver extended menu
     - [ ] Add ability to manually play a game from any step
     - [ ] Add option to launch solver from any step

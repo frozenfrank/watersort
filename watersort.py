@@ -45,7 +45,7 @@ CONFIRM_APPLY_LAST_UNKNOWN = False
 CONFIRM_APPLY_LAST_BATCH_COLOR = False
 AUTO_BFS_FOR_UNKNOWNS_ORIG_METHOD = None
 
-FEW_VIALS_THRESHOLD = 7 # I'm not actually sure if this is the right threshold, but it appears correct
+FEW_VIALS_THRESHOLD = 5 # I'm not actually sure if this is the right threshold, but it appears correct
 
 Vials = list[list[str]]
 Move = tuple[int, int]
@@ -314,7 +314,6 @@ class Game:
         print(request)
 
       if proceed:
-        Game.latest = None
         for vialIdx, spaceIdx in itertools.product(range(self.__numVials), range(NUM_SPACES_PER_VIAL)):
           if root.vials[vialIdx][spaceIdx] == "?":
             root.vials[vialIdx][spaceIdx] = lastColor
@@ -347,9 +346,9 @@ class Game:
     return val
   def confirmPrompt(self, question: str, defaultYes=True) -> bool:
     question += " [y]/n:" if defaultYes else " y/[n]:"
-    rsp = self.requestVal(question, printState=False, disableAutoSave=True, printOptions=False)
+    rsp = self.requestVal(question, printState=False, disableAutoSave=True, printOptions=False).strip()
     if not rsp: return defaultYes
-    return rsp.strip()[0].lower() == "y"
+    return rsp[0].lower() == "y"
   def requestVal(self, request: str, printState=True, disableAutoSave=False, printOptions:bool=None) -> str:
     if printState:
       if Game.preferBigMoves and self.move:
@@ -1192,17 +1191,24 @@ class BigSolutionDisplay:
 
     introLines.append("")
     introLines.append("Level: " + self.rootGame.level)
+    if not self.movesFinishGame:
+      colorCount, _ = self.rootGame._analyzeColors()
+      numMystery = colorCount["?"]
+      if numMystery:
+        introLines.append(f"Unknowns: {numMystery}")
     if self._earliestSafeStep and (self._maxDeadEnds.hasDeadEnds or not self.__hasSpawnedThread):
       introLines.append(f"Safe step: {self._earliestSafeStep.game.getDepth()+1}")  # It's not safe until *after* we make the move
       if self.detailInformation:
         secs, _ = BaseSolver._getTimeRunning(self.__firstSpawnTimestamp, self._earliestSafeStep.generatedInstant)
         introLines.append(f"Safe calc: {secs}s")
+
     if self.rootGame.drainMode:
       introLines.append("[Drain Mode]")
     if self.rootGame.blindMode:
       introLines.append("[Blind Mode]")
     if self.rootGame.hadMysterySpaces:
       introLines.append("[Mystery Mode]")
+
     if self.detailInformation:
       introLines.append("{Details}")
     if self.debugInformation:
