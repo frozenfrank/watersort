@@ -959,14 +959,14 @@ class BigSolutionDisplay:
   detailInformation = False
   debugInformation = False
 
-  _maxDeadEnds: DeadEndSearchResults|None = None
+  _maxDeadEnds: DeadEndSearchResults|None
   __simpleDeadEndsMax = 99
   __spawnThreadLock = threading.Lock()
   __hasSpawnedThread = False
   """This critical, shared source indicates if we have a lock. Only access this variable while holding __spawnThreadLock!"""
-  __finishedDeadEndsSearch = False
+  __finishedDeadEndsSearch: bool
   """Indicates if there is still potential for the worker thread to compute more states."""
-  __lastComputedDeadEndStepDepth: int|None = None
+  __lastComputedDeadEndStepDepth: int|None
 
   @staticmethod
   def __updateScreenWidth() -> None:
@@ -988,6 +988,10 @@ class BigSolutionDisplay:
     self.__currentPoststep = 0
     self._currentStage = "GAME"
     self._currentSpacesMoved = 0
+
+    self._maxDeadEnds = None
+    self.__finishedDeadEndsSearch = False
+    self.__lastComputedDeadEndStepDepth = None
 
     if self._steps:
       self.movesFinishGame = self._steps[-1].game.isFinished()
