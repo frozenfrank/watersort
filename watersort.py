@@ -60,6 +60,7 @@ class DeadEndSearchResults:
   numEventualSolutions: int
 
   searchDataAvailable: bool = True
+  generatedInstant: float = time()
 
   @property
   def hasDeadEnds(self):
@@ -975,6 +976,7 @@ class BigSolutionDisplay:
   _earliestSafeStep: DeadEndSearchResults|None
   __simpleDeadEndsMax = 99
   __spawnThreadLock = threading.Lock()
+  __firstSpawnTimestamp: float|None
   __hasSpawnedThread = False
   """This critical, shared source indicates if we have a lock. Only access this variable while holding __spawnThreadLock!"""
   __finishedDeadEndsSearch: bool
@@ -1004,6 +1006,7 @@ class BigSolutionDisplay:
 
     self._maxDeadEnds = None
     self._earliestSafeStep = None
+    self.__firstSpawnTimestamp = None
     self.__finishedDeadEndsSearch = False
     self.__lastComputedDeadEndStepDepth = None
 
@@ -1182,7 +1185,8 @@ class BigSolutionDisplay:
     introLines.append("")
     introLines.append("Level: " + self.rootGame.level)
     if self._earliestSafeStep and self._maxDeadEnds.hasDeadEnds:
-      introLines.append(f"Safe step: {self._earliestSafeStep.game.getDepth()}")
+      _, secs = BaseSolver._getTimeRunning(self._earliestSafeStep, self._earliestSafeStep.generatedInstant)
+      introLines.append(f"Safe step: {self._earliestSafeStep.game.getDepth()} ({secs}s)")
     if self.rootGame.drainMode:
       introLines.append("[Drain Mode]")
     if self.rootGame.blindMode:
@@ -1468,6 +1472,9 @@ class BigSolutionDisplay:
       return True
     return False
   def __computeDeadEndResults(self):
+    if not self.__firstSpawnTimestamp:
+      self.__firstSpawnTimestamp = time()
+
     if self.debugInformation:
       print("Computing dead end results for final game states")
 
