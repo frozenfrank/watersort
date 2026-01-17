@@ -791,13 +791,17 @@ class Game:
 
     return (isComplete, onlyColor, numOnTop, emptySpaces)
   def __findSoloVial(self, forColor: str, skipVial=None) -> int | None:
-    """Locates a vial that contains *only* the specified color. If no vial exists, returns None."""
+    """Locates a vial that contains *only* the specified color. If multiple vials exist, returns the index with the most spaces. If no vial exists, returns None."""
+    vialIndex: int|None = None
+    spacesInVial: int|None = None
     for searchVial in range(len(self.vials)):
       if searchVial == skipVial: continue
       _, isOnlyColor, numOnTop, _ = self.__countOnTop(forColor, searchVial)
       if isOnlyColor and numOnTop > 0:
-        return searchVial
-    return None
+        if vialIndex is None or numOnTop >= spacesInVial:
+          vialIndex = searchVial
+          spacesInVial = numOnTop
+    return vialIndex
 
   def makeMove(self, startVial, endVial) -> bool:
     valid, startColor, endColor, endSpaces, willComplete = self.__prepareMove(startVial, endVial)
