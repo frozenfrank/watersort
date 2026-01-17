@@ -7,7 +7,7 @@ import sys
 import threading
 from collections import deque, defaultdict
 from colorama import Fore
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from math import floor, log, ceil
 from resources import COLOR_CODES, COLOR_FOREGROUND, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar, BigShades, Style
@@ -60,7 +60,7 @@ class DeadEndSearchResults:
   numEventualSolutions: int
 
   searchDataAvailable: bool = True
-  generatedInstant: float = time()
+  generatedInstant: float = field(default_factory=time)
 
   @property
   def hasDeadEnds(self):
