@@ -562,7 +562,6 @@ class Game:
     if self.root.drainMode:
       introduction += " [Drain Gameplay]"
     print(introduction + ":" + NEW_LINE + NEW_LINE.join(lines))
-
   __prevPrintedMoves: deque[Move] = None
   def _prepareSolutionSteps(self, fromGame: "Game" = None) -> deque[SolutionStep]:
     """Prepares the solution steps to be printed, including comparison to previous printed solution."""
@@ -596,6 +595,15 @@ class Game:
 
     Game.__prevPrintedMoves = moves
     return steps
+
+  def printValidMoves(self) -> None:
+    lines = []
+    nextGames = self.generateNextGames()
+
+    lines.append(f"All valid moves ({len(nextGames)}):")
+    lines.extend(["  " + game.getMoveString(SolutionStep(game)) for game in nextGames])
+
+    print("\n".join(lines))
 
   def getMoveString(self, step: SolutionStep) -> str:
     """Returns a string with a fixed justification, including escape character for formatting, that describes the move."""
@@ -1649,6 +1657,9 @@ class BigSolutionDisplay:
             printInformation=False
             continue
           displayIndex -= 1
+        elif k == 'm':
+          deadEnd.prev.printValidMoves()
+          printInformation=False
         else:
           print(f"Unrecognized key ({k})")
           printInformation=False
@@ -1658,15 +1669,9 @@ class BigSolutionDisplay:
     deadEnd.printMoves()
 
   def printValidMoves(self) -> None:
-    lines = []
     curGame = self._getCurStep().game.prev
-    nextGames = curGame.generateNextGames()
-
-    lines.append(f"All valid moves ({len(nextGames)}):")
-    lines.extend(["  " + game.getMoveString(SolutionStep(game)) for game in nextGames])
-
     curGame.printVials()
-    print("\n".join(lines))
+    curGame.printValidMoves()
 
   @staticmethod
   def PrintDeadEndSearchResults(r: DeadEndSearchResults) -> None:
