@@ -1125,11 +1125,11 @@ class BigSolutionDisplay:
     quit = f"{B}q{N} {D}or{N} {B}Q{N}"
 
     print("Big Solution Display Controls:\n" +
-         f"   {quit}                  quit{D}; leave the Big Solution display mode{N}\n" +
+         f"   {quit      }                  quit{D}; leave the Big Solution display mode{N}\n" +
          f"   {B}h{N}                       help{D}; reprint this screen{N}\n" +
          f"   {B}n{N}                       forward{D}, to the next step{N}\n" +
-         f"   {forward          }     forward\n" +
-         f"   {backward   }           backward\n" +
+         f"   {forward                }     forward\n" +
+         f"   {backward         }           backward\n" +
          f"   {B}l{N}                       toggle blind mode{D}; in blind mode, each space must be moved individually{N}\n" +
          f"   {B}r{N}                       refresh display{D}; necessary if the terminal resizes{N}\n" +
          f"   {B}R{N}                       restart solution {D}(to the beginning){N}\n" +
@@ -1138,7 +1138,7 @@ class BigSolutionDisplay:
          f"   {B}d{N}                       details {D}; reveals in-depth game stats{N}\n" +
          f"   {B}D{N}                       debug {D}; shows programmer level status updates{N}\n" +
          f"   {B}t{N}                       Test {D}; does whatever the programmer wants{N}\n" +
-         f"   {B}-{N + Style.ITALICS}CMD{R}                    enter game command\n" +
+         f"   {B}-{N+Style.ITALICS}CMD{R}   enter game command\n" +
          f"     {B}-help{N}                 print game command help\n")
   def __acceptGameCommand(self, command: str=""):
     curGame = self._getCurStep().game
