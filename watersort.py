@@ -7,7 +7,7 @@ import sys
 import threading
 from collections import deque, defaultdict
 from colorama import Fore
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from math import floor, log, ceil
 from resources import COLOR_CODES, COLOR_FOREGROUND, COLOR_NAMES, MONTH_ABBRS, RESERVED_COLORS, BigChar, BigShades, Style
@@ -21,8 +21,8 @@ if USE_READCHAR:
 INSTALLED_BASE_PATH = ""
 WRITE_FILES_TO_ABSOLUTE_PATH = False
 
-SOLVER_VERSION = 3
-ANALYZER_VERSION = 5
+SOLVER_VERSION = 4
+ANALYZER_VERSION = 6
 
 NUM_SPACES_PER_VIAL = 4
 DEBUG_ONLY = False
@@ -60,6 +60,7 @@ class DeadEndSearchResults:
   numEventualSolutions: int
 
   searchDataAvailable: bool = True
+  generatedInstant: float = field(default_factory=time)
 
   @property
   def hasDeadEnds(self):
@@ -92,6 +93,9 @@ class SolutionStep:
 
     self.game = game
     self.move = game.move if game else None
+
+    if info is None and game is not None:
+      info = game.getMoveInfo()
 
     if info:
       self.info = info
@@ -138,6 +142,17 @@ class Game:
   """Represents FULL-blind mode where spaces re-hide themselves after moving."""
   hadMysterySpaces: bool = False
   """Automatically flagged when mystery tiles are discovered."""
+
+  @property
+  def specialModes(self) -> list[str]:
+    modes = []
+    if self.root.drainMode:
+      modes.append("drain")
+    if self.root.blindMode:
+      modes.append("blind")
+    if self.root.hadMysterySpaces:
+      modes.append("mystery")
+    return modes
 
   # Cached for single use calculation
   _COMPLETE_TERM = "complete"
@@ -373,6 +388,7 @@ class Game:
     @returns None when no action is required, otherwise a value with which to immediately return as if entered as a normal value
     """
     root = self.root
+    prev = self.prev
 
     # Program mechanics
     if rsp == "-q" or rsp == "-quit" or rsp == "quit":
@@ -393,7 +409,7 @@ class Game:
     elif rsp == "-p" or rsp == "-print":
       root.printVials()
     elif rsp == "-pc":
-      self.printVials()
+      prev.printVials()
     elif rsp == "-m" or rsp == "-moves":
       self.printMoves()
     elif rsp == "-b":
@@ -483,8 +499,8 @@ class Game:
     print(f"Gameplay mode '{mode}' {'enabled' if newVal else 'disabled'}. Resetting to resolve.")
   def saveOtherColor(self, input: str) -> None:
     flag, o_vial, o_space, color = input.split()
-    vial = int(o_vial) - 1
-    space = int(o_space) - 1
+    vial = int(o_vial) - 1 # Assumes a valid integer
+    space = int(o_space) - 1 # Assumes a valid integer
     Game.reset = True
     self.root.modified = True
     self.root.vials[vial][space] = color
@@ -498,7 +514,7 @@ class Game:
     print(f"Saved new level ({o_level}). Continue on.")
   def saveNewVials(self, input: str) -> None:
     flag, o_vials = input.split()
-    numVials = int(o_vials)
+    numVials = int(o_vials) # Assumes a valid integer
 
     target = self.root
     if numVials > len(target.vials):
@@ -527,9 +543,9 @@ class Game:
   MoveInfo = tuple[str, int, bool, bool, bool]
   """ (colorMoved, numMoved, isComplete, vacatedVial, startedVial) OR None """
 
-  def printMoves(self) -> None:
+  def printMoves(self, fromGame: "Game" = None) -> None:
     """Prints out the moves taken to reach this game state."""
-    steps: deque[SolutionStep] = self._prepareSolutionSteps()
+    steps: deque[SolutionStep] = self._prepareSolutionSteps(fromGame)
 
     NEW_LINE = "\n  "
     SEPARATOR = "\t "
@@ -539,9 +555,7 @@ class Game:
       lines.append("None")
     else:
       for step in steps:
-        start, end = step.move
-        moveString = formatVialColor(step.colorMoved, f"{start+1}->{end+1}", ljust=8)
-        moveString += self._getMoveString(step.info)
+        moveString = self.getMoveString(step)
         if step.isSameAsPrevious != None:
           moveString += SEPARATOR + ("(same)" if step.isSameAsPrevious else "(different)")
         lines.append(moveString)
@@ -550,9 +564,8 @@ class Game:
     if self.root.drainMode:
       introduction += " [Drain Gameplay]"
     print(introduction + ":" + NEW_LINE + NEW_LINE.join(lines))
-
   __prevPrintedMoves: deque[Move] = None
-  def _prepareSolutionSteps(self) -> deque[SolutionStep]:
+  def _prepareSolutionSteps(self, fromGame: "Game" = None) -> deque[SolutionStep]:
     """Prepares the solution steps to be printed, including comparison to previous printed solution."""
     steps = deque()
     if not self.move:
@@ -563,9 +576,11 @@ class Game:
     curGame = self
     moves = deque()
     while curGame and curGame.move:
-      info = curGame.__getMoveInfo()
+      if curGame == fromGame:
+        return steps # Skip comparison against previous prints
+
       moves.appendleft(curGame.move)
-      steps.appendleft(SolutionStep(curGame, info))
+      steps.appendleft(SolutionStep(curGame))
       curGame = curGame.prev
 
     # Compare to previous printed moves
@@ -583,10 +598,25 @@ class Game:
     Game.__prevPrintedMoves = moves
     return steps
 
-  def _getMoveString(self, info: MoveInfo = None) -> str:
+  def printValidMoves(self) -> None:
+    lines = []
+    nextGames = self.generateNextGames()
 
+    lines.append(f"All valid moves ({len(nextGames)}):")
+    lines.extend(["  " + game.getMoveString(SolutionStep(game)) for game in nextGames])
+
+    print("\n".join(lines))
+
+  def getMoveString(self, step: SolutionStep) -> str:
+    """Returns a string with a fixed justification, including escape character for formatting, that describes the move."""
+    start, end = step.move
+    result = formatVialColor(step.colorMoved, f"{start+1}->{end+1}", ljust=8)
+    result += self._getMoveInfoString(step.info)
+    return result
+  def _getMoveInfoString(self, info: MoveInfo = None) -> str:
     if not info:
-      info = self.__getMoveInfo()
+      info = self.getMoveInfo()
+
     result: str
     if info is None:
       result = ""
@@ -605,7 +635,7 @@ class Game:
       result = f"({numStr} {color}{extraStr})"
 
     return result.ljust(Game.TOTAL_MOVE_PRINT_WIDTH)
-  def __getMoveInfo(self) -> MoveInfo:
+  def getMoveInfo(self) -> MoveInfo:
     if not self.move:
       return None
     start, end = self.move
@@ -617,8 +647,12 @@ class Game:
     vacatedVial = numMoved + startEmptySpaces == NUM_SPACES_PER_VIAL
     startedVial = NUM_SPACES_PER_VIAL - numMoved == endEmptySpaces
     return (colorMoved, numMoved, complete, vacatedVial, startedVial)
-  def printVials(self) -> None:
+  def printVials(self, numberSpaces=False) -> None:
     lines = [list() for _ in range(NUM_SPACES_PER_VIAL + 1)]
+
+    if numberSpaces:
+      for lineIndex in range(NUM_SPACES_PER_VIAL + 1):
+        lines[lineIndex].append(" " if lineIndex==0 else str(lineIndex))
 
     for i in range(self.__numVials):
       lines[0].append("\t" + str(i + 1))
@@ -711,24 +745,42 @@ class Game:
     startIsComplete, startOnlyColor, startNumOnTop, startEmptySpaces = self.__countOnTop(startColor, startVial, bottom=self.root.drainMode)
     if startIsComplete:
       return INVALID_MOVE # Start is fully filled
-    if endColor == "-" and (startOnlyColor or self.__findSoloVial(startColor) is not None):
-      return INVALID_MOVE # Never move to an empty contain when it isn't helpful
     if startNumOnTop > endEmptySpaces:
       # CONSIDER: This may not actually be an invalid move
       return INVALID_MOVE # Only pour when it can all be received
+    if endColor == "-" and (startOnlyColor or self.__findSoloVial(startColor, skipVial=startVial) is not None):
+      return INVALID_MOVE # Never occupy a new container when we already have one
 
-    # Compute additional fields
-    willComplete = endOnlyColor and startNumOnTop == endEmptySpaces
+    # Prevent rules that lead to game-play backtracks
+    compareVialFillLevel = False
+    requireMaxSoloVial = False
 
-    # When completing a vial, never move more spaces than necessary
+    if startNumOnTop == 1 and endNumOnTop == 1:
+      requireMaxSoloVial = True
+
     if startOnlyColor and endOnlyColor:
-      # Break ties by preferring vials towards the end of the list
+      compareVialFillLevel = True
+    elif startOnlyColor or endOnlyColor:
+      requireMaxSoloVial = True
+
+    if requireMaxSoloVial:
+      maxSoloVial = self.__findSoloVial(startColor, skipVial=startVial)
+      if maxSoloVial is not None and endVial != maxSoloVial:
+        # When completing a vial, never move more spaces than necessary
+        # When vacating a vial, always prefer to move into an existing "only" vial
+        # When combining vials, always move into the vial with the most spaces already
+        return INVALID_MOVE
+
+    # Avoid moving a large number of squares onto a small number of squares
+    # Break ties by preferring vials towards the end of the list
+    if compareVialFillLevel:
       startCompVal = startNumOnTop + (startVial / 1000)
       endCompVal = endNumOnTop + (endVial / 1000)
       if startCompVal > endCompVal:
         return INVALID_MOVE
 
     # It's valid
+    willComplete = endOnlyColor and startNumOnTop == endEmptySpaces
     return (True, startColor, endColor, endEmptySpaces, willComplete)
   # topColor SHOULD NOT be "-" or "?"
   def __countOnTop(self, topColor: str, vialIndex: int, bottom=False) -> tuple[bool, bool, int, int]: # (isComplete, isOnlyColorInColumn, numOfColorOnTop, numEmptySpaces)
@@ -755,13 +807,18 @@ class Game:
         numOnTop += 1
 
     return (isComplete, onlyColor, numOnTop, emptySpaces)
-  def __findSoloVial(self, forColor: str) -> int | None:
-    """Locates a vial that contains *only* the specified color. If no vial exists, returns None."""
+  def __findSoloVial(self, forColor: str, skipVial=None) -> int | None:
+    """Locates a vial that contains *only* the specified color. If multiple vials exist, returns the index with the most spaces. If no vial exists, returns None."""
+    vialIndex: int|None = None
+    spacesInVial: int|None = None
     for searchVial in range(len(self.vials)):
+      if searchVial == skipVial: continue
       _, isOnlyColor, numOnTop, _ = self.__countOnTop(forColor, searchVial)
       if isOnlyColor and numOnTop > 0:
-        return searchVial
-    return None
+        if vialIndex is None or numOnTop >= spacesInVial:
+          vialIndex = searchVial
+          spacesInVial = numOnTop
+    return vialIndex
 
   def makeMove(self, startVial, endVial) -> bool:
     valid, startColor, endColor, endSpaces, willComplete = self.__prepareMove(startVial, endVial)
@@ -923,14 +980,16 @@ class BigSolutionDisplay:
   detailInformation = False
   debugInformation = False
 
-  _maxDeadEnds: DeadEndSearchResults|None = None
+  _maxDeadEnds: DeadEndSearchResults|None
+  _earliestSafeStep: DeadEndSearchResults|None
   __simpleDeadEndsMax = 99
   __spawnThreadLock = threading.Lock()
+  __firstSpawnTimestamp: float|None
   __hasSpawnedThread = False
   """This critical, shared source indicates if we have a lock. Only access this variable while holding __spawnThreadLock!"""
-  __finishedDeadEndsSearch = False
+  __finishedDeadEndsSearch: bool
   """Indicates if there is still potential for the worker thread to compute more states."""
-  __lastComputedDeadEndStepDepth: int|None = None
+  __lastComputedDeadEndStepDepth: int|None
 
   @staticmethod
   def __updateScreenWidth() -> None:
@@ -952,6 +1011,12 @@ class BigSolutionDisplay:
     self.__currentPoststep = 0
     self._currentStage = "GAME"
     self._currentSpacesMoved = 0
+
+    self._maxDeadEnds = None
+    self._earliestSafeStep = None
+    self.__firstSpawnTimestamp = None
+    self.__finishedDeadEndsSearch = False
+    self.__lastComputedDeadEndStepDepth = None
 
     if self._steps:
       self.movesFinishGame = self._steps[-1].game.isFinished()
@@ -1018,11 +1083,17 @@ class BigSolutionDisplay:
         elif k == 'l':
           self.toggleBlindMode()
           self.displayCurrent()
+        elif k == 'g' or k.startswith('g'):
+          self._acceptGotoCommand(k)
+        elif k == 'm':
+          self.printValidMoves()
         elif k == 'd':
           self.detailInformation = not self.detailInformation
           if not self.detailInformation:
             self.debugInformation = False
           self.displayCurrent()
+          if self.detailInformation:
+            self._launchDeadEndComputationBackground()
         elif k == 'D':
           self.debugInformation = not self.debugInformation
           if self.debugInformation:
@@ -1056,19 +1127,20 @@ class BigSolutionDisplay:
     quit = f"{B}q{N} {D}or{N} {B}Q{N}"
 
     print("Big Solution Display Controls:\n" +
-         f"   {quit}                  quit{D}; leave the Big Solution display mode{N}\n" +
+         f"   {quit      }                  quit{D}; leave the Big Solution display mode{N}\n" +
          f"   {B}h{N}                       help{D}; reprint this screen{N}\n" +
          f"   {B}n{N}                       forward{D}, to the next step{N}\n" +
-         f"   {forward          }     forward\n" +
-         f"   {backward   }           backward\n" +
+         f"   {forward                }     forward\n" +
+         f"   {backward         }           backward\n" +
          f"   {B}l{N}                       toggle blind mode{D}; in blind mode, each space must be moved individually{N}\n" +
          f"   {B}r{N}                       refresh display{D}; necessary if the terminal resizes{N}\n" +
          f"   {B}R{N}                       restart solution {D}(to the beginning){N}\n" +
          f"   {B}E{N}                       end solution {D}(to the end){N}\n" +
+         f"   {B}m{N}                       moves {D}; print valid moves from the game state{N}\n" +
          f"   {B}d{N}                       details {D}; reveals in-depth game stats{N}\n" +
          f"   {B}D{N}                       debug {D}; shows programmer level status updates{N}\n" +
          f"   {B}t{N}                       Test {D}; does whatever the programmer wants{N}\n" +
-         f"   {B}-{N + Style.ITALICS}CMD{R}                    enter game command\n" +
+         f"   {B}-{N+Style.ITALICS}CMD{R}   enter game command\n" +
          f"     {B}-help{N}                 print game command help\n")
   def __acceptGameCommand(self, command: str=""):
     curGame = self._getCurStep().game
@@ -1085,6 +1157,30 @@ class BigSolutionDisplay:
 
     return curGame._handleSpecialOption(command)
 
+  def _acceptGotoCommand(self, command: str="") -> None:
+    maxIdx = len(self._steps) - 1
+    if maxIdx <= 0:
+      print(formatVialColor("wn", "Goto unavailable.") + " There are no steps to select from.")
+      return
+
+    if len(command) <= 1:  # Accept a command received previously, otherwise, receive the rest of the command
+      command = "g" + input(Style.BRIGHT + "Goto step #" + Style.NORMAL)
+
+    if not command or len(command) <= 1:
+      print("No step received.")
+      return
+
+    stepNum = int(command[1:]) # Assumes a valid integer
+    stepIdx = len(self._steps) + stepNum if stepNum < 0 else stepNum - 1
+    if stepIdx < 0 or stepIdx > maxIdx:
+      print(formatVialColor("er", "Invalid input.") + f" Must enter a number between 1 and {len(self._steps)}. Negative values represent moves from the end of the solution.")
+      return
+
+    self._currentStage = "GAME"
+    self.__currentStep = stepIdx
+    self._currentSpacesMoved = 0
+    self.displayCurrent()
+
   def displayCurrent(self) -> None:
     lines: list[str] = []
     introLines: list[str] = []
@@ -1096,12 +1192,21 @@ class BigSolutionDisplay:
 
     introLines.append("")
     introLines.append("Level: " + self.rootGame.level)
+    if self._earliestSafeStep and (self._maxDeadEnds.hasDeadEnds or not self.__hasSpawnedThread):
+      introLines.append(f"Safe step: {self._earliestSafeStep.game.getDepth()+1}")  # It's not safe until *after* we make the move
+      if self.detailInformation:
+        secs, _ = BaseSolver._getTimeRunning(self.__firstSpawnTimestamp, self._earliestSafeStep.generatedInstant)
+        introLines.append(f"Safe calc: {secs}s")
     if self.rootGame.drainMode:
       introLines.append("[Drain Mode]")
     if self.rootGame.blindMode:
       introLines.append("[Blind Mode]")
     if self.rootGame.hadMysterySpaces:
       introLines.append("[Mystery Mode]")
+    if self.detailInformation:
+      introLines.append("{Details}")
+    if self.debugInformation:
+      introLines.append("{Debug}")
 
     ### MAIN CONTENT ###
 
@@ -1348,11 +1453,11 @@ class BigSolutionDisplay:
     with self.__spawnThreadLock:
       if self.__hasSpawnedThread:
         if verbose or self.debugInformation:
-          print(formatVialColor("er", "Thread already running.") + " Not creating an extra thread.")
+          print(formatVialColor("wn", "Thread already running.") + " Not creating an extra thread.")
         return
 
       if not self.__needsComputeDeadEndResults():
-        print(formatVialColor("wn", "Unexpected discovery of no work needed.") + "After an initial verification, we acquired a lock and then found no remaining work to do.")
+        print(formatVialColor("er", "Unexpected discovery of no work needed.") + "After an initial verification, we acquired a lock and then found no remaining work to do.")
         return
 
       if verbose or self.debugInformation:
@@ -1377,18 +1482,23 @@ class BigSolutionDisplay:
       return True
     return False
   def __computeDeadEndResults(self):
+    if self.__firstSpawnTimestamp is None:
+      self.__firstSpawnTimestamp = time()
+
     if self.debugInformation:
       print("Computing dead end results for final game states")
 
     for step in reversed(self._steps):
       if step.deadEndsSearch is not None:
         continue # Avoid duplicative work
-      if step.game.getDepth() <= 2:
+
+      curGame = step.game.prev # Perform computations from *before* the step is performed
+      if curGame.getDepth() <= 2:
         self.__finishedDeadEndsSearch = True
         break # We made it all the way to the beginning
 
-      stepDepth = step.game.getDepth()
-      results = SafeGameSolver(step.game).analyzeDeadEndStates()
+      stepDepth = curGame.getDepth()
+      results = SafeGameSolver(curGame).analyzeDeadEndStates()
       self.__updateDeadEndResults(step, results)
       self.__lastComputedDeadEndStepDepth = stepDepth
       if self.debugInformation:
@@ -1417,6 +1527,8 @@ class BigSolutionDisplay:
     step.deadEndsSearch = results
     if not self._maxDeadEnds or results.numDeadEnds > self._maxDeadEnds.numDeadEnds:
       self._maxDeadEnds = results
+    if not results.hasDeadEnds and (not self._earliestSafeStep or results.game.getDepth() < self._earliestSafeStep.game.getDepth()):
+      self._earliestSafeStep = results
 
 
   def restart(self) -> None:
@@ -1529,14 +1641,57 @@ class BigSolutionDisplay:
     print("Executing test command")
 
     curStep = self._getCurStep()
+    curGame = curStep.game.prev # Behave as if we have not yet made the move
     print(f"Searching for dead ends from current point")
 
-    r = SafeGameSolver(curStep.game).analyzeDeadEndStates()
+    safeSolver = SafeGameSolver(curGame)
+    r = safeSolver.analyzeDeadEndStates()
     self.__updateDeadEndResults(curStep, r)
     if r.searchDataAvailable:
       BigSolutionDisplay.PrintDeadEndSearchResults(r)
 
+    if safeSolver.deadEndsLocated:
+      displayIndex = 0
+      printInformation = True
+      while displayIndex < len(safeSolver.deadEndsLocated) and displayIndex >= 0:
+        if printInformation:
+          print(f"\nDisplaying dead end {Style.BRIGHT}{displayIndex+1}{Style.NORMAL} of {Style.BRIGHT}{len(safeSolver.deadEndsLocated)}{Style.NORMAL}: {Style.DIM}(Next, Prev. 'Enter' exits){Style.NORMAL}")
+          deadEnd = safeSolver.deadEndsLocated[displayIndex]
+          deadEnd.printVials()
+          deadEnd.printMoves(fromGame=curGame)
+        printInformation=True
+
+        print("% ", end="", flush=True)
+        k = readkey() if USE_READCHAR else input().strip()
+        if k == '' or k == 'q' or k == 'Q' or (USE_READCHAR and k == key.ENTER):
+          break
+        elif k == 'n' or k == 'f' or k == ' ':
+          if displayIndex>=len(safeSolver.deadEndsLocated)-1:
+            print("No next dead ends to explore.")
+            printInformation=False
+            continue
+          displayIndex += 1
+        elif k == 'p' or k == 'b':
+          if displayIndex<=0:
+            print("No previous dead ends to explore.")
+            printInformation=False
+            continue
+          displayIndex -= 1
+        elif k == 'm':
+          deadEnd.prev.printValidMoves()
+          printInformation=False
+        else:
+          print(f"Unrecognized key ({k})")
+          printInformation=False
+
     print("☠️ Dead ends ahead" if r.hasDeadEnds else "🟢 All clear")
+  def _reportDeadEnd(self, seed: "Game", deadEnd: "Game") -> None:
+    deadEnd.printMoves()
+
+  def printValidMoves(self) -> None:
+    curGame = self._getCurStep().game.prev
+    curGame.printVials()
+    curGame.printValidMoves()
 
   @staticmethod
   def PrintDeadEndSearchResults(r: DeadEndSearchResults) -> None:
@@ -1605,6 +1760,7 @@ class BaseSolver:
   numIterations: int
   numDeadEnds: int
   numPartialSolutionsGenerated: int
+  numSwallowedGamesFound: int
   numUniqueStatesComputed: int
   numDuplicateGames: int
   maxQueueLength: int
@@ -1612,6 +1768,7 @@ class BaseSolver:
   # Analysis summary data structures
   partialDepth = defaultdict(int)
   dupGameDepth = defaultdict(int)
+  swallowedDepth = defaultdict(int)
   deadEndDepth = defaultdict(int)
   solutionDepth = defaultdict(int)
   uniqueSolsDepth = defaultdict(int)
@@ -1699,6 +1856,7 @@ class BaseSolver:
       self.numIterations = 0
       self.numDeadEnds = 0
       self.numPartialSolutionsGenerated = 0
+      self.numSwallowedGamesFound = 0
       self.numDuplicateGames = 0
       self.maxQueueLength = 1
 
@@ -1731,10 +1889,10 @@ class BaseSolver:
           break # Quit this attempt, and try a different one
 
         # Check all next moves
-        hasNextGame = False
+        hasNetNewNextGame = False
         nextGames = current.generateNextGames()
-        # Break out after user input
         if Game.reset or Game.quit:
+          # Break out after user input
           expectSolution = False
           break
 
@@ -1749,7 +1907,7 @@ class BaseSolver:
             continue
           computed.add(nextGame)
 
-          hasNextGame = True
+          hasNetNewNextGame = True
           if nextGame.isFinished():
             timeCheck = time()
             self.solutionEnd = timeCheck
@@ -1760,9 +1918,13 @@ class BaseSolver:
 
         # Maintain stats
         self.maxQueueLength = max(self.maxQueueLength, len(self._q))
-        if not hasNextGame:
+        if len(nextGames) == 0:
           self.numDeadEnds += 1
           self.deadEndDepth[current._numMoves] += 1
+          self._onDeadEndFound(current)
+        elif not hasNetNewNextGame:
+          self.numSwallowedGamesFound += 1
+          self.swallowedDepth[current._numMoves] += 1
 
       self.solutionEnd = time()
       if expectSolution and not self.minSolution:
@@ -1814,6 +1976,9 @@ class BaseSolver:
     hashingList.append(solution)
 
     return True
+
+  def _onDeadEndFound(self, deadEnd: Game) -> None:
+    pass
 
   def _printQueueCheck(self, current: Game) -> None:
     stats = {
@@ -1909,7 +2074,7 @@ class AnalysisSolver(BaseSolver):
 
     saveAnalysisResults(\
       self.seedGame, self.solutionSetEnd - self.solutionSetStart, self.findSolutionCount, \
-      self.partialDepth, self.dupGameDepth, self.deadEndDepth, self.solutionDepth, self.uniqueSolsDepth, \
+      self.partialDepth, self.dupGameDepth, self.deadEndDepth, self.solutionDepth, self.uniqueSolsDepth, self.swallowedDepth, \
       longestSolvesDict, uniqueDistributionDict, completionData, \
       self.solFindSeconds)
 
@@ -1969,6 +2134,7 @@ class SolutionSolver(BaseSolver):
             {self.maxQueueLength          }\t   Max queue length
             {self.numDeadEnds             }\t   Num dead ends
             {self.numPartialSolutionsGenerated }\t   Partial solutions generated
+            {self.numSwallowedGamesFound       }\t   Num swallowed games
             {self.numDuplicateGames            }\t   Num duplicate games
             {self.numUniqueStatesComputed      }\t   Num states computed
           """)
@@ -1982,7 +2148,14 @@ class SolutionSolver(BaseSolver):
 
 class SafeGameSolver(BaseSolver):
   """Specialized solver equipped to determine if a partially solved game has any remaining dead ends."""
-  numSolutionsLocated = 0
+  numSolutionsLocated: int
+  deadEndsLocated: list["Game"]
+
+  def __init__(self, game):
+    super().__init__(game)
+
+    self.numSolutionsLocated = 0
+    self.deadEndsLocated = []
 
   def _onInitSolutionAttempt(self):
     # Bypass
@@ -1995,6 +2168,9 @@ class SafeGameSolver(BaseSolver):
   def _onSolutionFound(self, solution):
     self.numSolutionsLocated += 1
     return False # Avoid registering this solution, and keep looking for dead-ends
+
+  def _onDeadEndFound(self, deadEnd):
+    self.deadEndsLocated.append(deadEnd)
 
   def _onImpossibleGame(self):
     pass # This solver never saves solutions, and will always report "impossible"
@@ -2360,12 +2536,8 @@ def generateFileContents(game: "Game") -> str:
   lines.append("i")
 
   levelLine = str(game.level)
-  if game.root.drainMode:
-    levelLine += " drain"
-  if game.root.blindMode:
-    levelLine += " blind"
-  if game.root.hadMysterySpaces:
-    levelLine += " mystery"
+  levelModes = game.specialModes
+  if levelModes: levelLine += " " + " ".join(levelModes)
 
   lines.append(levelLine)
   lines.append(str(len(game.vials)))
@@ -2419,7 +2591,7 @@ def generateAnalysisResultsName(level: str, absolutePath: bool = None) -> str:
   annualizedName = annualizeDailyPuzzleFileName(level)
   return os.path.join(getBasePath(absolutePath), "wsanalysis", f"{annualizedName}-{round(time())}.csv")
 def saveAnalysisResults(rootGame: Game, seconds: float, samples: int,
-                        partialStates, dupStates, deadStates, solStates, uniqueSolStates,
+                        partialStates, dupStates, deadStates, solStates, uniqueSolStates, swallowedGames,
                         longestSolves, uniqueSolsDistribution, completionData: tuple[defaultdict[int, str], defaultdict[int, str]],
                         solveTimes: defaultdict[int] = None) -> None:
   # Generates a CSV file with data
@@ -2431,6 +2603,7 @@ def saveAnalysisResults(rootGame: Game, seconds: float, samples: int,
     max(uniqueSolsDistribution.keys()))
 
   fileName = generateAnalysisResultsName(rootGame.level)
+  specialModes = rootGame.specialModes
   headers = [
     ("Level", rootGame.level),
     ("Num Vials", rootGame.getNumVials()),
@@ -2442,6 +2615,7 @@ def saveAnalysisResults(rootGame: Game, seconds: float, samples: int,
     ("Solver Version", SOLVER_VERSION),
     ("Analyzer Version", ANALYZER_VERSION),
     ("Extra Data Length", extraDataLength),
+    ("Modes", ";".join(specialModes) if specialModes else "normal"),
   ]
   if solveTimes:
     headers.append(("Max Solution Seconds", max(solveTimes.keys())))
@@ -2456,6 +2630,7 @@ def saveAnalysisResults(rootGame: Game, seconds: float, samples: int,
     ("Unique Sol Distribution", uniqueSolsDistribution),
     ("Color Completion Data", completionData[0]),
     ("Depth Completion Data", completionData[1]),
+    ("Swallowed Game States", swallowedGames)
   ]
   saveCSVFile(fileName, columns, headers, keyColumnName="Depth")
   print("Saved analysis results to file: " + fileName)
