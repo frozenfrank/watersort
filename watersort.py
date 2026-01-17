@@ -750,19 +750,24 @@ class Game:
     if endColor == "-" and (startOnlyColor or self.__findSoloVial(startColor, skipVial=startVial) is not None):
       return INVALID_MOVE # Never occupy a new container when we already have one
 
-    # Compute additional fields
-    willComplete = endOnlyColor and startNumOnTop == endEmptySpaces
+    # Prevent rules that lead to game-play backtracks
     compareVialFillLevel = False
+    requireMaxSoloVial = False
 
-    # When completing a vial, never move more spaces than necessary
     if startOnlyColor and endOnlyColor:
       compareVialFillLevel = True
-    # When vacating a vial, always prefer to move into an existing "only" vial
-    elif startOnlyColor:
-      otherSoloVial = self.__findSoloVial(startColor, skipVial=startVial)
-      if otherSoloVial is not None and endVial != otherSoloVial:
-        return INVALID_MOVE # We should not be vacating a vial if we could be combining with another solo vial instead
-      compareVialFillLevel = True
+      if startNumOnTop == 1 and endNumOnTop == 1:
+        requireMaxSoloVial = True
+    elif startOnlyColor or endOnlyColor:
+      requireMaxSoloVial = True
+
+    if requireMaxSoloVial:
+      maxSoloVial = self.__findSoloVial(startColor, skipVial=startVial)
+      if maxSoloVial is not None and endVial != maxSoloVial:
+        # When completing a vial, never move more spaces than necessary
+        # When vacating a vial, always prefer to move into an existing "only" vial
+        # When combining vials, always move into the vial with the most spaces already
+        return INVALID_MOVE
 
     # Avoid moving a large number of squares onto a small number of squares
     # Break ties by preferring vials towards the end of the list
@@ -773,6 +778,7 @@ class Game:
         return INVALID_MOVE
 
     # It's valid
+    willComplete = endOnlyColor and startNumOnTop == endEmptySpaces
     return (True, startColor, endColor, endEmptySpaces, willComplete)
   # topColor SHOULD NOT be "-" or "?"
   def __countOnTop(self, topColor: str, vialIndex: int, bottom=False) -> tuple[bool, bool, int, int]: # (isComplete, isOnlyColorInColumn, numOfColorOnTop, numEmptySpaces)
