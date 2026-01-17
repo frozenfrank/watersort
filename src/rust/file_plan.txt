@@ -1,0 +1,44 @@
+src/
+├── lib.rs                    # Library entry point, re-exports main modules
+├── main.rs                   # CLI entry point (if needed)
+│
+├── core/
+│   ├── mod.rs               # Core module exports
+│   ├── game.rs              # Core Game struct, game state management
+│   ├── vial.rs              # Vial struct, operations on vials
+│   ├── move_types.rs        # Move type definitions (Move, MoveInfo)
+│   └── color.rs             # Color handling, reserved colors, color validation
+│
+├── solver/
+│   ├── mod.rs               # Solver module exports
+│   ├── base_solver.rs       # BaseSolver trait/base implementation
+│   ├── solution_solver.rs   # BFS/DFS/DFR solution finding
+│   ├── analysis_solver.rs   # Dead-end analysis, move evaluation
+│   ├── safe_game_solver.rs  # Safe move detection
+│   └── strategy.rs          # Solve methods (MIX, BFS, DFS, DFR)
+│
+├── analysis/
+│   ├── mod.rs               # Analysis module exports
+│   ├── dead_ends.rs         # DeadEndSearchResults, dead-end detection
+│   ├── move_info.rs         # Move classification (complete, vacated, started)
+│   └── stats.rs             # Statistical analysis of solutions
+│
+├── io/
+│   ├── mod.rs               # I/O module exports
+│   ├── parser.rs            # Parse game state from files/input
+│   ├── formatter.rs         # Format game display, move display
+│   └── file_io.rs           # File saving/loading operations
+│
+├── display/
+│   ├── mod.rs               # Display module exports
+│   ├── game_display.rs      # Display Game state (vials, moves)
+│   ├── big_display.rs       # BigSolutionDisplay equivalent
+│   └── colors.rs            # Color formatting/ANSI codes
+│
+├── types/
+│   ├── mod.rs               # Common type definitions and aliases
+│   └── constants.rs         # Game constants (NUM_SPACES_PER_VIAL, etc)
+│
+└── utils/
+    ├── mod.rs               # Utilities module exports
+    └── helpers.rs           # Helper functions (fPercent, etc)
