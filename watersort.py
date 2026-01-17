@@ -960,6 +960,7 @@ class BigSolutionDisplay:
   debugInformation = False
 
   _maxDeadEnds: DeadEndSearchResults|None
+  _earliestSafeStep: DeadEndSearchResults|None
   __simpleDeadEndsMax = 99
   __spawnThreadLock = threading.Lock()
   __hasSpawnedThread = False
@@ -990,6 +991,7 @@ class BigSolutionDisplay:
     self._currentSpacesMoved = 0
 
     self._maxDeadEnds = None
+    self._earliestSafeStep = None
     self.__finishedDeadEndsSearch = False
     self.__lastComputedDeadEndStepDepth = None
 
@@ -1167,6 +1169,8 @@ class BigSolutionDisplay:
 
     introLines.append("")
     introLines.append("Level: " + self.rootGame.level)
+    if self._earliestSafeStep:
+      introLines.append(f"Safe step: {self._earliestSafeStep.game.getDepth()}")
     if self.rootGame.drainMode:
       introLines.append("[Drain Mode]")
     if self.rootGame.blindMode:
@@ -1492,6 +1496,8 @@ class BigSolutionDisplay:
     step.deadEndsSearch = results
     if not self._maxDeadEnds or results.numDeadEnds > self._maxDeadEnds.numDeadEnds:
       self._maxDeadEnds = results
+    if not results.hasDeadEnds and (not self._earliestSafeStep or results.game.getDepth() < self._earliestSafeStep.game.getDepth()):
+      self._earliestSafeStep = results
 
 
   def restart(self) -> None:
