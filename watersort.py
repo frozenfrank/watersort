@@ -1619,9 +1619,35 @@ class BigSolutionDisplay:
       BigSolutionDisplay.PrintDeadEndSearchResults(r)
 
     if safeSolver.deadEndsLocated:
-      deadEnd = safeSolver.deadEndsLocated[0] # TODO: Allow dynamic selection
-      deadEnd.printVials()
-      deadEnd.printMoves(curStep.game)
+      displayIndex = 0
+      printInformation = True
+      while displayIndex < len(safeSolver.deadEndsLocated) and displayIndex >= 0:
+        if printInformation:
+          print(f"\nDisplaying dead end {displayIndex+1} of {len(safeSolver.deadEndsLocated)}: {Style.DIM}(Next, Prev. 'Enter' exits){Style.NORMAL}")
+          deadEnd = safeSolver.deadEndsLocated[displayIndex]
+          deadEnd.printVials()
+          deadEnd.printMoves(curStep.game)
+        printInformation=True
+
+        print("% ", end="", flush=True)
+        k = readkey() if USE_READCHAR else input().strip()
+        if k == '' or k == 'q' or k == 'Q' or (USE_READCHAR and k == key.ENTER):
+          break
+        elif k == 'n' or k == 'f':
+          if displayIndex>=len(safeSolver.deadEndsLocated)-1:
+            print("No next dead ends to explore.")
+            printInformation=False
+            continue
+          displayIndex += 1
+        elif k == 'p' or k == 'b':
+          if displayIndex<=0:
+            print("No previous dead ends to explore.")
+            printInformation=False
+            continue
+          displayIndex -= 1
+        else:
+          print(f"Unrecognized key ({k})")
+          printInformation=False
 
     print("☠️ Dead ends ahead" if r.hasDeadEnds else "🟢 All clear")
   def _reportDeadEnd(self, seed: "Game", deadEnd: "Game") -> None:
@@ -1629,7 +1655,7 @@ class BigSolutionDisplay:
 
   def printValidMoves(self) -> None:
     lines = []
-    curGame = self._getCurStep().game
+    curGame = self._getCurStep().game.prev
     nextGames = curGame.generateNextGames()
 
     lines.append(f"All valid moves ({len(nextGames)}):")
