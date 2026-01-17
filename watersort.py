@@ -1190,8 +1190,8 @@ class BigSolutionDisplay:
 
     introLines.append("")
     introLines.append("Level: " + self.rootGame.level)
-    if self._earliestSafeStep and self._maxDeadEnds.hasDeadEnds:
-      _, secs = BaseSolver._getTimeRunning(self._earliestSafeStep, self._earliestSafeStep.generatedInstant)
+    if self._earliestSafeStep and (self._maxDeadEnds.hasDeadEnds or not self.__hasSpawnedThread):
+      _, secs = BaseSolver._getTimeRunning(self.__firstSpawnTimestamp, self._earliestSafeStep.generatedInstant)
       introLines.append(f"Safe step: {self._earliestSafeStep.game.getDepth()} ({secs}s)")
     if self.rootGame.drainMode:
       introLines.append("[Drain Mode]")
@@ -1478,7 +1478,7 @@ class BigSolutionDisplay:
       return True
     return False
   def __computeDeadEndResults(self):
-    if not self.__firstSpawnTimestamp:
+    if self.__firstSpawnTimestamp is None:
       self.__firstSpawnTimestamp = time()
 
     if self.debugInformation:
