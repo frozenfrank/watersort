@@ -755,10 +755,11 @@ class Game:
     compareVialFillLevel = False
     requireMaxSoloVial = False
 
+    if startNumOnTop == 1 and endNumOnTop == 1:
+      requireMaxSoloVial = True
+
     if startOnlyColor and endOnlyColor:
       compareVialFillLevel = True
-      if startNumOnTop == 1 and endNumOnTop == 1:
-        requireMaxSoloVial = True
     elif startOnlyColor or endOnlyColor:
       requireMaxSoloVial = True
 
