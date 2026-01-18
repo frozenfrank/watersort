@@ -1,0 +1,10 @@
+i
+jan8 blind mystery
+7
+pn	b	r	pn
+o	m	m	r
+pn	o	o	r
+b	m	r	pn
+b	b	o	m
+-	-	-	-
+-	-	-	-

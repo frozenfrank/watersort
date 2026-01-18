@@ -1,0 +1,14 @@
+i
+jan9 drain
+11
+r	o	m	b
+b	m	p	pn
+g	r	lb	lb
+p	b	g	o
+lb	pk	r	g
+p	b	o	m
+pn	lb	pk	pk
+g	p	pn	r
+pk	o	m	pn
+-	-	-	-
+-	-	-	-
