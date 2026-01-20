@@ -1,0 +1,14 @@
+i
+jan13 blind mystery
+11
+pn	g	pn	lb
+b	p	lb	pk
+m	pk	r	r
+b	p	m	r
+g	o	pk	b
+o	g	b	pn
+pn	pk	o	m
+g	lb	p	o
+r	p	lb	m
+-	-	-	-
+-	-	-	-

@@ -1,0 +1,14 @@
+i
+jan5 blind mystery
+11
+p	g	b	m
+pk	b	o	pk
+pn	pn	pk	o
+lb	r	m	b
+p	p	lb	m
+g	r	lb	o
+pk	g	o	m
+g	b	p	pn
+lb	r	r	pn
+-	-	-	-
+-	-	-	-
