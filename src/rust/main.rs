@@ -1,18 +1,18 @@
-use std::fs;
-use std::io;
+/// Main entry point for the Water Sort Puzzle CLI
+
+use watersort::Game;
+use watersort::types::Vial;
 
 fn main() {
-    println!("Enter the filename:");
-    let mut filename = String::new();
-    io::stdin().read_line(&mut filename).expect("Failed to read input");
-    let filename = filename.trim();
+    println!("Water Sort Puzzle Solver - Rust Edition");
 
-    match fs::read_to_string(filename) {
-        Ok(contents) => {
-            println!("{}", contents);
-        }
-        Err(e) => {
-            eprintln!("Error reading file: {}", e);
-        }
-    }
+    // Example: Create a simple game
+    let vial1: Vial = ['r', 'r', 'b', 'b'];
+    let vial2: Vial = ['g', 'g', 'y', 'y'];
+    let vial3: Vial = ['-', '-', '-', '-'];
+
+    let game = Game::new_root(vec![vial1, vial2, vial3]);
+
+    println!("Game created with {} vials", game.num_vials());
+    println!("Game is finished: {}", game.is_finished());
 }

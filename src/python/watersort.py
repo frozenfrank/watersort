@@ -228,12 +228,8 @@ class Game:
     return "-"
 
   def getColor(self, vialIndex, spaceIndex):
-    val = self.vials[vialIndex][spaceIndex]
-    if val != '?':
-      return val
+    return self.vials[vialIndex][spaceIndex]
 
-    rootVal = self.tryAccessVal(vialIndex, spaceIndex)
-    return rootVal or "?"
   def tryAccessVal(self, vialIndex, spaceIndex) -> str:
     root = self.root
     val = root.vials[vialIndex][spaceIndex]

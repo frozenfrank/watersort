@@ -1,7 +1,11 @@
 [package]
 name = "watersort"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+
+[lib]
+name = "watersort"
+path = "src/rust/lib.rs"
 
 [[bin]]
 name = "watersort"

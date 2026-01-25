@@ -5,7 +5,6 @@ src/
 ├── core/
 │   ├── mod.rs               # Core module exports
 │   ├── game.rs              # Core Game struct, game state management
-│   ├── vial.rs              # Vial struct, operations on vials
 │   ├── move_types.rs        # Move type definitions (Move, MoveInfo)
 │   └── color.rs             # Color handling, reserved colors, color validation
 │
