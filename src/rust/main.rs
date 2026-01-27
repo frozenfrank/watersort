@@ -45,10 +45,11 @@ fn create_color_allocator() {
     print_color_with_code_stats(&mut allocator, EMPTY_SPACE);
 }
 
-fn print_color_with_code_stats(allocator: &mut ColorCodeAllocator<'_>, color_name: &str) {
-    let code = &Color(color_name);
-    let color_code = allocator.assign_code(code);
-    println!("Color Code [{} = {}, code = {:p}, str = {:p}]", color_name, color_code, code, code.0);
+fn print_color_with_code_stats(allocator: &mut ColorCodeAllocator, color_name: &str) {
+    let color = Color::new(color_name);
+    let color_code = allocator.assign_code(&color);
+    let managed_color = allocator.interpret_code(color_code);
+    println!("Color Code [{} = {}, color ~ {:p}, str ~ {:p}, managed_color ~ {:p}, managed_string ~ {:p}]", color_name, color_code, &color, &color.0, managed_color, &managed_color.0);
 }
 
 fn create_game() {

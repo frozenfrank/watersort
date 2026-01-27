@@ -1,15 +1,15 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 use crate::core::{Color, color::{EMPTY_SPACE, UNKNOWN_VALUE}};
 
 pub type ColorCode = u8;
 
-pub struct ColorCodeAllocator<'a> {
-	color_codes: HashMap<&'a Color<'a>, ColorCode>,
-	colors: Vec<&'a Color<'a>>,
+pub struct ColorCodeAllocator {
+	color_codes: HashMap<Rc<Color>, ColorCode>,
+	colors: Vec<Rc<Color>>,
 }
 
-impl <'a> ColorCodeAllocator<'a> {
+impl ColorCodeAllocator {
 	pub fn new() -> Self {
 		let mut allocator = Self {
             color_codes: HashMap::new(),
@@ -17,29 +17,30 @@ impl <'a> ColorCodeAllocator<'a> {
 		};
 
         // Reserve 0 and 1 for EMPTY_SPACE and UNKNOWN_COLOR
-        allocator.allocate_color(&Color(EMPTY_SPACE));
-        allocator.allocate_color(&Color(UNKNOWN_VALUE));
+        allocator.allocate_color(&Color::new(EMPTY_SPACE));
+        allocator.allocate_color(&Color::new(UNKNOWN_VALUE));
         allocator
 	}
 
-    fn allocate_color(&mut self, color: &'a Color) -> ColorCode {
+    fn allocate_color(&mut self, color: &Color) -> ColorCode {
         let assigned_code = self.colors.len() as ColorCode;
-        self.color_codes.insert(&color, assigned_code);
-        self.colors.push(&color);
+        let boxed_color = Rc::new(color.clone());
+        self.color_codes.insert(boxed_color.clone(), assigned_code);
+        self.colors.push(boxed_color);
         assigned_code
     }
 
-	pub fn assign_code(&mut self, color: &'a Color) -> ColorCode {
+	pub fn assign_code(&mut self, color: &Color) -> ColorCode {
         // CONSIDER: Performing a linear search through self.colors while the array is small.
         // This could be cheaper since we expect the total number of colors to be normally small.
-        if let Some(&code) = self.color_codes.get(&color) {
+        if let Some(&code) = self.color_codes.get(color) {
 			code
 		} else {
-            self.allocate_color(color)
+            self.allocate_color(&color)
 		}
 	}
 
-    pub fn interpret_code(&'a self, code: ColorCode) -> &'a Color<'a> {
-        self.colors[code as usize]
+    pub fn interpret_code(&self, code: ColorCode) -> Rc<Color> {
+        self.colors[code as usize].clone()
     }
 }

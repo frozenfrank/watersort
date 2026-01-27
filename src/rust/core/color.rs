@@ -2,12 +2,12 @@
 
 
 /// Represents a color in the game
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Color<'a>(pub &'a str);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Color(pub String);
 
-impl<'a> Color<'a> {
-    pub fn new(name: &'a str) -> Self {
-        Color(&name)
+impl Color {
+    pub fn new(name: &str) -> Self {
+        Color(name.to_string())
     }
 
     /// Returns true if this is a valid game color (not empty or unknown)
@@ -26,7 +26,7 @@ impl<'a> Color<'a> {
     }
 
     pub fn is_reserved(&self) -> bool {
-      is_reserved(self.0)
+      is_reserved(&self.0)
     }
 }
 
@@ -50,16 +50,16 @@ mod tests {
 
     #[test]
     fn test_color_validation() {
-        let red = Color("r");
+        let red = Color::new("r");
         assert!(red.is_valid());
         assert!(!red.is_empty());
         assert!(!red.is_unknown());
 
-        let empty = Color("-");
+        let empty = Color::new("-");
         assert!(!empty.is_valid());
         assert!(empty.is_empty());
 
-        let unknown = Color("?");
+        let unknown = Color::new("?");
         assert!(!unknown.is_valid());
         assert!(unknown.is_unknown());
     }
