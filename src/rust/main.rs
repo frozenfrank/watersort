@@ -3,54 +3,14 @@
 // use watersort::Game;
 // use watersort::types::Vial;
 
-use watersort::core::{Color, ColorCodeAllocator, color::{EMPTY_SPACE, UNKNOWN_VALUE}};
+use watersort::core::{run_color_allocator_debug};
 
 fn main() {
     println!("Water Sort Puzzle Solver - Rust Edition");
-    create_color_allocator();
+    run_color_allocator_debug();
     create_game();
 }
 
-fn create_color_allocator() {
-    let mut allocator = ColorCodeAllocator::new();
-
-    // Unknown Values
-    print_color_with_code_stats(&mut allocator, UNKNOWN_VALUE);
-    print_color_with_code_stats(&mut allocator, "?");
-    print_color_with_code_stats(&mut allocator, UNKNOWN_VALUE);
-
-    // Empty values
-    print_color_with_code_stats(&mut allocator, EMPTY_SPACE);
-    print_color_with_code_stats(&mut allocator, "-");
-    print_color_with_code_stats(&mut allocator, EMPTY_SPACE);
-
-    // Short color values
-    print_color_with_code_stats(&mut allocator, "b");
-    print_color_with_code_stats(&mut allocator, "lb");
-    print_color_with_code_stats(&mut allocator, "gn");
-    print_color_with_code_stats(&mut allocator, "m");
-    print_color_with_code_stats(&mut allocator, "y");
-    print_color_with_code_stats(&mut allocator, "b");
-
-    // Long color values
-    print_color_with_code_stats(&mut allocator, "blue");
-    print_color_with_code_stats(&mut allocator, "lightblue");
-    print_color_with_code_stats(&mut allocator, "green");
-    print_color_with_code_stats(&mut allocator, "mint");
-    print_color_with_code_stats(&mut allocator, "yellow");
-    print_color_with_code_stats(&mut allocator, "blue");
-
-    // Review standard colors
-    print_color_with_code_stats(&mut allocator, UNKNOWN_VALUE);
-    print_color_with_code_stats(&mut allocator, EMPTY_SPACE);
-}
-
-fn print_color_with_code_stats(allocator: &mut ColorCodeAllocator, color_name: &str) {
-    let color = Color::new(color_name);
-    let color_code = allocator.assign_code(&color);
-    let managed_color = allocator.interpret_code(color_code);
-    println!("Color Code [{} = {}, color ~ {:p}, str ~ {:p}, managed_color ~ {:p}, managed_string ~ {:p}]", color_name, color_code, &color, &color.0, managed_color, &managed_color.0);
-}
 
 fn create_game() {
     // Example: Create a simple game
