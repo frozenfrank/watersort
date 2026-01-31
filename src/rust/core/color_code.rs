@@ -4,6 +4,21 @@ use crate::core::{Color, color::{EMPTY_SPACE, UNKNOWN_VALUE}};
 
 pub type ColorCode = u8;
 
+
+pub trait ColorCodeExt {
+    fn is_empty(self) -> bool;
+    fn is_unknown(self) -> bool;
+}
+
+impl ColorCodeExt for ColorCode {
+    fn is_empty(self) -> bool {
+        self == 0
+    }
+    fn is_unknown(self) -> bool {
+        self == 1
+    }
+}
+
 pub struct ColorCodeAllocator {
 	color_codes: HashMap<Rc<Color>, ColorCode>,
 	colors: Vec<Rc<Color>>,
