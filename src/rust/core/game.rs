@@ -4,8 +4,10 @@
 /// It maintains a game tree structure where each Game can have a parent (prev)
 /// and can spawn children. The root Game serves as the origin point.
 
-use std::sync::Arc;
-use crate::types::{Move, Completion, Vial};
+use std::sync::{Arc};
+use crate::core::color_code::COLOR_CODE_EMPTY;
+use crate::core::{ColorCode, ColorCodeAllocator, ColorCodeExt};
+use crate::types::{Completion, DepthSize, Move, Vial, VialIndex};
 use crate::types::constants::{NUM_SPACES_PER_VIAL};
 use crate::core::color::{EMPTY_SPACE, UNKNOWN_VALUE};
 
@@ -15,6 +17,8 @@ use crate::core::color::{EMPTY_SPACE, UNKNOWN_VALUE};
 pub struct GameSettings {
     /// The level identifier (e.g., "263")
     pub level: String,
+    /// The number of vials represented by this game
+    pub num_vials: VialIndex,
     /// Whether this game has been modified from disk
     pub modified: bool,
     /// Whether there are color errors in the vials
@@ -33,6 +37,7 @@ impl Default for GameSettings {
     fn default() -> Self {
         GameSettings {
             level: String::new(),
+            num_vials: 0,
             modified: false,
             color_error: false,
             has_unknowns: false,
@@ -52,7 +57,7 @@ impl Default for GameSettings {
 /// - Stores shared settings in Arc to avoid duplication in game tree
 pub struct Game {
     // Core game state
-    vials: Vec<Vial>,
+    spaces: Vec<ColorCode>,
 
     // Move history
     /// The move that led to this game from its parent
@@ -62,78 +67,88 @@ pub struct Game {
 
     // Game statistics (cached for efficiency)
     /// Number of moves taken to reach this state
-    num_moves: usize,
+    num_moves: DepthSize,
     /// Order in which colors were completed (immutable)
     completion_order: Vec<Completion>,
 
-    // Shared settings (Arc is cheap to clone)
+    // A reference to the root game, or None if this is the root game
+    root: Option<Arc<Game>>,
     settings: Arc<GameSettings>,
-
-    // Whether this is the root game
-    is_root: bool,
 }
 
 impl Game {
     /// Creates a new root game with the given vials and gameplay modes
     pub fn create(
+        allocator: &mut ColorCodeAllocator,
         vials: Vec<Vial>,
         drain_mode: bool,
         blind_mode: bool,
-    ) -> Arc<Self> {
+    ) -> Arc<Game> {
         let settings = Arc::new(GameSettings {
             drain_mode,
             blind_mode,
+            num_vials: vials.len() as VialIndex,
             ..Default::default()
         });
 
+        let mut spaces: Vec<ColorCode> = Vec::with_capacity(vials.len() * NUM_SPACES_PER_VIAL);
+        for vial in &vials {
+            for space in vial {
+                spaces.push(allocator.assign_code(space));
+            }
+        }
+
         Arc::new(Game {
-            vials,
+            spaces,
             last_move: None,
             prev: None,
             num_moves: 0,
             completion_order: Vec::new(),
+            root: None,
             settings,
-            is_root: true,
         })
     }
 
     /// Creates a simple root game with default settings
-    pub fn new_root(vials: Vec<Vial>) -> Arc<Game> {
-        Game::create(vials, false, false)
+    pub fn new_root(
+        allocator: &mut ColorCodeAllocator,
+        vials: Vec<Vial>,
+    ) -> Arc<Game> {
+        Game::create(allocator, vials, false, false)
     }
     /// Creates a new game state by applying a move to the current game
     pub fn spawn(self: &Arc<Game>, move_: Move) -> Arc<Game> {
-        let new_vials = self.vials.clone();
+        let mut spaces = self.spaces.clone();
 
-        // Note: make_move would be implemented to modify new_vials
+        // Note: make_move would be implemented to modify spaces
         // For now, we'll leave this as a placeholder
 
         Arc::new(Game {
-            vials: new_vials,
+            spaces,
+            settings: self.settings.clone(),
             last_move: Some(move_),
             prev: Some(Arc::clone(self)),
             num_moves: self.num_moves + 1,
             completion_order: self.completion_order.clone(),
-            settings: Arc::clone(&self.settings),
-            is_root: false,
+            root: Some(if let Some(root) = self.root.clone() {root} else {self.clone()})
         })
     }
 
     // ============ Accessors ============
 
     /// Returns a reference to the vials
-    pub fn vials(&self) -> &[Vial] {
-        &self.vials
+    pub fn get_vial_space(&self, vial_idx: usize, space_idx: usize) -> ColorCode {
+        self.spaces[vial_idx as usize * NUM_SPACES_PER_VIAL + space_idx as usize]
     }
 
     /// Returns the number of vials
     pub fn num_vials(&self) -> usize {
-        self.vials.len()
+        self.settings.num_vials as usize
     }
 
     /// Returns the number of moves to reach this state
     pub fn num_moves(&self) -> usize {
-        self.num_moves
+        self.num_moves as usize
     }
 
     /// Returns the order of color completions
@@ -153,7 +168,7 @@ impl Game {
 
     /// Returns whether this is the root game
     pub fn is_root(&self) -> bool {
-        self.is_root
+        !self.root.is_some()
     }
 
     /// Returns the level identifier
