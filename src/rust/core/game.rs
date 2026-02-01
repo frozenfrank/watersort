@@ -19,7 +19,7 @@ use crate::utils::helpers::RangeIter;
 /// - Uses Arc for shared references to parent games (immutable)
 /// - Uses Vec<Vial> for vial storage
 /// - Caches num_moves and completion_order for O(1) access
-/// - Stores shared settings in Arc to avoid duplication in game tree
+/// - Stores shared settings in GameSettings to avoid duplication in game tree
 pub struct Game {
     // Core game state
     spaces: Vec<ColorCode>,
@@ -210,19 +210,6 @@ impl Game {
     pub fn can_move(&self, from: usize, to: usize) -> bool {
         // Placeholder: would implement the actual move validation logic
         from != to && from < self.num_vials() && to < self.num_vials()
-    }
-
-    /// Gets the nth parent game (or None if n exceeds the depth)
-    pub fn get_nth_parent(&self, n: usize) -> Option<Arc<Game>> {
-        panic!("Method not implemented.")
-        // let mut current = self.as_ref().cloned();
-        // for _ in 1..n {
-        //     if current.prev.is_none() {
-        //         return None
-        //     }
-        //     current = current.prev;
-        // }
-        // current
     }
 }
 
