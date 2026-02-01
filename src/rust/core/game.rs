@@ -9,7 +9,7 @@ use crate::core::color_code::COLOR_CODE_EMPTY;
 use crate::core::{ColorCode, ColorCodeAllocator, ColorCodeExt};
 use crate::types::{Completion, DepthSize, Move, Vial, VialIndex};
 use crate::types::constants::{NUM_SPACES_PER_VIAL};
-use crate::core::color::{EMPTY_SPACE, UNKNOWN_VALUE};
+use crate::utils::helpers::RangeIter;
 
 /// Shared global settings for a game tree
 /// Stored once on the root game to avoid duplication
@@ -210,51 +210,35 @@ impl Game {
 
     /// Returns true if all vials are completed (all spaces in each vial are the same color)
     pub fn is_finished(&self) -> bool {
-        for vial in &self.vials {
-            // Check if all non-empty spaces have the same color
-            let mut first_color: Option<char> = None;
+        for vial_idx in 0..self.num_vials() {
+            let first_color = self.get_vial_space(vial_idx, 0);
 
-            for &space in vial {
-                if space == EMPTY_SPACE {
-                    continue;
+            for space_idx in 0..NUM_SPACES_PER_VIAL {
+                let space = self.get_vial_space(vial_idx, space_idx);
+                if space.is_unknown() {
+                    return false;
                 }
-                if space == UNKNOWN_VALUE {
-                    return false;  // Unknown value means not finished
-                }
-                match first_color {
-                    None => first_color = Some(space),
-                    Some(color) if color != space => return false,
-                    _ => continue,
+                if space != first_color {
+                    return false;
                 }
             }
         }
-        true
-    }
-
-    /// Gets the color at a specific position
-    pub fn get_color(&self, vial_idx: usize, space_idx: usize) -> Option<char> {
-        self.vials.get(vial_idx)
-            .and_then(|vial: &Vial| vial.get(space_idx))
-            .copied()
+        return true
     }
 
     /// Gets the top color of a vial (from top or bottom depending on drain_mode)
-    pub fn get_top_vial_color(&self, vial_idx: usize, from_bottom: bool) -> Option<char> {
-        let vial = self.vials.get(vial_idx)?;
-        let range: Box<dyn Iterator<Item = usize>> = if from_bottom {
-            Box::new((0..NUM_SPACES_PER_VIAL).rev())
-        } else {
-            Box::new(0..NUM_SPACES_PER_VIAL)
-        };
-
-        for i in range {
-            let color = vial[i];
-            match color {
-                EMPTY_SPACE => continue,
-                _ => return Some(color),
+    pub fn get_top_vial_color(&self, vial_idx: usize, from_bottom: bool) -> ColorCode {
+        for space_idx in RangeIter::new(0..NUM_SPACES_PER_VIAL, from_bottom) {
+            let color = self.get_vial_space(vial_idx, space_idx);
+            if color.is_unknown() {
+                panic!("Watersort in Rust does not support unknown vial explorations")
+            } else if color.is_empty() {
+                continue
+            } else {
+                return color
             }
         }
-        None
+        COLOR_CODE_EMPTY
     }
 
     // ============ Game State Validation ============
@@ -267,11 +251,15 @@ impl Game {
 
     /// Gets the nth parent game (or None if n exceeds the depth)
     pub fn get_nth_parent(&self, n: usize) -> Option<Arc<Game>> {
-        let mut current = self.prev.as_ref().cloned();
-        for _ in 1..n {
-            current = current.and_then(|g| g.prev.as_ref().cloned());
-        }
-        current
+        panic!("Method not implemented.")
+        // let mut current = self.as_ref().cloned();
+        // for _ in 1..n {
+        //     if current.prev.is_none() {
+        //         return None
+        //     }
+        //     current = current.prev;
+        // }
+        // current
     }
 }
 
