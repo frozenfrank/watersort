@@ -1,6 +1,7 @@
 /// Core module exports
 
 pub mod game;
+pub mod game_settings;
 pub mod color;
 pub mod color_code;
 pub mod color_code_demo;
