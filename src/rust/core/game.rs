@@ -110,12 +110,10 @@ impl Game {
     }
 
     /// Creates a simple root game with default settings
-    pub fn new_root(
-        allocator: &mut ColorCodeAllocator,
-        vials: Vec<Vial>,
-    ) -> Arc<Game> {
+    pub fn new_root(allocator: &mut ColorCodeAllocator, vials: Vec<Vial>) -> Arc<Game> {
         Game::create(allocator, vials, false, false)
     }
+
     /// Creates a new game state by applying a move to the current game
     pub fn spawn(self: &Arc<Game>, move_: Move) -> Arc<Game> {
         let mut spaces = self.spaces.clone();
@@ -263,28 +261,43 @@ impl Game {
     }
 }
 
+
 #[cfg(test)]
 mod tests {
+    use crate::core::Color;
+
     use super::*;
 
     #[test]
     fn test_game_creation() {
-        let vial1: Vial = ['r', 'r', 'b', 'b'];
-        let vial2: Vial = ['g', 'g', 'y', 'y'];
-        let vials = vec![vial1, vial2];
+        let vials = [
+            ['r', 'r', 'b', 'b'],
+            ['g', 'g', 'y', 'y'],
+        ].to_vec();
 
-        let game = Game::new_root(vials);
+        let (_allocator, game): (ColorCodeAllocator, Arc<Game>) = new_root_from_chars(vials);
         assert_eq!(game.num_vials(), 2);
         assert_eq!(game.num_moves(), 0);
     }
 
     #[test]
     fn test_finished_check() {
-        let completed_vial: Vial = ['r', 'r', 'r', 'r'];
-        let empty_vial: Vial = ['-', '-', '-', '-'];
-        let vials = vec![completed_vial, empty_vial];
+        let vials = [
+            ['r', 'r', 'r', 'r'],
+            ['-', '-', '-', '-'],
+        ].to_vec();
 
-        let game = Game::new_root(vials);
+        let (_allocator, game) = new_root_from_chars(vials);
         assert!(game.is_finished());
+    }
+
+
+    pub fn new_root_from_chars(vials: Vec<[char; NUM_SPACES_PER_VIAL]>) -> (ColorCodeAllocator, Arc<Game>) {
+        let mut allocator = ColorCodeAllocator::new();
+        let vials = vials.iter().map(|vial_colors| {
+            vial_colors.map(|color_char| Color(color_char.to_string()))
+        }).collect();
+        let game = Game::create(&mut allocator, vials, false, false);
+        (allocator, game)
     }
 }
