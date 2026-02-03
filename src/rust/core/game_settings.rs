@@ -21,10 +21,6 @@ pub struct GameSettings {
     pub blind_mode: bool,
     /// Whether mystery spaces have been discovered
     pub had_mystery_spaces: bool,
-    /// Special modes as strings for file compatibility
-    pub special_modes: Vec<String>,
-    /// Original vial strings for saving
-    pub original_vials: Vec<Vec<String>>,
 }
 
 impl Default for GameSettings {
@@ -38,8 +34,6 @@ impl Default for GameSettings {
             drain_mode: false,
             blind_mode: false,
             had_mystery_spaces: false,
-            special_modes: Vec::new(),
-            original_vials: Vec::new(),
         }
     }
 }

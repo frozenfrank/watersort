@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 /// Core Game structure and state management
 ///
 /// The Game struct represents the state of a Water Sort Puzzle game.
@@ -40,7 +41,7 @@ pub struct Game {
 
     // A reference to the root game, or None if this is the root game
     root: Option<Arc<Game>>,
-    pub settings: Arc<GameSettings>,
+    pub settings: RefCell<GameSettings>,
 }
 
 /// Stores the result of analyzing a move
@@ -72,20 +73,8 @@ impl Game {
     pub fn create(
         allocator: &mut ColorCodeAllocator,
         vials: Vec<Vial>,
-        level: String,
-        special_modes: Vec<String>,
-        had_mystery_spaces: bool,
     ) -> Arc<Game> {
-        let drain_mode = special_modes.contains(&"drain".to_string()) || special_modes.contains(&"pour".to_string());
-        let blind_mode = special_modes.contains(&"blind".to_string());
-        let original_vials = vials.iter().map(|v| v.iter().map(|c| c.0.clone()).collect()).collect();
-        let settings = Arc::new(GameSettings {
-            level,
-            special_modes,
-            drain_mode,
-            blind_mode,
-            had_mystery_spaces,
-            original_vials,
+        let settings = RefCell::new(GameSettings {
             num_vials: vials.len() as VialIndex,
             ..Default::default()
         });
@@ -110,7 +99,7 @@ impl Game {
 
     /// Creates a simple root game with default settings
     pub fn new_root(allocator: &mut ColorCodeAllocator, vials: Vec<Vial>) -> Arc<Game> {
-        Game::create(allocator, vials, false, false)
+        Game::create(allocator, vials)
     }
 
     /// Creates a new game state by applying a move to the current game
@@ -134,7 +123,7 @@ impl Game {
 
     /// Returns the number of vials
     pub fn num_vials(&self) -> usize {
-        self.settings.num_vials as usize
+        self.settings.borrow().num_vials as usize
     }
 
     /// Returns the number of moves to reach this state
@@ -164,34 +153,34 @@ impl Game {
 
     /// Returns the level identifier
     pub fn level(&self) -> &str {
-        &self.settings.level
+        &self.settings.borrow().level
     }
 
     /// Returns whether this game is modified
     pub fn is_modified(&self) -> bool {
-        self.settings.modified
+        self.settings.borrow().modified
     }
 
     /// Returns whether there is a color error
     pub fn has_color_error(&self) -> bool {
-        self.settings.color_error
+        self.settings.borrow().color_error
     }
 
     /// Returns whether there are unknown values
     pub fn has_unknowns(&self) -> bool {
-        self.settings.has_unknowns
+        self.settings.borrow().has_unknowns
     }
 
     /// Returns the game modes active in this game
     pub fn special_modes(&self) -> Vec<&'static str> {
         let mut modes = Vec::new();
-        if self.settings.drain_mode {
+        if self.settings.borrow().drain_mode {
             modes.push("drain");
         }
-        if self.settings.blind_mode {
+        if self.settings.borrow().blind_mode {
             modes.push("blind");
         }
-        if self.settings.had_mystery_spaces {
+        if self.settings.borrow().had_mystery_spaces {
             modes.push("mystery");
         }
         modes
@@ -471,7 +460,7 @@ mod tests {
         let vials = vials.iter().map(|vial_colors| {
             vial_colors.map(|color_char| Color(color_char.to_string()))
         }).collect();
-        let game = Game::create(&mut allocator, vials, "test".to_string(), vec![], false);
+        let game = Game::create(&mut allocator, vials);
         (allocator, game)
     }
 }

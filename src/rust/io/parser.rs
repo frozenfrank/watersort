@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::ops::Deref;
 use crate::core::{ColorCodeAllocator, Game};
 use crate::core::Color;
 use crate::types::Vial;
@@ -34,8 +35,14 @@ pub fn read_game_file(path: &str) -> Result<(ColorCodeAllocator, std::sync::Arc<
         vials.push(vial);
     }
 
-    let had_mystery_spaces = special_modes.contains(&"mystery".to_string());
+
     let mut allocator = ColorCodeAllocator::new();
-    let game = Game::create(&mut allocator, vials, level, special_modes, had_mystery_spaces);
+    let mut game = Game::create(&mut allocator, vials);
+
+    let mut settings = &mut game.settings;
+    settings.had_mystery_spaces = special_modes.contains(&"mystery".to_string());
+    settings.drain_mode = special_modes.contains(&"drain".to_string()) || special_modes.contains(&"pour".to_string());
+    settings.blind_mode = special_modes.contains(&"blind".to_string());
+
     Ok((allocator, game))
 }
