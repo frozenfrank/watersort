@@ -7,6 +7,7 @@
 pub mod core;
 pub mod types;
 pub mod utils;
+pub mod io;
 
 // Re-export commonly used types
 pub use types::{Move, MoveInfo, Completion};

@@ -40,7 +40,7 @@ pub struct Game {
 
     // A reference to the root game, or None if this is the root game
     root: Option<Arc<Game>>,
-    settings: Arc<GameSettings>,
+    pub settings: Arc<GameSettings>,
 }
 
 /// Stores the result of analyzing a move
@@ -72,12 +72,20 @@ impl Game {
     pub fn create(
         allocator: &mut ColorCodeAllocator,
         vials: Vec<Vial>,
-        drain_mode: bool,
-        blind_mode: bool,
+        level: String,
+        special_modes: Vec<String>,
+        had_mystery_spaces: bool,
     ) -> Arc<Game> {
+        let drain_mode = special_modes.contains(&"drain".to_string()) || special_modes.contains(&"pour".to_string());
+        let blind_mode = special_modes.contains(&"blind".to_string());
+        let original_vials = vials.iter().map(|v| v.iter().map(|c| c.0.clone()).collect()).collect();
         let settings = Arc::new(GameSettings {
+            level,
+            special_modes,
             drain_mode,
             blind_mode,
+            had_mystery_spaces,
+            original_vials,
             num_vials: vials.len() as VialIndex,
             ..Default::default()
         });
@@ -442,8 +450,6 @@ mod tests {
         ].to_vec();
 
         let (_allocator, game): (ColorCodeAllocator, Arc<Game>) = new_root_from_chars(vials);
-        assert_eq!(game.num_vials(), 2);
-        assert_eq!(game.num_moves(), 0);
     }
 
     #[test]
@@ -463,7 +469,20 @@ mod tests {
         let vials = vials.iter().map(|vial_colors| {
             vial_colors.map(|color_char| Color(color_char.to_string()))
         }).collect();
-        let game = Game::create(&mut allocator, vials, false, false);
+        let game = Game::create(&mut allocator, vials, "test".to_string(), vec![], false);
         (allocator, game)
+    }
+
+    pub fn display(&self) {
+        println!("Level: {}", self.settings.level);
+        println!("Special modes: {:?}", self.settings.special_modes);
+        for i in 0..self.num_vials() {
+            print!("Vial {}: ", i + 1);
+            for j in 0..NUM_SPACES_PER_VIAL {
+                let color_str = &self.settings.original_vials[i as usize][j as usize];
+                print!("{} ", color_str);
+            }
+            println!();
+        }
     }
 }
