@@ -6,10 +6,10 @@ use watersort::io::{parser, file_io};
 fn display_game(game: &std::sync::Arc<watersort::core::Game>) {
     println!("Level: {}", game.settings.level);
     println!("Special modes: {:?}", game.settings.special_modes);
-    for i in 0..game.num_vials() {
+    for i in 0..game.num_vials() as usize {
         print!("Vial {}: ", i + 1);
-        for j in 0..4 {
-            let color_str = &game.settings.original_vials[i as usize][j as usize];
+        for j in 0..4 as usize {
+            let color_str = &game.settings.original_vials[i][j];
             print!("{} ", color_str);
         }
         println!();

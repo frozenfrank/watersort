@@ -450,6 +450,8 @@ mod tests {
         ].to_vec();
 
         let (_allocator, game): (ColorCodeAllocator, Arc<Game>) = new_root_from_chars(vials);
+        assert_eq!(game.num_vials(), 2);
+        assert_eq!(game.num_moves(), 0);
     }
 
     #[test]
@@ -471,18 +473,5 @@ mod tests {
         }).collect();
         let game = Game::create(&mut allocator, vials, "test".to_string(), vec![], false);
         (allocator, game)
-    }
-
-    pub fn display(&self) {
-        println!("Level: {}", self.settings.level);
-        println!("Special modes: {:?}", self.settings.special_modes);
-        for i in 0..self.num_vials() {
-            print!("Vial {}: ", i + 1);
-            for j in 0..NUM_SPACES_PER_VIAL {
-                let color_str = &self.settings.original_vials[i as usize][j as usize];
-                print!("{} ", color_str);
-            }
-            println!();
-        }
     }
 }
