@@ -24,7 +24,7 @@ impl ColorCodeExt for ColorCode {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ColorCodeAllocator {
     color_codes: HashMap<Rc<Color>, ColorCode>,
     colors: Vec<Rc<Color>>,

@@ -1,11 +1,12 @@
 use crate::core::color_code::{COLOR_CODE_EMPTY, COLOR_CODE_UNKNOWN};
 use crate::core::game_settings::GameSettings;
-use crate::core::{ColorCode, ColorCodeAllocator, ColorCodeExt};
+use crate::core::{Color, ColorCode, ColorCodeExt};
 use crate::types::constants::NUM_SPACES_PER_VIAL;
 use crate::types::{Completion, DepthSize, Move, SpaceIndex, Vial, VialIndex};
 use crate::utils::helpers::RangeIter;
 use std::cell::RefCell;
 use std::ops::Deref;
+use std::rc::Rc;
 use std::sync::Arc;
 
 /// Represents the state of a single game configuration
@@ -63,12 +64,13 @@ struct CountOnTopResult {
 
 impl Game {
     /// Creates a new root game with the given vials and gameplay modes
-    pub fn create(allocator: &mut ColorCodeAllocator, vials: Vec<Vial>) -> Arc<Game> {
-        let settings = RefCell::new(GameSettings {
+    pub fn create(vials: Vec<Vial>) -> Arc<Game> {
+        let mut settings = RefCell::new(GameSettings {
             num_vials: vials.len() as VialIndex,
             ..Default::default()
         });
 
+        let allocator = &mut settings.get_mut().allocator;
         let mut spaces: Vec<ColorCode> = Vec::with_capacity(vials.len() * NUM_SPACES_PER_VIAL);
         for vial in &vials {
             for space in vial {
@@ -85,11 +87,6 @@ impl Game {
             root: None,
             settings,
         })
-    }
-
-    /// Creates a simple root game with default settings
-    pub fn new_root(allocator: &mut ColorCodeAllocator, vials: Vec<Vial>) -> Arc<Game> {
-        Game::create(allocator, vials)
     }
 
     /// Creates a new game state by applying a move to the current game
@@ -159,20 +156,21 @@ impl Game {
         self.settings.borrow().has_unknowns
     }
 
-    /// Returns the game modes active in this game
-    pub fn special_modes(&self) -> Vec<&'static str> {
-        let mut modes = Vec::new();
-        if self.settings.borrow().drain_mode {
-            modes.push("drain");
-        }
-        if self.settings.borrow().blind_mode {
-            modes.push("blind");
-        }
-        if self.settings.borrow().had_mystery_spaces {
-            modes.push("mystery");
-        }
-        modes
+    // ============ Extractors ============
+
+    /// Retrieves the ColorCodes representing a single vial
+    pub fn get_vial_code(&self, vial_idx: usize) -> [ColorCode; NUM_SPACES_PER_VIAL] {
+        let start_idx = vial_idx * NUM_SPACES_PER_VIAL;
+        core::array::from_fn(|i| self.spaces[start_idx+i])
     }
+
+    /// Retrieves the interpreted Colors stored in a single vial
+    pub fn get_vial_color(&self, vial_idx: usize) -> [Rc<Color>; NUM_SPACES_PER_VIAL] {
+        let start_idx = vial_idx * NUM_SPACES_PER_VIAL;
+        let allocator = &self.settings.borrow().allocator;
+        core::array::from_fn(|i| allocator.interpret_code(self.spaces[start_idx+i]))
+    }
+
 
     // ============ Game State Queries ============
 
@@ -456,7 +454,7 @@ mod tests {
             ['g', 'g', 'y', 'y'],
         ].to_vec();
 
-        let (_allocator, game): (ColorCodeAllocator, Arc<Game>) = new_root_from_chars(vials);
+        let game= new_root_from_chars(vials);
         assert_eq!(game.num_vials(), 2);
         assert_eq!(game.num_moves(), 0);
     }
@@ -470,19 +468,17 @@ mod tests {
             ['-', '-', '-', '-'],
         ].to_vec();
 
-        let (_allocator, game) = new_root_from_chars(vials);
+        let game = new_root_from_chars(vials);
         assert!(game.is_finished());
     }
 
     pub fn new_root_from_chars(
         vials: Vec<[char; NUM_SPACES_PER_VIAL]>,
-    ) -> (ColorCodeAllocator, Arc<Game>) {
-        let mut allocator = ColorCodeAllocator::new();
+    ) -> Arc<Game> {
         let vials = vials
             .iter()
             .map(|vial_colors| vial_colors.map(|color_char| Color(color_char.to_string())))
             .collect();
-        let game = Game::create(&mut allocator, vials);
-        (allocator, game)
+        Game::create(vials)
     }
 }

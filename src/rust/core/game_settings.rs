@@ -1,4 +1,4 @@
-use crate::types::VialIndex;
+use crate::{core::ColorCodeAllocator, types::VialIndex};
 
 /// Shared global settings for a game tree
 /// Stored once on the root game to avoid duplication
@@ -20,6 +20,8 @@ pub struct GameSettings {
     pub blind_mode: bool,
     /// Whether mystery spaces have been discovered
     pub had_mystery_spaces: bool,
+    /// Required to reinterpret the color codes in the game
+    pub allocator: ColorCodeAllocator,
 }
 
 impl Default for GameSettings {
@@ -33,6 +35,7 @@ impl Default for GameSettings {
             drain_mode: false,
             blind_mode: false,
             had_mystery_spaces: false,
+            allocator: ColorCodeAllocator::new(),
         }
     }
 }
