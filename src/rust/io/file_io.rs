@@ -1,16 +1,15 @@
 use std::fs::{File, create_dir_all};
-use std::io::{BufWriter, Write};
-use std::path::{Path, PathBuf};
-use chrono::Datelike;
-use crate::core::Game;
-use crate::core::game_settings::GameSettings;
+use std::io::{Write};
+use std::path::{Path};
+use crate::core::{Game, GameSettings};
 use crate::io::constants::*;
+use crate::io::path::generate_file_name;
 
 
 /// High-level save function that orchestrates the save process
-pub fn save_game(game: &std::sync::Arc<Game>, force_save: bool) -> Result<(), Box<dyn std::error::Error>> {
+pub fn save_game(game: &Game, force_save: bool) -> Result<(), Box<dyn std::error::Error>> {
     let level: String;
-    { // Limit the scope of mutable settings so later calls can use settings
+    { // Limit the scope of mutable settings so later calls can use `settings`
         let settings = game.settings.borrow();
 
         // Check if save is necessary
@@ -22,41 +21,20 @@ pub fn save_game(game: &std::sync::Arc<Game>, force_save: bool) -> Result<(), Bo
     }
 
     let file_name = generate_file_name(&level, WRITE_FILES_TO_ABSOLUTE_PATH);
+    save_game_to_file(game, &file_name)?;
+
+    game.settings.borrow_mut().modified = false;
+    Ok(())
+}
+
+pub fn save_game_to_file(game: &Game, file_name: &str) -> Result<(), Box<dyn std::error::Error>> {
     let file_contents = generate_file_contents(game)?;
     save_file_contents(&file_name, &file_contents)?;
 
     // Mark game as saved
-    game.settings.borrow_mut().modified = false;
-    println!("Saved discovered game state to file: {}", file_name);
+    println!("Saved game state to file: {}", file_name);
 
     Ok(())
-}
-
-/// Returns the base path for saving files
-fn get_base_path(absolute_path: bool) -> PathBuf {
-    if absolute_path {
-        PathBuf::from(INSTALLED_BASE_PATH)
-    } else {
-        PathBuf::new()
-    }
-}
-
-/// Converts a level name to an annualized format (adds year for daily puzzles)
-fn include_path_to_level(path: &mut PathBuf, level_num: &str) {
-    let level_lower = level_num.to_lowercase();
-    if level_lower.len() >= 3 && MONTH_ABBRS.contains(&&level_lower[0..3]) {
-       path.push(chrono::Local::now().year().to_string());
-    }
-    path.push(level_num);
-}
-
-/// Generates the full file path for a given level
-fn generate_file_name(level_num: &str, absolute_path: bool) -> String {
-    let mut path = get_base_path(absolute_path);
-    path.push(LEVEL_DIR);
-    include_path_to_level(&mut path, level_num);
-    path.set_extension(LEVEL_EXT);
-    path.to_str().unwrap().to_string()
 }
 
 /// Generates the file contents as a string
@@ -93,15 +71,11 @@ fn save_file_contents(file_name: &str, contents: &str) -> Result<(), Box<dyn std
     // Ensure parent directories exist
     let path = Path::new(file_name);
     if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
-            create_dir_all(parent)?;
-        }
+        create_dir_all(parent)?;
     }
 
-    let file = File::create(file_name)?;
-    let mut writer = BufWriter::new(file);
-    writeln!(&mut writer, "{}", contents)?;
-    writer.flush()?;
+    let mut file = File::create(file_name)?;
+    writeln!(&mut file, "{}", contents)?;
 
     Ok(())
 }
