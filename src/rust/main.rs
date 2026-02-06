@@ -24,20 +24,18 @@ fn display_game(game: &std::sync::Arc<watersort::core::Game>) {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
     if args.len() != 3 {
-        eprintln!("Usage: {} <input_file> <output_file>", args[0]);
+        eprintln!("Usage: {} <level> <output_file>", args[0]);
         std::process::exit(1);
     }
 
-    let input_path = &args[1];
+    let level = &args[1];
     let output_path = &args[2];
 
-    let (_allocator, game) = parser::read_game_file(input_path)?;
+    let (_allocator, game) = parser::read_game_level(level)?;
 
     display_game(&game);
 
-    file_io::save_game(&game, true)?;
-
-    println!("Saved to {}", output_path);
+    file_io::save_game_to_file(&game, output_path)?;
 
     Ok(())
 }

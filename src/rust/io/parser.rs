@@ -1,12 +1,22 @@
+use std::error::Error;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use crate::core::{ColorCodeAllocator, Game};
 use crate::core::Color;
 use crate::io::constants::*;
+use crate::io::path::generate_file_name;
 use crate::types::Vial;
 use crate::types::constants::NUM_SPACES_PER_VIAL;
 
-pub fn read_game_file(path: &str) -> Result<(ColorCodeAllocator, std::sync::Arc<Game>), Box<dyn std::error::Error>> {
+type ReadFileResult = Result<(ColorCodeAllocator, std::sync::Arc<Game>), Box<dyn Error + 'static>>;
+
+pub fn read_game_level(level: &str) -> ReadFileResult {
+    let file_path = generate_file_name(level, false);
+    read_game_file(&file_path)
+}
+
+
+pub fn read_game_file(path: &str) -> ReadFileResult {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
     let mut lines = reader.lines();
