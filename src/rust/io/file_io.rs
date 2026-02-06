@@ -1,79 +1,67 @@
 use std::fs::{File, create_dir_all};
 use std::io::{BufWriter, Write};
-use std::path::Path;
+use std::ops::DerefMut;
+use std::path::{Path, PathBuf};
 use chrono::Datelike;
 use crate::core::Game;
 use crate::core::game_settings::GameSettings;
+use crate::io::constants::*;
 
-// Configuration constants
-const WRITE_FILES_TO_ABSOLUTE_PATH: bool = false;
-const INSTALLED_BASE_PATH: &str = "";
-const MONTH_ABBRS: &[&str] = &["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 
 /// High-level save function that orchestrates the save process
 pub fn save_game(game: &std::sync::Arc<Game>, force_save: bool) -> Result<(), Box<dyn std::error::Error>> {
-    let settings = game.settings.borrow();
+    let mut binding = game.settings.try_borrow_mut()?;
+    let settings = binding.deref_mut();
 
     // Check if save is necessary
     if settings.level.is_empty() || (!force_save && !settings.modified) {
         return Ok(());
     }
 
-    let level = settings.level.clone();
-    drop(settings); // Release the borrow before proceeding
-
-    let file_name = generate_file_name(&level, WRITE_FILES_TO_ABSOLUTE_PATH);
-    let file_contents = generate_file_contents(game)?;
+    let file_name = generate_file_name(&settings.level, WRITE_FILES_TO_ABSOLUTE_PATH);
+    let file_contents = generate_file_contents(game, &settings)?;
     save_file_contents(&file_name, &file_contents)?;
 
     // Mark game as saved
-    game.settings.borrow_mut().modified = false;
-
+    settings.modified = false;
     println!("Saved discovered game state to file: {}", file_name);
+
     Ok(())
 }
 
 /// Returns the base path for saving files
-fn get_base_path(absolute_path: bool) -> String {
+fn get_base_path(absolute_path: bool) -> PathBuf {
     if absolute_path {
-        INSTALLED_BASE_PATH.to_string()
+        PathBuf::from(INSTALLED_BASE_PATH)
     } else {
-        String::new()
+        PathBuf::new()
     }
 }
 
 /// Converts a level name to an annualized format (adds year for daily puzzles)
-fn annualize_daily_puzzle_file_name(level_num: &str) -> String {
+fn include_path_to_level(path: &mut PathBuf, level_num: &str) {
     let level_lower = level_num.to_lowercase();
-    if level_lower.len() >= 3 {
-        let prefix = &level_lower[0..3];
-        if MONTH_ABBRS.contains(&prefix) {
-            let year = chrono::Local::now().year();
-            return format!("{}/{}", year, level_num);
-        }
+    if level_lower.len() >= 3 && MONTH_ABBRS.contains(&&level_lower[0..3]) {
+       path.push(chrono::Local::now().year().to_string());
     }
-    level_num.to_string()
+    path.push(level_num);
 }
 
 /// Generates the full file path for a given level
 fn generate_file_name(level_num: &str, absolute_path: bool) -> String {
-    let base_path = get_base_path(absolute_path);
-    let annualized_name = annualize_daily_puzzle_file_name(level_num);
-
-    if base_path.is_empty() {
-        format!("wslevels/{}.txt", annualized_name)
-    } else {
-        format!("{}/wslevels/{}.txt", base_path, annualized_name)
-    }
+    let mut path = get_base_path(absolute_path);
+    path.push(LEVEL_DIR);
+    include_path_to_level(&mut path, level_num);
+    path.set_extension("txt");
+    path.to_str().unwrap().to_string()
 }
 
 /// Generates the file contents as a string
-fn generate_file_contents(game: &std::sync::Arc<Game>) -> Result<String, Box<dyn std::error::Error>> {
+fn generate_file_contents(game: &Game, settings: &GameSettings) -> Result<String, Box<dyn std::error::Error>> {
     let mut lines = Vec::new();
 
     lines.push("i".to_string());
 
-    let settings = game.settings.borrow();
     let special_modes = get_special_modes(&settings);
 
     let mut level_line = settings.level.clone();
@@ -86,11 +74,12 @@ fn generate_file_contents(game: &std::sync::Arc<Game>) -> Result<String, Box<dyn
     lines.push(game.num_vials().to_string());
 
     // Add vial contents
-    if let Some(original_vials) = &settings.original_vials {
-        for vial in original_vials {
-            lines.push(vial.join("\t"));
-        }
-    }
+    // FIXME: Interpret the vials based on the ColorCodes and the Allocator
+    // if let Some(original_vials) = &settings.original_vials {
+    //     for vial in original_vials {
+    //         lines.push(vial.join("\t"));
+    //     }
+    // }
 
     Ok(lines.join("\n"))
 }

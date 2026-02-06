@@ -1,15 +1,20 @@
 /// Main entry point for the Water Sort Puzzle CLI
 
 use std::env;
-use watersort::io::{parser, file_io};
+use watersort::{io::{file_io, parser}, types::constants::NUM_SPACES_PER_VIAL};
 
 fn display_game(game: &std::sync::Arc<watersort::core::Game>) {
-    println!("Level: {}", game.settings.level);
-    println!("Special modes: {:?}", game.settings.special_modes);
-    for i in 0..game.num_vials() as usize {
-        print!("Vial {}: ", i + 1);
-        for j in 0..4 as usize {
-            let color_str = &game.settings.original_vials[i][j];
+    let settings = game.settings.borrow();
+
+    println!("Level: {}", settings.level);
+    println!("Mystery: {}", settings.had_mystery_spaces);
+    println!("Had Unknowns: {}", settings.has_unknowns);
+    println!("Drain mode: {}", settings.drain_mode);
+
+    for vial_idx in 0..game.num_vials() {
+        print!("Vial {}: ", vial_idx + 1);
+        for space_idx in 0..NUM_SPACES_PER_VIAL {
+            let color_str = game.get_vial_space(vial_idx, space_idx);
             print!("{} ", color_str);
         }
         println!();
@@ -30,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     display_game(&game);
 
-    file_io::save_game(&game, output_path)?;
+    file_io::save_game(&game, true)?;
 
     println!("Saved to {}", output_path);
 

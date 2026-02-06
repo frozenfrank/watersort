@@ -152,8 +152,8 @@ impl Game {
     }
 
     /// Returns the level identifier
-    pub fn level(&self) -> &str {
-        &self.settings.borrow().level
+    pub fn level(&self) -> String {
+        self.settings.borrow().level.clone()
     }
 
     /// Returns whether this game is modified
@@ -240,14 +240,15 @@ impl Game {
         if start_vial == end_vial {
             return invalid_move;  // Can't move to the same place
         }
-        if !self.settings.drain_mode && let Some(last_move) = self.last_move {
+        let settings = self.settings.borrow();
+        if !settings.drain_mode && let Some(last_move) = self.last_move {
             if start_vial == last_move.to as usize && end_vial == last_move.from as usize {
                 return invalid_move; // Can't simply undo the previous move
             }
         }
 
         // Verify core game mechanics
-        let start_color = self.get_top_vial_color(start_vial, self.settings.drain_mode);
+        let start_color = self.get_top_vial_color(start_vial, settings.drain_mode);
         if start_color.is_empty() || start_color.is_unknown() {
             return invalid_move;  // Can only move an active color
         }
@@ -263,7 +264,7 @@ impl Game {
         }
 
         // Verify that this vial isn't full
-        let start_r = self.count_on_top(start_color, start_vial, self.settings.drain_mode);
+        let start_r = self.count_on_top(start_color, start_vial, settings.drain_mode);
         if start_r.is_complete {
             return invalid_move;  // Start is fully filled
         }
@@ -373,7 +374,7 @@ impl Game {
         let mut move_range: usize = move_validity.end_space as usize;
         let mut start_colors: usize = 0;
 
-        let drain_mode = self.settings.drain_mode;
+        let drain_mode = self.settings.borrow().drain_mode;
 
         while pieces_moved < move_range && pieces_moved < NUM_SPACES_PER_VIAL {
             let space_idx = if drain_mode {NUM_SPACES_PER_VIAL-pieces_moved-1} else {pieces_moved};

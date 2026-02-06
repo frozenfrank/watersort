@@ -1,6 +1,5 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::ops::Deref;
 use crate::core::{ColorCodeAllocator, Game};
 use crate::core::Color;
 use crate::types::Vial;
@@ -17,9 +16,9 @@ pub fn read_game_file(path: &str) -> Result<(ColorCodeAllocator, std::sync::Arc<
     }
 
     let level_line: String = lines.next().ok_or("No level line")??;
-    let level_parts: Vec<String> = level_line.split_whitespace().map(|s| s.to_string()).collect();
+    let level_parts: Vec<&str> = level_line.split_whitespace().collect();
     let level = level_parts.get(0).cloned().unwrap_or_default();
-    let special_modes: Vec<String> = level_parts[1..].to_vec();
+    let special_modes: Vec<&str> = level_parts[1..].to_vec();
 
     let num_vials_str = lines.next().ok_or("No num vials line")??;
     let num_vials: usize = num_vials_str.trim().parse()?;
@@ -37,12 +36,14 @@ pub fn read_game_file(path: &str) -> Result<(ColorCodeAllocator, std::sync::Arc<
 
 
     let mut allocator = ColorCodeAllocator::new();
-    let mut game = Game::create(&mut allocator, vials);
+    let game = Game::create(&mut allocator, vials);
 
-    let mut settings = &mut game.settings;
-    settings.had_mystery_spaces = special_modes.contains(&"mystery".to_string());
-    settings.drain_mode = special_modes.contains(&"drain".to_string()) || special_modes.contains(&"pour".to_string());
-    settings.blind_mode = special_modes.contains(&"blind".to_string());
+    let mut settings = game.settings.borrow_mut();
+    settings.level = level.to_string();
+    settings.had_mystery_spaces = special_modes.contains(&"mystery");
+    settings.drain_mode = special_modes.contains(&"drain") || special_modes.contains(&"pour");
+    settings.blind_mode = special_modes.contains(&"blind");
+    drop(settings);
 
     Ok((allocator, game))
 }
