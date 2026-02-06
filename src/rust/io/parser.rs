@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use crate::core::{ColorCodeAllocator, Game};
 use crate::core::Color;
+use crate::io::constants::*;
 use crate::types::Vial;
 use crate::types::constants::NUM_SPACES_PER_VIAL;
 
@@ -40,9 +41,9 @@ pub fn read_game_file(path: &str) -> Result<(ColorCodeAllocator, std::sync::Arc<
 
     let mut settings = game.settings.borrow_mut();
     settings.level = level.to_string();
-    settings.had_mystery_spaces = special_modes.contains(&"mystery");
-    settings.drain_mode = special_modes.contains(&"drain") || special_modes.contains(&"pour");
-    settings.blind_mode = special_modes.contains(&"blind");
+    settings.had_mystery_spaces = special_modes.contains(&MYSTERY_MODE_FLAG);
+    settings.drain_mode = special_modes.contains(&DRAIN_MODE_FLAG) || special_modes.contains(&DRAIN_MODE_FLAG_2);
+    settings.blind_mode = special_modes.contains(&BLIND_MODE_FLAG);
     drop(settings);
 
     Ok((allocator, game))

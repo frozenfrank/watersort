@@ -55,7 +55,7 @@ fn generate_file_name(level_num: &str, absolute_path: bool) -> String {
     let mut path = get_base_path(absolute_path);
     path.push(LEVEL_DIR);
     include_path_to_level(&mut path, level_num);
-    path.set_extension("txt");
+    path.set_extension(LEVEL_EXT);
     path.to_str().unwrap().to_string()
 }
 
@@ -111,13 +111,13 @@ fn get_special_modes(settings: &GameSettings) -> Vec<&'static str> {
     let mut modes = Vec::new();
 
     if settings.drain_mode {
-        modes.push("drain");
+        modes.push(DRAIN_MODE_FLAG);
     }
     if settings.blind_mode {
-        modes.push("blind");
+        modes.push(BLIND_MODE_FLAG);
     }
     if settings.had_mystery_spaces {
-        modes.push("mystery");
+        modes.push(MYSTERY_MODE_FLAG);
     }
 
     modes
