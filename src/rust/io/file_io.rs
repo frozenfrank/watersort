@@ -1,6 +1,5 @@
 use std::fs::{File, create_dir_all};
 use std::io::{BufWriter, Write};
-use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
 use chrono::Datelike;
 use crate::core::Game;
@@ -10,20 +9,24 @@ use crate::io::constants::*;
 
 /// High-level save function that orchestrates the save process
 pub fn save_game(game: &std::sync::Arc<Game>, force_save: bool) -> Result<(), Box<dyn std::error::Error>> {
-    let mut binding = game.settings.try_borrow_mut()?;
-    let settings = binding.deref_mut();
+    let level: String;
+    { // Limit the scope of mutable settings so later calls can use settings
+        let settings = game.settings.borrow();
 
-    // Check if save is necessary
-    if settings.level.is_empty() || (!force_save && !settings.modified) {
-        return Ok(());
+        // Check if save is necessary
+        if settings.level.is_empty() || (!force_save && !settings.modified) {
+            return Ok(());
+        }
+
+        level = settings.level.clone();
     }
 
-    let file_name = generate_file_name(&settings.level, WRITE_FILES_TO_ABSOLUTE_PATH);
-    let file_contents = generate_file_contents(game, &settings)?;
+    let file_name = generate_file_name(&level, WRITE_FILES_TO_ABSOLUTE_PATH);
+    let file_contents = generate_file_contents(game)?;
     save_file_contents(&file_name, &file_contents)?;
 
     // Mark game as saved
-    settings.modified = false;
+    game.settings.borrow_mut().modified = false;
     println!("Saved discovered game state to file: {}", file_name);
 
     Ok(())
@@ -57,11 +60,12 @@ fn generate_file_name(level_num: &str, absolute_path: bool) -> String {
 }
 
 /// Generates the file contents as a string
-fn generate_file_contents(game: &Game, settings: &GameSettings) -> Result<String, Box<dyn std::error::Error>> {
+fn generate_file_contents(game: &Game) -> Result<String, Box<dyn std::error::Error>> {
     let mut lines = Vec::new();
 
     lines.push("i".to_string());
 
+    let settings = game.settings.borrow();
     let special_modes = get_special_modes(&settings);
 
     let mut level_line = settings.level.clone();
