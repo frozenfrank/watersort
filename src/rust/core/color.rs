@@ -27,6 +27,10 @@ impl Color {
     pub fn is_reserved(&self) -> bool {
         is_reserved(&self.0)
     }
+
+    pub fn name(&self) -> &str {
+        &self.0
+    }
 }
 
 /// Special character representing an empty space in a vial

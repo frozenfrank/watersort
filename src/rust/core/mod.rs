@@ -6,6 +6,5 @@ pub mod game_settings;
 
 pub use color::Color;
 pub use color_code::{ColorCode, ColorCodeAllocator, ColorCodeExt};
-pub use color_code_demo::run_color_allocator_debug;
 pub use game::Game;
 pub use game_settings::GameSettings;

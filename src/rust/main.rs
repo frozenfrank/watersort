@@ -1,11 +1,10 @@
 /// Main entry point for the Water Sort Puzzle CLI
 use std::env;
-use watersort::{
-    io::{file_io, parser},
-    types::constants::NUM_SPACES_PER_VIAL,
-};
+use watersort::core::{ColorCodeAllocator, Game};
+use watersort::io::{parser};
+use watersort::types::constants::NUM_SPACES_PER_VIAL;
 
-fn display_game(game: &std::sync::Arc<watersort::core::Game>) {
+fn display_game(game: &Game, allocator: &ColorCodeAllocator) {
     let settings = game.settings.borrow();
 
     println!("Level: {}", settings.level);
@@ -16,8 +15,9 @@ fn display_game(game: &std::sync::Arc<watersort::core::Game>) {
     for vial_idx in 0..game.num_vials() {
         print!("Vial {}: ", vial_idx + 1);
         for space_idx in 0..NUM_SPACES_PER_VIAL {
-            let color_str = game.get_vial_space(vial_idx, space_idx);
-            print!("{} ", color_str);
+            let color_code = game.get_vial_space(vial_idx, space_idx);
+            let color = allocator.interpret_code(color_code);
+            print!("{} ", color.name());
         }
         println!();
     }
@@ -33,9 +33,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let level = &args[1];
     let output_path = &args[2];
 
-    let (_allocator, game) = parser::read_game_level(level)?;
+    let (allocator, game) = parser::read_game_level(level)?;
 
-    display_game(&game);
+    display_game(&game, &allocator);
 
     file_io::save_game_to_file(&game, output_path)?;
 
