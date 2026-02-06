@@ -1,7 +1,9 @@
 /// Main entry point for the Water Sort Puzzle CLI
-
 use std::env;
-use watersort::{io::{file_io, parser}, types::constants::NUM_SPACES_PER_VIAL};
+use watersort::{
+    io::{file_io, parser},
+    types::constants::NUM_SPACES_PER_VIAL,
+};
 
 fn display_game(game: &std::sync::Arc<watersort::core::Game>) {
     let settings = game.settings.borrow();

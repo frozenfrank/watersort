@@ -1,15 +1,15 @@
-use std::fs::{File, create_dir_all};
-use std::io::{Write};
-use std::path::{Path};
 use crate::core::{Game, GameSettings};
 use crate::io::constants::*;
 use crate::io::path::generate_file_name;
-
+use std::fs::{File, create_dir_all};
+use std::io::Write;
+use std::path::Path;
 
 /// High-level save function that orchestrates the save process
 pub fn save_game(game: &Game, force_save: bool) -> Result<(), Box<dyn std::error::Error>> {
     let level: String;
-    { // Limit the scope of mutable settings so later calls can use `settings`
+    {
+        // Limit the scope of mutable settings so later calls can use `settings`
         let settings = game.settings.borrow();
 
         // Check if save is necessary

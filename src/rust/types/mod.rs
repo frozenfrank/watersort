@@ -1,5 +1,4 @@
 /// Type definitions and aliases for the Water Sort Puzzle engine
-
 pub mod constants;
 
 use crate::core::{Color, ColorCode};

@@ -1,8 +1,7 @@
-use std::path::PathBuf;
 use chrono::{Datelike, Local};
+use std::path::PathBuf;
 
 use crate::io::constants::{INSTALLED_BASE_PATH, LEVEL_DIR, LEVEL_EXT, MONTH_ABBRS};
-
 
 /// Returns the base path for saving files
 fn get_base_path(absolute_path: bool) -> PathBuf {
@@ -17,7 +16,7 @@ fn get_base_path(absolute_path: bool) -> PathBuf {
 fn include_path_to_level(path: &mut PathBuf, level_num: &str) {
     let level_lower = level_num.to_lowercase();
     if level_lower.len() >= 3 && MONTH_ABBRS.contains(&&level_lower[0..3]) {
-       path.push(Local::now().year().to_string());
+        path.push(Local::now().year().to_string());
     }
     path.push(level_num);
 }

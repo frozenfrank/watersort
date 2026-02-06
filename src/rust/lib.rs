@@ -3,12 +3,11 @@
 /// A high-performance Rust port of the Water Sort Puzzle solver,
 /// maintaining feature parity with the original Python implementation
 /// while achieving better memory efficiency and performance.
-
 pub mod core;
+pub mod io;
 pub mod types;
 pub mod utils;
-pub mod io;
 
 // Re-export commonly used types
-pub use types::{Move, MoveInfo, Completion};
+pub use types::{Completion, Move, MoveInfo};
 // pub use core::Game;

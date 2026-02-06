@@ -1,6 +1,5 @@
 /// Color handling and validation for the Water Sort Puzzle
 
-
 /// Represents a color in the game
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Color(pub String);
@@ -26,7 +25,7 @@ impl Color {
     }
 
     pub fn is_reserved(&self) -> bool {
-      is_reserved(&self.0)
+        is_reserved(&self.0)
     }
 }
 

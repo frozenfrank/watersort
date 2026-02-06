@@ -1,12 +1,12 @@
-use std::error::Error;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-use crate::core::{ColorCodeAllocator, Game};
 use crate::core::Color;
+use crate::core::{ColorCodeAllocator, Game};
 use crate::io::constants::*;
 use crate::io::path::generate_file_name;
 use crate::types::Vial;
 use crate::types::constants::NUM_SPACES_PER_VIAL;
+use std::error::Error;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 
 type ReadFileResult = Result<(ColorCodeAllocator, std::sync::Arc<Game>), Box<dyn Error + 'static>>;
 
@@ -14,7 +14,6 @@ pub fn read_game_level(level: &str) -> ReadFileResult {
     let file_path = generate_file_name(level, false);
     read_game_file(&file_path)
 }
-
 
 pub fn read_game_file(path: &str) -> ReadFileResult {
     let file = File::open(path)?;
@@ -39,12 +38,21 @@ pub fn read_game_file(path: &str) -> ReadFileResult {
         let line = lines.next().ok_or("Not enough vial lines")??;
         let spaces: Vec<String> = line.split_whitespace().map(|s| s.to_string()).collect();
         if spaces.len() != NUM_SPACES_PER_VIAL as usize {
-            return Err(format!("Wrong number of spaces in vial: expected {}, got {}", NUM_SPACES_PER_VIAL, spaces.len()).into());
+            return Err(format!(
+                "Wrong number of spaces in vial: expected {}, got {}",
+                NUM_SPACES_PER_VIAL,
+                spaces.len()
+            )
+            .into());
         }
-        let vial: Vial = spaces.into_iter().map(|s| Color(s)).collect::<Vec<_>>().try_into().map_err(|_| "Wrong number of spaces")?;
+        let vial: Vial = spaces
+            .into_iter()
+            .map(|s| Color(s))
+            .collect::<Vec<_>>()
+            .try_into()
+            .map_err(|_| "Wrong number of spaces")?;
         vials.push(vial);
     }
-
 
     let mut allocator = ColorCodeAllocator::new();
     let game = Game::create(&mut allocator, vials);
@@ -52,7 +60,8 @@ pub fn read_game_file(path: &str) -> ReadFileResult {
     let mut settings = game.settings.borrow_mut();
     settings.level = level.to_string();
     settings.had_mystery_spaces = special_modes.contains(&MYSTERY_MODE_FLAG);
-    settings.drain_mode = special_modes.contains(&DRAIN_MODE_FLAG) || special_modes.contains(&DRAIN_MODE_FLAG_2);
+    settings.drain_mode =
+        special_modes.contains(&DRAIN_MODE_FLAG) || special_modes.contains(&DRAIN_MODE_FLAG_2);
     settings.blind_mode = special_modes.contains(&BLIND_MODE_FLAG);
     drop(settings);
 
