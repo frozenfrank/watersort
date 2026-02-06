@@ -1,7 +1,7 @@
 /// Main entry point for the Water Sort Puzzle CLI
 use std::env;
 use watersort::core::{Game};
-use watersort::io::{parser};
+use watersort::io::{parser, save_game_to_file};
 
 fn display_game(game: &Game) {
     let settings = game.settings.borrow();
@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     display_game(&game);
 
-    file_io::save_game_to_file(&game, output_path)?;
+    save_game_to_file(&game, output_path)?;
 
     Ok(())
 }
