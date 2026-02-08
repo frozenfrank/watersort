@@ -1,5 +1,5 @@
 use crate::core::Color;
-use crate::core::{Game};
+use crate::core::Game;
 use crate::io::constants::*;
 use crate::io::path::generate_file_name;
 use crate::types::Vial;

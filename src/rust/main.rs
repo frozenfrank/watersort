@@ -1,6 +1,9 @@
 /// Main entry point for the Water Sort Puzzle CLI
 use std::env;
-use watersort::{Game, io::{parser, save_game_to_file}};
+use watersort::{
+    Game,
+    io::{parser, save_game_to_file},
+};
 
 // Use Display impl on `Game` for printing
 

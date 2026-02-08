@@ -5,10 +5,10 @@ use crate::types::constants::NUM_SPACES_PER_VIAL;
 use crate::types::{Completion, DepthSize, Move, SpaceIndex, Vial, VialIndex};
 use crate::utils::helpers::RangeIter;
 use std::cell::RefCell;
+use std::fmt::{self, Formatter};
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::fmt::{self, Formatter};
 
 /// Represents the state of a single game configuration
 ///
@@ -162,16 +162,15 @@ impl Game {
     /// Retrieves the ColorCodes representing a single vial
     pub fn get_vial_code(&self, vial_idx: usize) -> [ColorCode; NUM_SPACES_PER_VIAL] {
         let start_idx = vial_idx * NUM_SPACES_PER_VIAL;
-        core::array::from_fn(|i| self.spaces[start_idx+i])
+        core::array::from_fn(|i| self.spaces[start_idx + i])
     }
 
     /// Retrieves the interpreted Colors stored in a single vial
     pub fn get_vial_color(&self, vial_idx: usize) -> [Rc<Color>; NUM_SPACES_PER_VIAL] {
         let start_idx = vial_idx * NUM_SPACES_PER_VIAL;
         let allocator = &self.settings.borrow().allocator;
-        core::array::from_fn(|i| allocator.interpret_code(self.spaces[start_idx+i]))
+        core::array::from_fn(|i| allocator.interpret_code(self.spaces[start_idx + i]))
     }
-
 
     // ============ Game State Queries ============
 
@@ -441,7 +440,6 @@ impl Game {
     }
 }
 
-
 impl std::fmt::Display for Game {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let settings = self.settings.borrow();
@@ -474,7 +472,7 @@ mod tests {
             ['g', 'g', 'y', 'y'],
         ].to_vec();
 
-        let game= new_root_from_chars(vials);
+        let game = new_root_from_chars(vials);
         assert_eq!(game.num_vials(), 2);
         assert_eq!(game.num_moves(), 0);
     }
@@ -492,9 +490,7 @@ mod tests {
         assert!(game.is_finished());
     }
 
-    pub fn new_root_from_chars(
-        vials: Vec<[char; NUM_SPACES_PER_VIAL]>,
-    ) -> Arc<Game> {
+    pub fn new_root_from_chars(vials: Vec<[char; NUM_SPACES_PER_VIAL]>) -> Arc<Game> {
         let vials = vials
             .iter()
             .map(|vial_colors| vial_colors.map(|color_char| Color(color_char.to_string())))
