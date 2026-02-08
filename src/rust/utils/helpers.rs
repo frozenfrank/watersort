@@ -8,8 +8,8 @@ pub enum RangeIter<T> {
 impl<T: DoubleEndedIterator> RangeIter<T> {
     pub fn new(range: T, is_reversed: bool) -> RangeIter<T> {
         match is_reversed {
-            true => RangeIter::Forward(range),
-            false => RangeIter::Reverse(range.rev()),
+            false => RangeIter::Forward(range),
+            true => RangeIter::Reverse(range.rev()),
         }
     }
 }
