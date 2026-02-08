@@ -33,6 +33,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     move_valid = game.apply_move(0, game.num_vials()-2);
     println!("Move Valid: {}\n{}", move_valid, game);
 
+    move_valid = game.apply_move(1, 0);
+    println!("Move Valid: {}\n{}", move_valid, game);
+
     if args.len() >= 3 {
         let output_path = &args[2];
         save_game_to_file(&game, output_path)?;
