@@ -1,21 +1,8 @@
 /// Main entry point for the Water Sort Puzzle CLI
 use std::env;
-use watersort::core::{Game};
-use watersort::io::{parser, save_game_to_file};
+use watersort::{Game, io::{parser, save_game_to_file}};
 
-fn display_game(game: &Game) {
-    let settings = game.settings.borrow();
-
-    println!("Level: {}", settings.level);
-    println!("Mystery: {}", settings.had_mystery_spaces);
-    println!("Had Unknowns: {}", settings.has_unknowns);
-    println!("Drain mode: {}", settings.drain_mode);
-
-    for vial_idx in 0..game.num_vials() {
-        let colors = game.get_vial_color(vial_idx).map(|color| color.0.clone());
-        println!("Vial {}: {}", vial_idx + 1, colors.join(" "));
-    }
-}
+// Use Display impl on `Game` for printing
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
@@ -27,9 +14,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let level = &args[1];
     let output_path = &args[2];
 
-    let game = parser::read_game_level(level)?;
+    let mut game: Arc<Game> = parser::read_game_level(level)?;
 
-    display_game(&game);
+    println!("{}", game);
 
     save_game_to_file(&game, output_path)?;
 

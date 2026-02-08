@@ -10,4 +10,4 @@ pub mod utils;
 
 // Re-export commonly used types
 pub use types::{Completion, Move, MoveInfo};
-// pub use core::Game;
+pub use core::Game;
