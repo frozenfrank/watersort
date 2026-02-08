@@ -17,7 +17,7 @@ use std::sync::Arc;
 /// - Uses Vec<Vial> for vial storage
 /// - Caches num_moves and completion_order for O(1) access
 /// - Stores shared settings in GameSettings to avoid duplication in game tree
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Game {
     // Core game state
     spaces: Vec<ColorCode>,

@@ -19,7 +19,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut game: Game = parser::read_game_level(level)?;
     println!("{}", game);
 
-    println!("{:?}\n", game.settings.borrow().allocator);
+    {
+        let settings = game.settings.borrow();
+        println!("{:?}\n", settings);
+        println!("{:?}\n", settings.allocator);
+        println!("{:?}\n", game);
+    }
 
     let mut move_valid: bool;
     move_valid = game.apply_move(0, game.num_vials()-1);
