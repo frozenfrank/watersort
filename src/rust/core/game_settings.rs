@@ -43,15 +43,15 @@ impl Default for GameSettings {
 impl std::fmt::Debug for GameSettings {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("GameSettings")
-        .field("level", &self.level)
-        .field("num_vials", &self.num_vials)
-        .field("modified", &self.modified)
-        .field("color_error", &self.color_error)
-        .field("has_unknowns", &self.has_unknowns)
-        .field("drain_mode", &self.drain_mode)
-        .field("blind_mode", &self.blind_mode)
-        .field("had_mystery_spaces", &self.had_mystery_spaces)
-        .field("allocator", &"<allocator>")
-        .finish()
+            .field("level", &self.level)
+            .field("num_vials", &self.num_vials)
+            .field("modified", &self.modified)
+            .field("color_error", &self.color_error)
+            .field("has_unknowns", &self.has_unknowns)
+            .field("drain_mode", &self.drain_mode)
+            .field("blind_mode", &self.blind_mode)
+            .field("had_mystery_spaces", &self.had_mystery_spaces)
+            .field("allocator", &"<allocator>")
+            .finish()
     }
 }

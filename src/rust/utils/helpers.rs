@@ -1,4 +1,3 @@
-
 /// Enum that stores either a forward Range or a reverse Range iterator
 pub enum RangeIter<T> {
     Forward(T),

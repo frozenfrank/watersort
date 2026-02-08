@@ -69,8 +69,11 @@ impl ColorCodeAllocator {
 impl std::fmt::Debug for ColorCodeAllocator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ColorCodeAllocator")
-        // .field("color_codes", &self.color_codes)
-        .field("colors", &self.colors.iter().map(|color| &color.0).collect::<Vec<_>>())
-        .finish()
+            // .field("color_codes", &self.color_codes)
+            .field(
+                "colors",
+                &self.colors.iter().map(|color| &color.0).collect::<Vec<_>>(),
+            )
+            .finish()
     }
 }

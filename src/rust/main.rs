@@ -2,13 +2,14 @@ use std::sync::Arc;
 
 /// Main entry point for the Water Sort Puzzle CLI
 use watersort::{
-    Game, Move, io::{parser, save_game_to_file}
+    Game, Move,
+    io::{parser, save_game_to_file},
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args: Vec<String> = std::env::args().collect();
     if cfg!(debug_assertions) && args.len() < 2 {
-        args.push(String::from("1"));  // Debugging - fix the level input
+        args.push(String::from("1")); // Debugging - fix the level input
     }
     if args.len() < 2 {
         eprintln!("Usage: {} <level> <output_file>", args[0]);
@@ -28,17 +29,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut move_valid: bool;
-    move_valid = game.apply_move(0, game.num_vials()-1);
+    move_valid = game.apply_move(0, game.num_vials() - 1);
     println!("Move Valid: {}\n{}", move_valid, game);
 
-    move_valid = game.apply_move(0, game.num_vials()-2);
+    move_valid = game.apply_move(0, game.num_vials() - 2);
     println!("Move Valid: {}\n{}", move_valid, game);
 
     move_valid = game.apply_move(1, 0);
     println!("Move Valid: {}\n{}", move_valid, game);
 
     let game = Arc::new(game);
-    let game2 = game.spawn(Move {from: 0, to: 1});
+    let game2 = game.spawn(Move { from: 0, to: 1 });
     println!("Spawned game:\n{}", game2);
 
     if args.len() >= 3 {
