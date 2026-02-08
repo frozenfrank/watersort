@@ -1,7 +1,8 @@
+use std::sync::Arc;
+
 /// Main entry point for the Water Sort Puzzle CLI
 use watersort::{
-    Game,
-    io::{parser, save_game_to_file},
+    Game, Move, io::{parser, save_game_to_file}
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -35,6 +36,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     move_valid = game.apply_move(1, 0);
     println!("Move Valid: {}\n{}", move_valid, game);
+
+    let game = Arc::new(game);
+    let game2 = game.spawn(Move {from: 0, to: 1});
+    println!("Spawned game:\n{}", game2);
 
     if args.len() >= 3 {
         let output_path = &args[2];

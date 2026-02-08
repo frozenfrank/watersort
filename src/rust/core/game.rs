@@ -95,7 +95,7 @@ impl Game {
     }
 
     /// Creates a new game state by applying a move to the current game
-    pub fn spawn(self: Arc<Game>, move_: Move) -> Arc<Game> {
+    pub fn spawn(self: &Arc<Game>, move_: Move) -> Arc<Game> {
         let mut new_game = self.deref().clone();
         new_game.prev = Some(self.clone());
         new_game.apply_move(move_.from as usize, move_.to as usize);
