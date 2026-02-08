@@ -17,7 +17,7 @@ use std::sync::Arc;
 /// - Uses Vec<Vial> for vial storage
 /// - Caches num_moves and completion_order for O(1) access
 /// - Stores shared settings in GameSettings to avoid duplication in game tree
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Game {
     // Core game state
     spaces: Vec<ColorCode>,
@@ -459,6 +459,20 @@ impl std::fmt::Display for Game {
         }
 
         Ok(())
+    }
+}
+
+impl std::fmt::Debug for Game {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Game")
+        .field("spaces", &self.spaces)
+        .field("last_move", &self.last_move)
+        .field("prev", &self.prev)
+        .field("num_moves", &self.num_moves)
+        .field("completion_order", &self.completion_order)
+        .field("root", &self.root)
+        .field("settings", &"<settings>")
+        .finish()
     }
 }
 
