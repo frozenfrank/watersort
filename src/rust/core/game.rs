@@ -64,8 +64,8 @@ struct CountOnTopResult {
 }
 
 impl Game {
-    /// Creates a new root game with the given vials and gameplay modes
-    pub fn create(vials: Vec<Vial>) -> Arc<Game> {
+    /// Creates a new game with the given vials and gameplay modes
+    pub fn create(vials: Vec<Vial>) -> Game {
         let mut settings = RefCell::new(GameSettings {
             num_vials: vials.len() as VialIndex,
             ..Default::default()
@@ -79,7 +79,7 @@ impl Game {
             }
         }
 
-        Arc::new(Game {
+        Game {
             spaces,
             last_move: None,
             prev: None,
@@ -87,12 +87,17 @@ impl Game {
             completion_order: Vec::new(),
             root: None,
             settings,
-        })
+        }
+    }
+
+    pub fn new_root(vials: Vec<Vial>) -> Arc<Game> {
+        Arc::new(Game::create(vials))
     }
 
     /// Creates a new game state by applying a move to the current game
-    pub fn spawn(self: &Arc<Game>, move_: Move) -> Arc<Game> {
+    pub fn spawn(self: Arc<Game>, move_: Move) -> Arc<Game> {
         let mut new_game = self.deref().clone();
+        new_game.prev = Some(self.clone());
         new_game.apply_move(move_.from as usize, move_.to as usize);
         Arc::new(new_game)
     }
@@ -370,7 +375,7 @@ impl Game {
         vial_index
     }
 
-    fn apply_move(&mut self, start_vial: usize, end_vial: usize) -> bool {
+    pub fn apply_move(&mut self, start_vial: usize, end_vial: usize) -> bool {
         let move_validity = self.prepare_move(start_vial, end_vial);
         if !move_validity.valid {
             return false;
@@ -490,7 +495,7 @@ mod tests {
         assert!(game.is_finished());
     }
 
-    pub fn new_root_from_chars(vials: Vec<[char; NUM_SPACES_PER_VIAL]>) -> Arc<Game> {
+    pub fn new_root_from_chars(vials: Vec<[char; NUM_SPACES_PER_VIAL]>) -> Game {
         let vials = vials
             .iter()
             .map(|vial_colors| vial_colors.map(|color_char| Color(color_char.to_string())))
