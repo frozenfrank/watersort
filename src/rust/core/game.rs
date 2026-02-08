@@ -199,8 +199,7 @@ impl Game {
 
     /// Gets the top color of a vial (from top or bottom depending on drain_mode)
     pub fn get_top_vial_color(&self, vial_idx: usize, from_bottom: bool) -> ColorCode {
-        for space_idx in RangeIter::new(0..NUM_SPACES_PER_VIAL, from_bottom) {
-            let color = self.get_vial_space(vial_idx, space_idx);
+        for color in RangeIter::new(self.get_vial_code(vial_idx).into_iter(), from_bottom) {
             if color.is_unknown() {
                 panic!("Watersort in Rust does not support unknown vial explorations")
             } else if color.is_empty() {

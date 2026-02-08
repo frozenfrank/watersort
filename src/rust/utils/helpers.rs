@@ -1,16 +1,12 @@
-use std::ops::Range;
-
-/// Helper functions for the Water Sort Puzzle solver
-/// (To be expanded as needed)
 
 /// Enum that stores either a forward Range or a reverse Range iterator
-pub enum RangeIter {
-    Forward(Range<usize>),
-    Reverse(std::iter::Rev<Range<usize>>),
+pub enum RangeIter<T> {
+    Forward(T),
+    Reverse(std::iter::Rev<T>),
 }
 
-impl RangeIter {
-    pub fn new(range: Range<usize>, is_reversed: bool) -> RangeIter {
+impl<T: DoubleEndedIterator> RangeIter<T> {
+    pub fn new(range: T, is_reversed: bool) -> RangeIter<T> {
         match is_reversed {
             true => RangeIter::Forward(range),
             false => RangeIter::Reverse(range.rev()),
@@ -18,10 +14,10 @@ impl RangeIter {
     }
 }
 
-impl Iterator for RangeIter {
-    type Item = usize;
+impl<T: DoubleEndedIterator> Iterator for RangeIter<T> {
+    type Item = T::Item;
 
-    fn next(&mut self) -> Option<usize> {
+    fn next(&mut self) -> Option<Self::Item> {
         match self {
             RangeIter::Forward(range) => range.next(),
             RangeIter::Reverse(rev_range) => rev_range.next(),
