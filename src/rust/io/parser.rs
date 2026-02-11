@@ -8,7 +8,7 @@ use std::error::Error;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-type ReadFileResult = Result<Game, Box<dyn Error + 'static>>;
+type ReadFileResult = Result<Game<'static>, Box<dyn Error + 'static>>;
 
 pub fn read_game_level(level: &str) -> ReadFileResult {
     let file_path = generate_file_name(level, false);

@@ -4,6 +4,7 @@ use crate::core::{Color, ColorCode, ColorCodeExt};
 use crate::types::constants::NUM_SPACES_PER_VIAL;
 use crate::types::{Completion, DepthSize, Move, SpaceIndex, Vial, VialIndex};
 use crate::utils::helpers::RangeIter;
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::fmt::{self, Formatter};
 use std::ops::Deref;
@@ -18,7 +19,7 @@ use std::sync::Arc;
 /// - Caches num_moves and completion_order for O(1) access
 /// - Stores shared settings in GameSettings to avoid duplication in game tree
 #[derive(Clone)]
-pub struct Game {
+pub struct Game<'a> {
     // Core game state
     spaces: Vec<ColorCode>,
 
@@ -26,16 +27,16 @@ pub struct Game {
     /// The move that led to this game from its parent
     last_move: Option<Move>,
     /// Reference to the parent game (None if this is root)
-    prev: Option<Arc<Game>>,
+    prev: Option<Arc<Game<'a>>>,
 
     // Game statistics (cached for efficiency)
     /// Number of moves taken to reach this state
     num_moves: DepthSize,
     /// Order in which colors were completed (immutable)
-    completion_order: Vec<Completion>,
+    completion_order: Cow<'a, Vec<Completion>>,
 
     // A reference to the root game, or None if this is the root game
-    root: Option<Arc<Game>>,
+    root: Option<Arc<Game<'a>>>,
     pub settings: RefCell<GameSettings>,
 }
 
@@ -63,9 +64,9 @@ struct CountOnTopResult {
     num_empty_spaces: SpaceIndex,
 }
 
-impl Game {
+impl<'a> Game<'a> {
     /// Creates a new game with the given vials and gameplay modes
-    pub fn create(vials: Vec<Vial>) -> Game {
+    pub fn create(vials: Vec<Vial>) -> Game<'a> {
         let mut settings = RefCell::new(GameSettings {
             num_vials: vials.len() as VialIndex,
             ..Default::default()
@@ -84,18 +85,18 @@ impl Game {
             last_move: None,
             prev: None,
             num_moves: 0,
-            completion_order: Vec::new(),
+            completion_order: Cow::Owned(Vec::new()),
             root: None,
             settings,
         }
     }
 
-    pub fn new_root(vials: Vec<Vial>) -> Arc<Game> {
+    pub fn new_root(vials: Vec<Vial>) -> Arc<Game<'static>> {
         Arc::new(Game::create(vials))
     }
 
     /// Creates a new game state by applying a move to the current game
-    pub fn spawn(self: &Arc<Game>, move_: Move) -> Arc<Game> {
+    pub fn spawn(self: &Arc<Game<'a>>, move_: Move) -> Arc<Game<'a>> {
         let mut new_game = self.deref().clone();
         new_game.prev = Some(self.clone());
         new_game.apply_move(move_.from as usize, move_.to as usize);
@@ -133,7 +134,7 @@ impl Game {
     }
 
     /// Returns a reference to the parent game, if any
-    pub fn prev(&self) -> Option<&Arc<Game>> {
+    pub fn prev(&self) -> Option<&Arc<Game<'_>>> {
         self.prev.as_ref()
     }
 
@@ -444,7 +445,7 @@ impl Game {
     }
 }
 
-impl std::fmt::Display for Game {
+impl std::fmt::Display for Game<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let settings = self.settings.borrow();
 
@@ -462,7 +463,7 @@ impl std::fmt::Display for Game {
     }
 }
 
-impl std::fmt::Debug for Game {
+impl std::fmt::Debug for Game<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("Game")
             .field("spaces", &self.spaces)
@@ -508,7 +509,7 @@ mod tests {
         assert!(game.is_finished());
     }
 
-    pub fn new_root_from_chars(vials: Vec<[char; NUM_SPACES_PER_VIAL]>) -> Game {
+    pub fn new_root_from_chars(vials: Vec<[char; NUM_SPACES_PER_VIAL]>) -> Game<'static> {
         let vials = vials
             .iter()
             .map(|vial_colors| vial_colors.map(|color_char| Color(color_char.to_string())))
