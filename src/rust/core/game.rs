@@ -694,10 +694,10 @@ mod tests {
 
         for move_ in moves {
             game = game.spawn(move_);
-            // print!("Game depth: {} ", game.get_depth());
+            print!("D: {} ", game.get_depth());
             // print!("Completion Addr: {:p} ", game.completion_order.as_ptr());
             // print!("Completions: {:?} ", game.completion_order);
-            print!("Vials: {:?} ", game.get_spaces_color());
+            print!("V: {:?} ", game.get_spaces_color());
             println!("");
             completions.insert(game.completion_order.as_ptr());
         }
