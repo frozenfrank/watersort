@@ -194,6 +194,15 @@ impl<'a> Game<'a> {
         core::array::from_fn(|i| allocator.interpret_code(self.spaces[start_idx + i]))
     }
 
+    pub fn get_spaces_code(&self) -> &[ColorCode] {
+        &self.spaces
+    }
+
+    pub fn get_spaces_color(&self) -> Vec<Rc<Color>> {
+        let allocator = &self.settings.borrow().allocator;
+        Vec::from_iter(self.spaces.iter().map(|&i| allocator.interpret_code(i)))
+    }
+
     // ============ Game State Queries ============
 
     /// Returns true if all vials are completed (all spaces in each vial are the same color)
@@ -685,7 +694,11 @@ mod tests {
 
         for move_ in moves {
             game = game.spawn(move_);
-            println!("Game depth: {} Completion Addr: {:p} Completions: {:?}", game.get_depth(), game.completion_order.as_ptr(), game.completion_order);
+            // print!("Game depth: {} ", game.get_depth());
+            // print!("Completion Addr: {:p} ", game.completion_order.as_ptr());
+            // print!("Completions: {:?} ", game.completion_order);
+            print!("Vials: {:?} ", game.get_spaces_color());
+            println!("");
             completions.insert(game.completion_order.as_ptr());
         }
 
