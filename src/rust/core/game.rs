@@ -437,11 +437,17 @@ impl<'a> Game<'a> {
 
         // Track completion order
         if move_validity.will_complete {
-            todo!("self.__register_completion: {}", move_validity.end_color);
+            self.register_completion( move_validity.end_color);
         }
 
         // Finish
         true
+    }
+
+    fn register_completion(&mut self, completing_color: ColorCode) {
+        let mut completions = self.completion_order.deref().clone();
+        completions.push(Completion { color: completing_color, depth: self.num_moves });
+        self.completion_order = Cow::Owned(completions);
     }
 }
 
@@ -470,6 +476,7 @@ impl std::fmt::Debug for Game<'_> {
             .field("last_move", &self.last_move)
             .field("prev", &self.prev)
             .field("num_moves", &self.num_moves)
+            .field("completion_order", &format_args!("{:p}", self.completion_order.as_ptr()))
             .field("completion_order", &self.completion_order)
             .field("root", &self.root)
             .field("settings", &"<settings>")
