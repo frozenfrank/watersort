@@ -67,12 +67,23 @@ struct CountOnTopResult {
 impl<'a> Game<'a> {
     /// Creates a new game with the given vials and gameplay modes
     pub fn create(vials: Vec<Vial>) -> Game<'a> {
-        let mut settings = RefCell::new(GameSettings {
+        let settings = GameSettings {
             num_vials: vials.len() as VialIndex,
             ..Default::default()
-        });
+        };
 
+        Game::create_with_settings(vials, settings)
+    }
+
+    pub fn create_sibling_game(vials: Vec<Vial>, sibling: &Game) -> Game<'a> {
+        let settings = sibling.settings.borrow().clone();
+        Game::create_with_settings(vials, settings)
+    }
+
+    fn create_with_settings(vials: Vec<Vial>, settings: GameSettings) -> Game<'a> {
+        let mut settings = RefCell::new(settings);
         let allocator = &mut settings.get_mut().allocator;
+
         let mut spaces: Vec<ColorCode> = Vec::with_capacity(vials.len() * NUM_SPACES_PER_VIAL);
         for vial in &vials {
             for space in vial {
@@ -451,6 +462,16 @@ impl<'a> Game<'a> {
     }
 }
 
+impl PartialEq for Game<'_> {
+    fn ne(&self, other: &Self) -> bool {
+        !self.eq(other)
+    }
+
+    fn eq(&self, other: &Self) -> bool {
+        self.spaces == other.spaces && self.root == other.root && self.settings == other.settings
+    }
+}
+
 impl std::fmt::Display for Game<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let settings = self.settings.borrow();
@@ -516,11 +537,84 @@ mod tests {
         assert!(game.is_finished());
     }
 
-    pub fn new_root_from_chars(vials: Vec<[char; NUM_SPACES_PER_VIAL]>) -> Game<'static> {
-        let vials = vials
+    #[test]
+    fn test_move_correctness() {
+        #[rustfmt::skip]
+        let vials1 = [
+            ['-', '-', 'r', 'r'],
+            ['-', '-', 'r', 'r'],
+            ['b', 'b', 'b', 'b'],
+        ].to_vec();
+
+        #[rustfmt::skip]
+        let vials2 = [
+            ['-', '-', '-', '-'],
+            ['r', 'r', 'r', 'r'],
+            ['b', 'b', 'b', 'b'],
+        ].to_vec();
+
+        let mut game1 = new_root_from_chars(vials1);
+        game1.apply_move(0, 1);
+
+        let game2 = Game::create_sibling_game(vec_to_vials(vials2), &game1);
+
+        assert_eq!(game1, game2);
+    }
+
+    #[test]
+    fn test_completion_order_address_stability() {
+        #[rustfmt::skip]
+        let vials = [
+            ['r', 'r', 'b', 'b'],
+            ['b', 'b', 'r', 'r'],
+            ['-', '-', '-', '-'],
+        ].to_vec();
+
+        let mut game = new_root_from_chars(vials);
+        let initial_completion_ptr = game.completion_order.as_ptr();
+
+        game.apply_move(1, 2);
+        let after_first_move_ptr = game.completion_order.as_ptr();
+
+        game.apply_move(1, 0);
+        let after_second_move_ptr = game.completion_order.as_ptr();
+
+        assert_eq!(initial_completion_ptr, after_first_move_ptr, "Completion order address changed after first move");
+        assert_eq!(initial_completion_ptr, after_second_move_ptr, "Completion order address changed after second move");
+    }
+
+    #[test]
+    fn test_completion_order_address_stability_spawning() {
+        #[rustfmt::skip]
+        let vials = [
+            ['r', 'r', 'b', 'b'],
+            ['b', 'b', 'r', 'r'],
+            ['-', '-', '-', '-'],
+        ].to_vec();
+
+        let game1 = Arc::new(new_root_from_chars(vials));
+
+        let game2 = game1.spawn(Move { from: 1, to: 2 });
+        assert_ne!(Arc::as_ptr(&game1), Arc::as_ptr(&game2), "Game2 should allocation to a new location");
+        assert_eq!(game1.completion_order.as_ptr(), game2.completion_order.as_ptr(), "Game2 should reference the same completion vector");
+
+        let game3 = game2.spawn(Move { from: 1, to: 0 });
+        assert_ne!(Arc::as_ptr(&game2), Arc::as_ptr(&game3), "Game2 should allocation to a new location");
+        assert_ne!(game2.completion_order.as_ptr(), game3.completion_order.as_ptr(), "Game2 should reference a new completion vector");
+
+        // game.apply_move(1, 0);
+        // let after_second_move_ptr = game.completion_order.as_ptr();
+
+    }
+
+    fn vec_to_vials(vials: Vec<[char; NUM_SPACES_PER_VIAL]>) -> Vec<Vial> {
+        vials
             .iter()
             .map(|vial_colors| vial_colors.map(|color_char| Color(color_char.to_string())))
-            .collect();
-        Game::create(vials)
+            .collect()
+    }
+
+    pub fn new_root_from_chars(vials: Vec<[char; NUM_SPACES_PER_VIAL]>) -> Game<'static> {
+        Game::create(vec_to_vials(vials))
     }
 }

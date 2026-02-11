@@ -2,7 +2,7 @@ use crate::{core::ColorCodeAllocator, types::VialIndex};
 
 /// Shared global settings for a game tree
 /// Stored once on the root game to avoid duplication
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct GameSettings {
     /// The level identifier (e.g., "263")
     pub level: String,
