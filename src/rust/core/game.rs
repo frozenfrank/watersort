@@ -699,21 +699,22 @@ mod tests {
             game = game.spawn(move_);
 
             print!("D: {} ", game.get_depth());
-            // print!("Completion Addr: {:p} ", game.completion_order.as_ptr());
+            print!("Completion Addr: {:p} ", game.completion_order.as_ptr());
+            print!("Completions Len: {:} ", game.completion_order.len());
             // print!("Completions: {:?} ", game.completion_order);
             // print!("V: {:?} ", game.get_spaces_color());
 
-            if let Some(prev) = game.prev.as_ref() {
-                print!("\tMove: {:}", move_);
+            // if let Some(prev) = game.prev.as_ref() {
+            //     print!("\tMove: {:}", move_);
 
-                let start_vial = prev.get_vial_color(move_.from as usize);
-                let end_vial = prev.get_vial_color(move_.to as usize);
-                print!("\tBefore: {:?} -> {:?} ", start_vial, end_vial);
+            //     let start_vial = prev.get_vial_color(move_.from as usize);
+            //     let end_vial = prev.get_vial_color(move_.to as usize);
+            //     print!("\tBefore: {:?} -> {:?} ", start_vial, end_vial);
 
-                let start_vial = game.get_vial_color(move_.from as usize);
-                let end_vial = game.get_vial_color(move_.to as usize);
-                print!("\tAfter: {:?} -> {:?} ", start_vial, end_vial);
-            }
+            //     let start_vial = game.get_vial_color(move_.from as usize);
+            //     let end_vial = game.get_vial_color(move_.to as usize);
+            //     print!("\tAfter: {:?} -> {:?} ", start_vial, end_vial);
+            // }
 
             if game.get_depth() == prev_depth {
                 print!("No change! ");
