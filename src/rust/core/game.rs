@@ -634,8 +634,10 @@ mod tests {
         ].to_vec();
 
         let game1 = Arc::new(new_root_from_chars(vials));
+        println!("{}", game1);
 
-        let game2 = game1.spawn(Move { from: 1, to: 2 });
+        let game2 = game1.spawn(Move::vials(2, 3)); // Move blue
+        println!("{}", game2);
         assert_ne!(
             Arc::as_ptr(&game1),
             Arc::as_ptr(&game2),
@@ -647,7 +649,8 @@ mod tests {
             "Game2 should reference the same completion vector"
         );
 
-        let game3 = game2.spawn(Move { from: 0, to: 1 }); // Complete b
+        let game3 = game2.spawn(Move::vials(1, 2)); // Complete red
+        println!("{}", game3);
         assert_ne!(
             Arc::as_ptr(&game2),
             Arc::as_ptr(&game3),
@@ -659,7 +662,8 @@ mod tests {
             "Game3 should reference a new completion vector"
         );
 
-        let game4 = game3.spawn(Move { from: 1, to: 2 }); // Complete r
+        let game4 = game3.spawn(Move::vials(1, 3)); // Complete blue
+        println!("{}", game4);
         assert_ne!(
             Arc::as_ptr(&game3),
             Arc::as_ptr(&game4),
@@ -690,7 +694,7 @@ mod tests {
             ['r', 'i', 'e', 'b'],
             ['-', '-', '-', '-'],
             ['-', '-', '-', '-'],
-            ].to_vec();
+        ].to_vec();
 
         #[rustfmt::skip]
         let moves = [
@@ -787,6 +791,8 @@ mod tests {
             completions.len(),
             "There should be 13 unique completions (1 for the blank state, and 12 unique ones for each completion)"
         );
+
+        println!("{:#?}", game.completion_order);
     }
 
     fn vec_to_vials(vials: Vec<[char; NUM_SPACES_PER_VIAL]>) -> Vec<Vial> {
