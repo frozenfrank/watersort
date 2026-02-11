@@ -64,6 +64,10 @@ impl ColorCodeAllocator {
     pub fn interpret_code(&self, code: ColorCode) -> Rc<Color> {
         self.colors[code as usize].clone()
     }
+
+    pub fn num_colors(&self) -> usize {
+        self.colors.len() - 2 // Subtract 2 for EMPTY_SPACE and UNKNOWN_COLOR
+    }
 }
 
 impl std::fmt::Debug for ColorCodeAllocator {

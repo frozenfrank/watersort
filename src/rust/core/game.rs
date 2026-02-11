@@ -688,10 +688,12 @@ mod tests {
             Move::vials(12, 1),   //  (1 b complete)
         ];
 
-        let num_colors = vials.len()-1;
+        let num_colors = vials.len()-2;
         let mut completions = HashSet::<*const Completion>::with_capacity(vials.len());
         let mut game = Game::new_root(vec_to_vials(vials));
         let mut prev_depth = usize::MAX;
+
+        assert_eq!(num_colors, game.settings.borrow().allocator.num_colors(), "Game should have as many colors as full vials");
 
         for move_ in moves {
             game = game.spawn(move_);
