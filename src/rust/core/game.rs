@@ -691,14 +691,34 @@ mod tests {
         let num_colors = vials.len()-1;
         let mut completions = HashSet::<*const Completion>::with_capacity(vials.len());
         let mut game = Game::new_root(vec_to_vials(vials));
+        let mut prev_depth = usize::MAX;
 
         for move_ in moves {
             game = game.spawn(move_);
+
             print!("D: {} ", game.get_depth());
             // print!("Completion Addr: {:p} ", game.completion_order.as_ptr());
             // print!("Completions: {:?} ", game.completion_order);
-            print!("V: {:?} ", game.get_spaces_color());
+            // print!("V: {:?} ", game.get_spaces_color());
+
+            if let Some(prev) = game.prev.as_ref() {
+                print!("\tMove: {:}", move_);
+
+                let start_vial = prev.get_vial_color(move_.from as usize);
+                let end_vial = prev.get_vial_color(move_.to as usize);
+                print!("\tBefore: {:?} -> {:?} ", start_vial, end_vial);
+
+                let start_vial = game.get_vial_color(move_.from as usize);
+                let end_vial = game.get_vial_color(move_.to as usize);
+                print!("\tAfter: {:?} -> {:?} ", start_vial, end_vial);
+            }
+
+            if game.get_depth() == prev_depth {
+                print!("No change! ");
+            }
+
             println!("");
+            prev_depth = game.get_depth();
             completions.insert(game.completion_order.as_ptr());
         }
 
