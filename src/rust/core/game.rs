@@ -513,6 +513,8 @@ impl std::fmt::Debug for Game<'_> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use crate::core::Color;
 
     use super::*;
@@ -604,13 +606,91 @@ mod tests {
         assert_ne!(Arc::as_ptr(&game1), Arc::as_ptr(&game2), "Game2 should allocation to a new location");
         assert_eq!(game1.completion_order.as_ptr(), game2.completion_order.as_ptr(), "Game2 should reference the same completion vector");
 
-        let game3 = game2.spawn(Move { from: 1, to: 0 });
-        assert_ne!(Arc::as_ptr(&game2), Arc::as_ptr(&game3), "Game2 should allocation to a new location");
-        assert_ne!(game2.completion_order.as_ptr(), game3.completion_order.as_ptr(), "Game2 should reference a new completion vector");
+        let game3 = game2.spawn(Move { from: 0, to: 1 }); // Complete b
+        assert_ne!(Arc::as_ptr(&game2), Arc::as_ptr(&game3), "Game3 should allocation to a new location");
+        assert_ne!(game2.completion_order.as_ptr(), game3.completion_order.as_ptr(), "Game3 should reference a new completion vector");
 
-        // game.apply_move(1, 0);
-        // let after_second_move_ptr = game.completion_order.as_ptr();
+        let game4 = game3.spawn(Move { from: 1, to: 2 }); // Complete r
+        assert_ne!(Arc::as_ptr(&game3), Arc::as_ptr(&game4), "Game4 should allocation to a new location");
+        assert_ne!(game3.completion_order.as_ptr(), game4.completion_order.as_ptr(), "Game4 should reference a new completion vector");
+    }
 
+    #[test]
+    fn test_completion_order_unique_count() {
+        #[rustfmt::skip]
+        let vials = [
+            ['m', 'g', 'o', 'y'],
+            ['r', 'p', 'k', 'l'], // k = pk
+            ['k', 'n', 'm', 'p'],
+            ['y', 'n', 'r', 'i'], // i = br
+            ['k', 'b', 'i', 'p'],
+            ['k', 'g', 'p', 'y'],
+            ['o', 'g', 'l', 'g'], // l = lb
+            ['r', 'g', 'l', 'n'],
+            ['b', 'b', 'l', 'm'],
+            ['g', 'i', 'n', 'o'],
+            ['g', 'm', 'y', 'o'],
+            ['r', 'i', 'g', 'b'],
+            ['-', '-', '-', '-'],
+            ['-', '-', '-', '-'],
+            ].to_vec();
+
+        #[rustfmt::skip]
+        let moves = [
+            Move::vials(7, 13),   //  (1 o occupied)
+            Move::vials(5, 14),   //  (1 pk occupied)
+            Move::vials(6, 14),   //  (1 pk)
+            Move::vials(3, 14),   //  (1 pk)
+            Move::vials(11, 7),   //  (1 g)
+            Move::vials(1, 11),   //  (1 m)
+            Move::vials(1, 6),    //  (1 g)
+            Move::vials(1, 13),   //  (1 o)
+            Move::vials(4, 1),    //  (1 y)
+            Move::vials(4, 3),    //  (1 pn)
+            Move::vials(12, 4),   //  (1 r)
+            Move::vials(8, 4),    //  (1 r)
+            Move::vials(10, 8),   //  (1 dg)
+            Move::vials(10, 12),  //  (1 br)
+            Move::vials(3, 10),   //  (2 pn)
+            Move::vials(11, 3),   //  (2 m)
+            Move::vials(1, 11),   //  (2 y vacated)
+            Move::vials(9, 1),    //  (2 b occupied)
+            Move::vials(5, 1),    //  (1 b)
+            Move::vials(12, 5),   //  (2 br)
+            Move::vials(8, 12),   //  (2 dg)
+            Move::vials(8, 9),    //  (1 lb)
+            Move::vials(10, 8),   //  (3 pn complete)
+            Move::vials(10, 13),  //  (1 o vacated)
+            Move::vials(2, 10),   //  (1 r occupied)
+            Move::vials(4, 10),   //  (3 r complete)
+            Move::vials(5, 4),    //  (3 br complete)
+            Move::vials(2, 5),    //  (1 p)
+            Move::vials(2, 14),   //  (1 pk complete)
+            Move::vials(9, 2),    //  (2 lb)
+            Move::vials(3, 9),    //  (3 m complete)
+            Move::vials(3, 5),    //  (1 p vacated)
+            Move::vials(7, 3),    //  (2 g occupied)
+            Move::vials(7, 2),    //  (1 lb complete)
+            Move::vials(12, 7),   //  (3 dg complete)
+            Move::vials(6, 3),    //  (2 g complete)
+            Move::vials(6, 5),    //  (1 p complete)
+            Move::vials(11, 6),   //  (3 y complete)
+            Move::vials(11, 13),  //  (1 o complete)
+            Move::vials(12, 1),   //  (1 b complete)
+        ];
+
+        let num_colors = vials.len()-1;
+        let mut completions = HashSet::<*const Completion>::with_capacity(vials.len());
+        let mut game = Game::new_root(vec_to_vials(vials));
+
+        for move_ in moves {
+            game = game.spawn(move_);
+            println!("Game depth: {} Completion Addr: {:p} Completions: {:?}", game.get_depth(), game.completion_order.as_ptr(), game.completion_order);
+            completions.insert(game.completion_order.as_ptr());
+        }
+
+        assert_eq!(moves.len(), game.get_depth(), "The final game should include all scheduled moves");
+        assert_eq!(num_colors+1, completions.len(), "There should be 13 unique completions (1 for the blank state, and 12 unique ones for each completion)");
     }
 
     fn vec_to_vials(vials: Vec<[char; NUM_SPACES_PER_VIAL]>) -> Vec<Vial> {
