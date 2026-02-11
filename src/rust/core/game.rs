@@ -144,6 +144,11 @@ impl<'a> Game<'a> {
         self.last_move
     }
 
+    /// Returns the number of moves applied to the root to get to this game
+    pub fn get_depth(&self) -> usize {
+        self.num_moves as usize
+    }
+
     /// Returns a reference to the parent game, if any
     pub fn prev(&self) -> Option<&Arc<Game<'_>>> {
         self.prev.as_ref()
@@ -452,6 +457,7 @@ impl<'a> Game<'a> {
         }
 
         // Finish
+        self.num_moves += 1;
         true
     }
 

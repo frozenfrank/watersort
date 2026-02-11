@@ -25,8 +25,14 @@ pub struct Move {
 }
 
 impl Move {
+    /// Creates a Move given 0-indexed vial numbers
     pub fn new(from: VialIndex, to: VialIndex) -> Self {
         Move { from, to }
+    }
+
+    /// Creates a Move provided human-friendly vial numbers
+    pub fn vials(from: VialIndex, to: VialIndex) -> Self {
+        Move { from: from-1, to: to-1 }
     }
 }
 
