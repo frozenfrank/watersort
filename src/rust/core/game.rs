@@ -108,8 +108,24 @@ impl<'a> Game<'a> {
 
     /// Creates a new game state by applying a move to the current game
     pub fn spawn(self: &Arc<Game<'a>>, move_: Move) -> Arc<Game<'a>> {
-        let mut new_game = self.deref().clone();
-        new_game.prev = Some(self.clone());
+        // SAFETY: The parent game is kept alive by the Arc in `prev`, and the
+        // parent game recursively references the Owned completion order, so the
+        // borrowed reference will remain valid for the entire lifetime of this game.
+        let completion_order = unsafe {
+            std::mem::transmute::<Cow<'_, Vec<Completion>>, Cow<'a, Vec<Completion>>>(
+                Cow::Borrowed(&self.completion_order),
+            )
+        };
+
+        let mut new_game: Game<'a> = Game {
+            completion_order,
+            prev: Some(self.clone()),
+            spaces: self.spaces.clone(),
+            last_move: self.last_move.clone(),
+            num_moves: self.num_moves,
+            root: self.root.clone(),
+            settings: self.settings.clone(),
+        };
         new_game.apply_move(move_.from as usize, move_.to as usize);
         Arc::new(new_game)
     }
@@ -481,10 +497,6 @@ impl<'a> Game<'a> {
 }
 
 impl PartialEq for Game<'_> {
-    fn ne(&self, other: &Self) -> bool {
-        !self.eq(other)
-    }
-
     fn eq(&self, other: &Self) -> bool {
         self.spaces == other.spaces && self.root == other.root && self.settings == other.settings
     }
