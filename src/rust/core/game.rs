@@ -627,19 +627,19 @@ mod tests {
     #[test]
     fn test_completion_order_unique_count() {
         #[rustfmt::skip]
-        let vials = [
+        let vials = [ // Level 100
             ['m', 'g', 'o', 'y'],
             ['r', 'p', 'k', 'l'], // k = pk
             ['k', 'n', 'm', 'p'],
             ['y', 'n', 'r', 'i'], // i = br
             ['k', 'b', 'i', 'p'],
             ['k', 'g', 'p', 'y'],
-            ['o', 'g', 'l', 'g'], // l = lb
-            ['r', 'g', 'l', 'n'],
+            ['o', 'g', 'l', 'e'], // e = dg
+            ['r', 'e', 'l', 'n'], // l = lb
             ['b', 'b', 'l', 'm'],
-            ['g', 'i', 'n', 'o'],
+            ['e', 'i', 'n', 'o'],
             ['g', 'm', 'y', 'o'],
-            ['r', 'i', 'g', 'b'],
+            ['r', 'i', 'e', 'b'],
             ['-', '-', '-', '-'],
             ['-', '-', '-', '-'],
             ].to_vec();
