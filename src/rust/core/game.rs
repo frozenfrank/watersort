@@ -462,7 +462,7 @@ impl<'a> Game<'a> {
 
         // Track completion order
         if move_validity.will_complete {
-            self.register_completion( move_validity.end_color);
+            self.register_completion(move_validity.end_color);
         }
 
         // Finish
@@ -472,7 +472,10 @@ impl<'a> Game<'a> {
 
     fn register_completion(&mut self, completing_color: ColorCode) {
         let mut completions = self.completion_order.deref().clone();
-        completions.push(Completion { color: completing_color, depth: self.num_moves });
+        completions.push(Completion {
+            color: completing_color,
+            depth: self.num_moves,
+        });
         self.completion_order = Cow::Owned(completions);
     }
 }
@@ -512,7 +515,10 @@ impl std::fmt::Debug for Game<'_> {
             .field("last_move", &self.last_move)
             .field("prev", &self.prev)
             .field("num_moves", &self.num_moves)
-            .field("completion_order", &format_args!("{:p}", self.completion_order.as_ptr()))
+            .field(
+                "completion_order",
+                &format_args!("{:p}", self.completion_order.as_ptr()),
+            )
             .field("completion_order", &self.completion_order)
             .field("root", &self.root)
             .field("settings", &"<settings>")
@@ -596,8 +602,14 @@ mod tests {
         game.apply_move(1, 0);
         let after_second_move_ptr = game.completion_order.as_ptr();
 
-        assert_eq!(initial_completion_ptr, after_first_move_ptr, "Completion order address changed after first move");
-        assert_eq!(initial_completion_ptr, after_second_move_ptr, "Completion order address changed after second move");
+        assert_eq!(
+            initial_completion_ptr, after_first_move_ptr,
+            "Completion order address changed after first move"
+        );
+        assert_eq!(
+            initial_completion_ptr, after_second_move_ptr,
+            "Completion order address changed after second move"
+        );
     }
 
     #[test]
@@ -612,16 +624,40 @@ mod tests {
         let game1 = Arc::new(new_root_from_chars(vials));
 
         let game2 = game1.spawn(Move { from: 1, to: 2 });
-        assert_ne!(Arc::as_ptr(&game1), Arc::as_ptr(&game2), "Game2 should allocation to a new location");
-        assert_eq!(game1.completion_order.as_ptr(), game2.completion_order.as_ptr(), "Game2 should reference the same completion vector");
+        assert_ne!(
+            Arc::as_ptr(&game1),
+            Arc::as_ptr(&game2),
+            "Game2 should allocation to a new location"
+        );
+        assert_eq!(
+            game1.completion_order.as_ptr(),
+            game2.completion_order.as_ptr(),
+            "Game2 should reference the same completion vector"
+        );
 
         let game3 = game2.spawn(Move { from: 0, to: 1 }); // Complete b
-        assert_ne!(Arc::as_ptr(&game2), Arc::as_ptr(&game3), "Game3 should allocation to a new location");
-        assert_ne!(game2.completion_order.as_ptr(), game3.completion_order.as_ptr(), "Game3 should reference a new completion vector");
+        assert_ne!(
+            Arc::as_ptr(&game2),
+            Arc::as_ptr(&game3),
+            "Game3 should allocation to a new location"
+        );
+        assert_ne!(
+            game2.completion_order.as_ptr(),
+            game3.completion_order.as_ptr(),
+            "Game3 should reference a new completion vector"
+        );
 
         let game4 = game3.spawn(Move { from: 1, to: 2 }); // Complete r
-        assert_ne!(Arc::as_ptr(&game3), Arc::as_ptr(&game4), "Game4 should allocation to a new location");
-        assert_ne!(game3.completion_order.as_ptr(), game4.completion_order.as_ptr(), "Game4 should reference a new completion vector");
+        assert_ne!(
+            Arc::as_ptr(&game3),
+            Arc::as_ptr(&game4),
+            "Game4 should allocation to a new location"
+        );
+        assert_ne!(
+            game3.completion_order.as_ptr(),
+            game4.completion_order.as_ptr(),
+            "Game4 should reference a new completion vector"
+        );
     }
 
     #[test]
@@ -688,12 +724,16 @@ mod tests {
             Move::vials(12, 1),   //  (1 b complete)
         ];
 
-        let num_colors = vials.len()-2;
+        let num_colors = vials.len() - 2;
         let mut completions = HashSet::<*const Completion>::with_capacity(vials.len());
         let mut game = Game::new_root(vec_to_vials(vials));
         let mut prev_depth = usize::MAX;
 
-        assert_eq!(num_colors, game.settings.borrow().allocator.num_colors(), "Game should have as many colors as full vials");
+        assert_eq!(
+            num_colors,
+            game.settings.borrow().allocator.num_colors(),
+            "Game should have as many colors as full vials"
+        );
 
         for move_ in moves {
             game = game.spawn(move_);
@@ -725,8 +765,16 @@ mod tests {
             completions.insert(game.completion_order.as_ptr());
         }
 
-        assert_eq!(moves.len(), game.get_depth(), "The final game should include all scheduled moves");
-        assert_eq!(num_colors+1, completions.len(), "There should be 13 unique completions (1 for the blank state, and 12 unique ones for each completion)");
+        assert_eq!(
+            moves.len(),
+            game.get_depth(),
+            "The final game should include all scheduled moves"
+        );
+        assert_eq!(
+            num_colors + 1,
+            completions.len(),
+            "There should be 13 unique completions (1 for the blank state, and 12 unique ones for each completion)"
+        );
     }
 
     fn vec_to_vials(vials: Vec<[char; NUM_SPACES_PER_VIAL]>) -> Vec<Vial> {

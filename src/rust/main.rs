@@ -43,12 +43,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let game2 = game.spawn(Move { from: 0, to: 1 });
         println!("Spawned game:\n{}\n{:?}", game2, game2);
 
-        let move_ = Move {from: 1, to: 2};
+        let move_ = Move { from: 1, to: 2 };
         let game3 = game2.spawn(move_);
         println!("Applied move: {:?}\n{}\n{:#?}", move_, game3, game3);
     }
-
-
 
     println!("Root game: {}\n{:#?}", game.is_root(), game);
 

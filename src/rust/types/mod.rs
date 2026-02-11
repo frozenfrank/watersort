@@ -34,13 +34,16 @@ impl Move {
 
     /// Creates a Move provided human-friendly vial numbers
     pub fn vials(from: VialIndex, to: VialIndex) -> Self {
-        Move { from: from-1, to: to-1 }
+        Move {
+            from: from - 1,
+            to: to - 1,
+        }
     }
 }
 
 impl Display for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{}->{}", self.from+1, self.to+1))
+        f.write_fmt(format_args!("{}->{}", self.from + 1, self.to + 1))
     }
 }
 
