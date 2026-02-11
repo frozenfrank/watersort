@@ -454,10 +454,10 @@ impl<'a> Game<'a> {
                 move_range -= 1;
                 self.set_vial_space(end_vial, space_idx, move_validity.start_color);
             }
-            space_idx -= 1;
             if space_idx == 0 {
                 break;
             }
+            space_idx -= 1;
         }
 
         // Track completion order
