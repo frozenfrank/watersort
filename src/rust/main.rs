@@ -38,9 +38,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     move_valid = game.apply_move(1, 0);
     println!("Move Valid: {}\n{}", move_valid, game);
 
-    let game = Arc::new(game);
-    let game2 = game.spawn(Move { from: 0, to: 1 });
-    println!("Spawned game:\n{}", game2);
+    {
+        let game = Arc::new(game.clone());
+        let game2 = game.spawn(Move { from: 0, to: 1 });
+        println!("Spawned game:\n{}\n{:?}", game2, game2);
+
+        let move_ = Move {from: 1, to: 2};
+        let game3 = game2.spawn(move_);
+        println!("Applied move: {:?}\n{}\n{:#?}", move_, game3, game3);
+    }
+
+
+
+    println!("Root game: {}\n{:#?}", game.is_root(), game);
 
     if args.len() >= 3 {
         let output_path = &args[2];
