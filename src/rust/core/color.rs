@@ -2,42 +2,47 @@
 
 /// Represents a color in the game
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Color {
+pub struct Color<'a> {
     /// The canonical key/code for the color (e.g. "r", "m", "?")
-    pub key: String,
+    pub key: &'a str,
 
-    /// Short code (mirrors `key` for now) reserved for compatibility
-    pub code: String,
+    /// Human-friendly display name for the color (e.g. "Red", "Mint", "Blue")
+    pub name: Option<&'a str>,
 
     /// Optional ANSI background sequence for terminal rendering
-    pub ansi_back: Option<String>,
+    pub style_primary: Option<&'a str>,
 
     /// Optional ANSI foreground sequence for terminal rendering
-    pub ansi_fore: Option<String>,
-
-    /// Human-friendly display name for the color (e.g. "Red")
-    pub display_name: Option<String>,
-
-    /// Whether this color is reserved (empty/unknown)
-    pub reserved: bool,
+    pub style_secondary: Option<&'a str>,
 }
 
-impl Color {
-    pub fn new(name: &str) -> Self {
-        let key = name.to_string();
+impl<'a> Color<'a> {
+    /// @deprecated Prefer Color::unknown
+    pub fn new(key: &'a str) -> Self {
+        Color::unknown(&key)
+    }
+
+    pub fn unknown(key: &'a str) -> Self {
         Color {
-            key: key.clone(),
-            code: key.clone(),
-            ansi_back: None,
-            ansi_fore: None,
-            display_name: None,
-            reserved: is_reserved(&key),
+            key,
+            name: None,
+            style_primary: None,
+            style_secondary: None,
+        }
+    }
+
+    pub fn known(key: &'a str, name: &'a str, style_primary: &'a str, style_secondary: &'a str) -> Self {
+        Color {
+            key,
+            name: Some(name),
+            style_secondary: Some(style_secondary),
+            style_primary: Some(style_primary),
         }
     }
 
     /// Returns true if this is a valid game color (not empty or unknown)
     pub fn is_valid(&self) -> bool {
-        !self.reserved
+        !self.is_reserved()
     }
 
     /// Returns true if this is an empty space
@@ -50,37 +55,13 @@ impl Color {
         self.key == UNKNOWN_VALUE
     }
 
+    /// Returns true if this is a reserved value
     pub fn is_reserved(&self) -> bool {
-        self.reserved
-    }
-
-    /// Returns the canonical key/code for this color
-    pub fn key(&self) -> &str {
-        &self.key
-    }
-
-    /// Returns the short code for this color (same as key)
-    pub fn code(&self) -> &str {
-        &self.code
-    }
-
-    /// Optional ANSI background for pretty printing
-    pub fn ansi_back(&self) -> Option<&str> {
-        self.ansi_back.as_deref()
-    }
-
-    /// Optional ANSI foreground for pretty printing
-    pub fn ansi_fore(&self) -> Option<&str> {
-        self.ansi_fore.as_deref()
-    }
-
-    /// Optional human-friendly display name
-    pub fn display_name(&self) -> Option<&str> {
-        self.display_name.as_deref()
+        is_reserved(self.key)
     }
 }
 
-impl std::fmt::Debug for Color {
+impl<'a> std::fmt::Debug for Color<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.key)
     }
