@@ -512,7 +512,7 @@ impl std::fmt::Display for Game<'_> {
         writeln!(f, "Drain mode: {}", settings.drain_mode)?;
 
         for vial_idx in 0..self.num_vials() {
-            let colors = self.get_vial_color(vial_idx).map(|c| c.0.clone());
+            let colors = self.get_vial_color(vial_idx).map(|c| c.key.clone());
             writeln!(f, "Vial {}: {}", vial_idx + 1, colors.join(" "))?;
         }
 
