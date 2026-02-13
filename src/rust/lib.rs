@@ -7,6 +7,7 @@ pub mod core;
 pub mod io;
 pub mod types;
 pub mod utils;
+pub mod play;
 
 // Re-export commonly used types
 pub use core::Game;

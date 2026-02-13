@@ -1722,7 +1722,7 @@ def playGame(game: "Game"):
   while True:
     currentGame.printMoves()
     currentGame.printVials()
-    read = input()
+    read = input().strip()
     if not read:
       continue
     elif read == "q":
