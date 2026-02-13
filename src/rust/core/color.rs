@@ -2,38 +2,38 @@
 
 /// Represents a color in the game
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Color<'a> {
+pub struct Color {
     /// The canonical key/code for the color (e.g. "r", "m", "?")
-    pub key: &'a str,
+    pub key: String,
 
     /// Human-friendly display name for the color (e.g. "Red", "Mint", "Blue")
-    pub name: Option<&'a str>,
+    pub name: Option<&'static str>,
 
     /// Optional ANSI background sequence for terminal rendering
-    pub style_primary: Option<&'a str>,
+    pub style_primary: Option<&'static str>,
 
     /// Optional ANSI foreground sequence for terminal rendering
-    pub style_secondary: Option<&'a str>,
+    pub style_secondary: Option<&'static str>,
 }
 
-impl<'a> Color<'a> {
+impl Color {
     /// @deprecated Prefer Color::unknown
-    pub fn new(key: &'a str) -> Self {
+    pub fn new(key: &str) -> Self {
         Color::unknown(&key)
     }
 
-    pub fn unknown(key: &'a str) -> Self {
+    pub fn unknown(key: &str) -> Self {
         Color {
-            key,
+            key: key.to_string(),
             name: None,
             style_primary: None,
             style_secondary: None,
         }
     }
 
-    pub fn known(key: &'a str, name: &'a str, style_primary: &'a str, style_secondary: &'a str) -> Self {
+    pub fn known(key: &str, name: &'static str, style_primary: &'static str, style_secondary: &'static str) -> Self {
         Color {
-            key,
+            key: key.to_string(),
             name: Some(name),
             style_secondary: Some(style_secondary),
             style_primary: Some(style_primary),
@@ -57,11 +57,11 @@ impl<'a> Color<'a> {
 
     /// Returns true if this is a reserved value
     pub fn is_reserved(&self) -> bool {
-        is_reserved(self.key)
+        is_reserved(&self.key)
     }
 }
 
-impl<'a> std::fmt::Debug for Color<'a> {
+impl std::fmt::Debug for Color {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.key)
     }
