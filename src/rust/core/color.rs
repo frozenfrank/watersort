@@ -2,40 +2,87 @@
 
 /// Represents a color in the game
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Color(pub String);
+pub struct Color {
+    /// The canonical key/code for the color (e.g. "r", "m", "?")
+    pub key: String,
+
+    /// Short code (mirrors `key` for now) reserved for compatibility
+    pub code: String,
+
+    /// Optional ANSI background sequence for terminal rendering
+    pub ansi_back: Option<String>,
+
+    /// Optional ANSI foreground sequence for terminal rendering
+    pub ansi_fore: Option<String>,
+
+    /// Human-friendly display name for the color (e.g. "Red")
+    pub display_name: Option<String>,
+
+    /// Whether this color is reserved (empty/unknown)
+    pub reserved: bool,
+}
 
 impl Color {
     pub fn new(name: &str) -> Self {
-        Color(name.to_string())
+        let key = name.to_string();
+        Color {
+            key: key.clone(),
+            code: key.clone(),
+            ansi_back: None,
+            ansi_fore: None,
+            display_name: None,
+            reserved: is_reserved(&key),
+        }
     }
 
     /// Returns true if this is a valid game color (not empty or unknown)
     pub fn is_valid(&self) -> bool {
-        !self.is_reserved()
+        !self.reserved
     }
 
     /// Returns true if this is an empty space
     pub fn is_empty(&self) -> bool {
-        self.0 == EMPTY_SPACE
+        self.key == EMPTY_SPACE
     }
 
     /// Returns true if this is an unknown value
     pub fn is_unknown(&self) -> bool {
-        self.0 == UNKNOWN_VALUE
+        self.key == UNKNOWN_VALUE
     }
 
     pub fn is_reserved(&self) -> bool {
-        is_reserved(&self.0)
+        self.reserved
     }
 
-    pub fn name(&self) -> &str {
-        &self.0
+    /// Returns the canonical key/code for this color
+    pub fn key(&self) -> &str {
+        &self.key
+    }
+
+    /// Returns the short code for this color (same as key)
+    pub fn code(&self) -> &str {
+        &self.code
+    }
+
+    /// Optional ANSI background for pretty printing
+    pub fn ansi_back(&self) -> Option<&str> {
+        self.ansi_back.as_deref()
+    }
+
+    /// Optional ANSI foreground for pretty printing
+    pub fn ansi_fore(&self) -> Option<&str> {
+        self.ansi_fore.as_deref()
+    }
+
+    /// Optional human-friendly display name
+    pub fn display_name(&self) -> Option<&str> {
+        self.display_name.as_deref()
     }
 }
 
 impl std::fmt::Debug for Color {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
+        f.write_str(&self.key)
     }
 }
 
