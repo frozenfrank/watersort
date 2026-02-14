@@ -53,7 +53,7 @@ impl std::ops::Index<&str> for AnsiCodes {
         if let Some(fmt) = self.get(name) {
             return fmt;
         } else {
-            panic!("Ansi name {} does not exist in this struct.", name);
+            panic!("Ansi name '{}' does not exist in this struct. Use get() for a non-panic retrieval.", name);
         }
     }
 }
@@ -82,58 +82,68 @@ impl AnsiCursor {
     }
 }
 
+#[rustfmt::skip]
 pub fn fore() -> AnsiCodes {
     AnsiCodes::from_codes(&[
-        ("BLACK", 30),
-        ("RED", 31),
-        ("GREEN", 32),
-        ("YELLOW", 33),
-        ("BLUE", 34),
-        ("MAGENTA", 35),
-        ("CYAN", 36),
-        ("WHITE", 37),
-        ("RESET", 39),
+        ("BLACK",               30),
+        ("RED",                 31),
+        ("GREEN",               32),
+        ("YELLOW",              33),
+        ("BLUE",                34),
+        ("MAGENTA",             35),
+        ("CYAN",                36),
+        ("WHITE",               37),
+        ("RESET",               39),
+
         // These are fairly well supported, but not part of the standard.
-        ("LIGHTBLACK_EX", 90),
-        ("LIGHTRED_EX", 91),
-        ("LIGHTGREEN_EX", 92),
-        ("LIGHTYELLOW_EX", 93),
-        ("LIGHTBLUE_EX", 94),
-        ("LIGHTMAGENTA_EX", 95),
-        ("LIGHTCYAN_EX", 96),
-        ("LIGHTWHITE_EX", 97),
+        ("LIGHTBLACK_EX",       90),
+        ("LIGHTRED_EX",         91),
+        ("LIGHTGREEN_EX",       92),
+        ("LIGHTYELLOW_EX",      93),
+        ("LIGHTBLUE_EX",        94),
+        ("LIGHTMAGENTA_EX",     95),
+        ("LIGHTCYAN_EX",        96),
+        ("LIGHTWHITE_EX",       97),
     ])
 }
 
+#[rustfmt::skip]
 pub fn back() -> AnsiCodes {
     AnsiCodes::from_codes(&[
-        ("BLACK", 40),
-        ("RED", 41),
-        ("GREEN", 42),
-        ("YELLOW", 43),
-        ("BLUE", 44),
-        ("MAGENTA", 45),
-        ("CYAN", 46),
-        ("WHITE", 47),
-        ("RESET", 49),
+        ("BLACK",               40),
+        ("RED",                 41),
+        ("GREEN",               42),
+        ("YELLOW",              43),
+        ("BLUE",                44),
+        ("MAGENTA",             45),
+        ("CYAN",                46),
+        ("WHITE",               47),
+        ("RESET",               49),
+
         // These are fairly well supported, but not part of the standard.
-        ("LIGHTBLACK_EX", 100),
-        ("LIGHTRED_EX", 101),
-        ("LIGHTGREEN_EX", 102),
-        ("LIGHTYELLOW_EX", 103),
-        ("LIGHTBLUE_EX", 104),
-        ("LIGHTMAGENTA_EX", 105),
-        ("LIGHTCYAN_EX", 106),
-        ("LIGHTWHITE_EX", 107),
+        ("LIGHTBLACK_EX",       100),
+        ("LIGHTRED_EX",         101),
+        ("LIGHTGREEN_EX",       102),
+        ("LIGHTYELLOW_EX",      103),
+        ("LIGHTBLUE_EX",        104),
+        ("LIGHTMAGENTA_EX",     105),
+        ("LIGHTCYAN_EX",        106),
+        ("LIGHTWHITE_EX",       107),
     ])
 }
 
+#[rustfmt::skip]
 pub fn style() -> AnsiCodes {
     AnsiCodes::from_codes(&[
-        ("BRIGHT", 1),
-        ("DIM", 2),
-        ("NORMAL", 22),
-        ("RESET_ALL", 0),
+        ("BRIGHT",              1),
+        ("DIM",                 2),
+        ("ITALICS",             3),
+        ("UNDERSCORE",          4),
+        ("INVERSE",             7),
+        ("CONCEALED",           8),
+        ("STRIKETHROUGH",       9),
+        ("NORMAL",              22),
+        ("RESET_ALL",           0),
     ])
 }
 
