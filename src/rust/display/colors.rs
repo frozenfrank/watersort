@@ -2,7 +2,7 @@ use crate::{core::Color, display::ansi::*};
 use std::sync::LazyLock;
 
 #[rustfmt::skip]
-pub static ALL_COLORS: LazyLock<Vec<Color>> = LazyLock::new(|| {
+pub static DEFAULT_COLORS: LazyLock<Vec<Color>> = LazyLock::new(|| {
     vec![
         // The actual color from the game as the background. An HSL inverted color to 20/80% Luminosity for the foreground.
         Color::known(&"m",  &"Mint",        ansi_back_fore(RGB(98, 214, 124),  RGB(21, 81, 34)),        ansi_fore(RGB(98, 214, 124))),

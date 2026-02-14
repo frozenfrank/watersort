@@ -1,6 +1,9 @@
-use crate::core::{
-    Color, ColorCode,
-    color::{EMPTY_SPACE, UNKNOWN_VALUE},
+use crate::{
+    core::{
+        Color, ColorCode,
+        color::{EMPTY_SPACE, UNKNOWN_VALUE},
+    },
+    display::colors::DEFAULT_COLORS,
 };
 use std::{collections::HashMap, rc::Rc};
 
@@ -11,7 +14,8 @@ pub struct ColorCodeAllocator {
 }
 
 impl ColorCodeAllocator {
-    pub fn new() -> Self {
+    // Allocates only the bare minimum colors for use
+    pub fn new_bare() -> Self {
         let mut allocator = Self {
             color_codes: HashMap::new(),
             colors: Vec::new(),
@@ -20,6 +24,17 @@ impl ColorCodeAllocator {
         // Reserve 0 and 1 for EMPTY_SPACE and UNKNOWN_COLOR
         allocator.allocate_color(&Color::new(EMPTY_SPACE));
         allocator.allocate_color(&Color::new(UNKNOWN_VALUE));
+        allocator
+    }
+
+    /// Allocates with all the default colors included
+    pub fn new() -> Self {
+        let mut allocator = ColorCodeAllocator::new_bare();
+
+        for color in DEFAULT_COLORS.iter() {
+            allocator.allocate_color(color);
+        }
+
         allocator
     }
 

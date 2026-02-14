@@ -9,10 +9,10 @@ pub struct Color {
     /// Human-friendly display name for the color (e.g. "Red", "Mint", "Blue")
     pub name: Option<&'static str>,
 
-    /// Optional ANSI background sequence for terminal rendering
+    /// Optional ANSI sequence for terminal rendering with a background
     pub style_primary: Option<String>,
 
-    /// Optional ANSI foreground sequence for terminal rendering
+    /// Optional ANSI sequence for terminal rendering as foreground only
     pub style_secondary: Option<String>,
 }
 
