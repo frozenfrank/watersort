@@ -35,8 +35,17 @@ impl Color {
         Color {
             key: key.to_string(),
             name: Some(name),
-            style_secondary: Some(style_secondary),
             style_primary: Some(style_primary),
+            style_secondary: Some(style_secondary),
+        }
+    }
+
+    pub fn system(key: &str, name: &'static str, style_primary: String) -> Self {
+        Color {
+            key: key.to_string(),
+            name: Some(name),
+            style_primary: Some(style_primary),
+            style_secondary: None
         }
     }
 
