@@ -10,10 +10,10 @@ pub struct Color {
     pub name: Option<&'static str>,
 
     /// Optional ANSI background sequence for terminal rendering
-    pub style_primary: Option<&'static str>,
+    pub style_primary: Option<String>,
 
     /// Optional ANSI foreground sequence for terminal rendering
-    pub style_secondary: Option<&'static str>,
+    pub style_secondary: Option<String>,
 }
 
 impl Color {
@@ -31,7 +31,7 @@ impl Color {
         }
     }
 
-    pub fn known(key: &str, name: &'static str, style_primary: &'static str, style_secondary: &'static str) -> Self {
+    pub fn known(key: &str, name: &'static str, style_primary: String, style_secondary: String) -> Self {
         Color {
             key: key.to_string(),
             name: Some(name),
