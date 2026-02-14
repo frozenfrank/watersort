@@ -4,11 +4,11 @@
 /// maintaining feature parity with the original Python implementation
 /// while achieving better memory efficiency and performance.
 pub mod core;
+pub mod display;
 pub mod io;
+pub mod play;
 pub mod types;
 pub mod utils;
-pub mod play;
-pub mod display;
 
 // Re-export commonly used types
 pub use core::Game;

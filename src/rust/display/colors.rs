@@ -1,6 +1,5 @@
-use std::sync::LazyLock;
 use crate::{core::Color, display::ansi::*};
-
+use std::sync::LazyLock;
 
 #[rustfmt::skip]
 pub static ALL_COLORS: LazyLock<Vec<Color>> = LazyLock::new(|| {

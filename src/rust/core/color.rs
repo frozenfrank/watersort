@@ -31,7 +31,12 @@ impl Color {
         }
     }
 
-    pub fn known(key: &str, name: &'static str, style_primary: String, style_secondary: String) -> Self {
+    pub fn known(
+        key: &str,
+        name: &'static str,
+        style_primary: String,
+        style_secondary: String,
+    ) -> Self {
         Color {
             key: key.to_string(),
             name: Some(name),
@@ -45,7 +50,7 @@ impl Color {
             key: key.to_string(),
             name: Some(name),
             style_primary: Some(style_primary),
-            style_secondary: None
+            style_secondary: None,
         }
     }
 

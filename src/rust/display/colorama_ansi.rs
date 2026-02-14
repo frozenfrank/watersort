@@ -53,7 +53,10 @@ impl std::ops::Index<&str> for AnsiCodes {
         if let Some(fmt) = self.get(name) {
             return fmt;
         } else {
-            panic!("Ansi name '{}' does not exist in this struct. Use get() for a non-panic retrieval.", name);
+            panic!(
+                "Ansi name '{}' does not exist in this struct. Use get() for a non-panic retrieval.",
+                name
+            );
         }
     }
 }
