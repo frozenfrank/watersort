@@ -46,6 +46,18 @@ impl AnsiCodes {
     }
 }
 
+impl std::ops::Index<&str> for AnsiCodes {
+    type Output = str;
+
+    fn index(&self, name: &str) -> &Self::Output {
+        if let Some(fmt) = self.get(name) {
+            return fmt;
+        } else {
+            panic!("Ansi name {} does not exist in this struct.", name);
+        }
+    }
+}
+
 pub struct AnsiCursor;
 
 impl AnsiCursor {
