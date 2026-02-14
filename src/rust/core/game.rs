@@ -798,7 +798,9 @@ mod tests {
     fn vec_to_vials(vials: Vec<[char; NUM_SPACES_PER_VIAL]>) -> Vec<Vial> {
         vials
             .iter()
-            .map(|vial_colors| vial_colors.map(|color_char| Color(color_char.to_string())))
+            .map(|vial_colors| {
+                vial_colors.map(|color_char| Color::unknown(&color_char.to_string()))
+            })
             .collect()
     }
 
