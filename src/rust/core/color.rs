@@ -1,7 +1,7 @@
 /// Color handling and validation for the Water Sort Puzzle
 
 /// Represents a color in the game
-#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Eq, PartialOrd, Ord)]
 pub struct Color {
     /// The canonical key/code for the color (e.g. "r", "m", "?")
     pub key: String,
@@ -80,6 +80,19 @@ impl std::fmt::Debug for Color {
         f.write_str(&self.key)
     }
 }
+
+impl std::cmp::PartialEq for Color {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
+    }
+}
+
+impl std::hash::Hash for Color {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.key.hash(state);
+    }
+}
+
 
 /// Special character representing an empty space in a vial
 pub const EMPTY_SPACE: &'static str = "-";
