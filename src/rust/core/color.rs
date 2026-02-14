@@ -93,7 +93,6 @@ impl std::hash::Hash for Color {
     }
 }
 
-
 /// Special character representing an empty space in a vial
 pub const EMPTY_SPACE: &'static str = "-";
 

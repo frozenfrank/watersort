@@ -80,3 +80,25 @@ impl std::fmt::Debug for ColorCodeAllocator {
             .finish()
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bare_creation_minimums() {
+        let allocator = ColorCodeAllocator::new_bare();
+
+        assert_eq!(allocator.interpret_code(0).key, EMPTY_SPACE);
+        assert_eq!(allocator.interpret_code(1).key, UNKNOWN_VALUE);
+    }
+
+    #[test]
+    fn test_default_creation_minimums() {
+        let allocator = ColorCodeAllocator::new();
+
+        assert_eq!(allocator.interpret_code(0).key, EMPTY_SPACE);
+        assert_eq!(allocator.interpret_code(1).key, UNKNOWN_VALUE);
+    }
+}
