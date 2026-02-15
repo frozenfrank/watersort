@@ -1,6 +1,6 @@
 use crate::core::color_code::{COLOR_CODE_EMPTY, COLOR_CODE_UNKNOWN};
 use crate::core::game_settings::GameSettings;
-use crate::core::{Color, ColorCode, ColorCodeExt};
+use crate::core::{Color, ColorCode, ColorCodeAllocator, ColorCodeExt};
 use crate::types::constants::NUM_SPACES_PER_VIAL;
 use crate::types::{Completion, DepthSize, Move, SpaceIndex, Vial, VialIndex};
 use crate::utils::helpers::RangeIter;
@@ -65,10 +65,21 @@ struct CountOnTopResult {
 }
 
 impl<'a> Game<'a> {
-    /// Creates a new game with the given vials and gameplay modes
+    /// Creates a new game with the given vials
     pub fn create(vials: Vec<Vial>) -> Game<'a> {
         let settings = GameSettings {
             num_vials: vials.len() as VialIndex,
+            ..Default::default()
+        };
+
+        Game::create_with_settings(vials, settings)
+    }
+
+    /// Creates a new game with the given vials in a bare ColorCodeAllocator
+    pub fn create_bare(vials: Vec<Vial>) -> Game<'a> {
+        let settings = GameSettings {
+            num_vials: vials.len() as VialIndex,
+            allocator: ColorCodeAllocator::new_bare(),
             ..Default::default()
         };
 
@@ -104,6 +115,10 @@ impl<'a> Game<'a> {
 
     pub fn new_root(vials: Vec<Vial>) -> Arc<Game<'static>> {
         Arc::new(Game::create(vials))
+    }
+
+    pub fn new_root_bare(vials: Vec<Vial>) -> Arc<Game<'static>> {
+        Arc::new(Game::create_bare(vials))
     }
 
     /// Creates a new game state by applying a move to the current game
@@ -512,7 +527,7 @@ impl std::fmt::Display for Game<'_> {
         writeln!(f, "Drain mode: {}", settings.drain_mode)?;
 
         for vial_idx in 0..self.num_vials() {
-            let colors = self.get_vial_color(vial_idx).map(|c| c.0.clone());
+            let colors = self.get_vial_color(vial_idx).map(|c| c.key.clone());
             writeln!(f, "Vial {}: {}", vial_idx + 1, colors.join(" "))?;
         }
 
@@ -742,7 +757,7 @@ mod tests {
 
         let num_colors = vials.len() - 2;
         let mut completions = HashSet::<*const Completion>::with_capacity(vials.len());
-        let mut game = Game::new_root(vec_to_vials(vials));
+        let mut game = Game::new_root_bare(vec_to_vials(vials));
         let mut prev_depth = usize::MAX;
 
         assert_eq!(
@@ -798,7 +813,9 @@ mod tests {
     fn vec_to_vials(vials: Vec<[char; NUM_SPACES_PER_VIAL]>) -> Vec<Vial> {
         vials
             .iter()
-            .map(|vial_colors| vial_colors.map(|color_char| Color(color_char.to_string())))
+            .map(|vial_colors| {
+                vial_colors.map(|color_char| Color::unknown(&color_char.to_string()))
+            })
             .collect()
     }
 

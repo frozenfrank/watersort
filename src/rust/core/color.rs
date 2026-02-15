@@ -1,12 +1,57 @@
 /// Color handling and validation for the Water Sort Puzzle
 
 /// Represents a color in the game
-#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Color(pub String);
+#[derive(Clone, Eq, PartialOrd, Ord)]
+pub struct Color {
+    /// The canonical key/code for the color (e.g. "r", "m", "?")
+    pub key: String,
+
+    /// Human-friendly display name for the color (e.g. "Red", "Mint", "Blue")
+    pub name: Option<&'static str>,
+
+    /// Optional ANSI sequence for terminal rendering with a background
+    pub style_primary: Option<String>,
+
+    /// Optional ANSI sequence for terminal rendering as foreground only
+    pub style_secondary: Option<String>,
+}
 
 impl Color {
-    pub fn new(name: &str) -> Self {
-        Color(name.to_string())
+    /// @deprecated Prefer Color::unknown
+    pub fn new(key: &str) -> Self {
+        Color::unknown(&key)
+    }
+
+    pub fn unknown(key: &str) -> Self {
+        Color {
+            key: key.to_string(),
+            name: None,
+            style_primary: None,
+            style_secondary: None,
+        }
+    }
+
+    pub fn known(
+        key: &str,
+        name: &'static str,
+        style_primary: String,
+        style_secondary: String,
+    ) -> Self {
+        Color {
+            key: key.to_string(),
+            name: Some(name),
+            style_primary: Some(style_primary),
+            style_secondary: Some(style_secondary),
+        }
+    }
+
+    pub fn system(key: &str, name: &'static str, style_primary: String) -> Self {
+        Color {
+            key: key.to_string(),
+            name: Some(name),
+            style_primary: Some(style_primary),
+            style_secondary: None,
+        }
     }
 
     /// Returns true if this is a valid game color (not empty or unknown)
@@ -16,26 +61,35 @@ impl Color {
 
     /// Returns true if this is an empty space
     pub fn is_empty(&self) -> bool {
-        self.0 == EMPTY_SPACE
+        self.key == EMPTY_SPACE
     }
 
     /// Returns true if this is an unknown value
     pub fn is_unknown(&self) -> bool {
-        self.0 == UNKNOWN_VALUE
+        self.key == UNKNOWN_VALUE
     }
 
+    /// Returns true if this is a reserved value
     pub fn is_reserved(&self) -> bool {
-        is_reserved(&self.0)
-    }
-
-    pub fn name(&self) -> &str {
-        &self.0
+        is_reserved(&self.key)
     }
 }
 
 impl std::fmt::Debug for Color {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
+        f.write_str(&self.key)
+    }
+}
+
+impl std::cmp::PartialEq for Color {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
+    }
+}
+
+impl std::hash::Hash for Color {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.key.hash(state);
     }
 }
 

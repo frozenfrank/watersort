@@ -47,7 +47,7 @@ pub fn read_game_file(path: &str) -> ReadFileResult {
         }
         let vial: Vial = spaces
             .into_iter()
-            .map(|s| Color(s))
+            .map(|s| Color::unknown(&s))
             .collect::<Vec<_>>()
             .try_into()
             .map_err(|_| "Wrong number of spaces")?;
