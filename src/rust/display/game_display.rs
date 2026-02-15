@@ -8,8 +8,8 @@ use crate::display::colorama_ansi::STYLE;
 use crate::types::StdResult;
 use std::fmt::Write;
 
-pub fn print_vials(game: &Game) -> StdResult {
-    print_vials_numbered(game, false)
+pub fn print_vials(game: &Game) {
+    let _ = print_vials_numbered(game, false);
 }
 
 /// Prints the vials of a game, optionally numbering each output line for uniques in debuggers
