@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use crate::core::Game;
+use crate::{core::Game, display::game_display::print_vials};
 
 /// Interactive play loop ported from the Python `playGame` helper.
 pub fn play_game(game: &Game) {
@@ -15,7 +15,7 @@ pub fn play_game(game: &Game) {
     loop {
         // Print minimal state for the user
         println!("Moves: {}", game.num_moves());
-        println!("{}", game);
+        let _ = print_vials(&game);
 
         print!("Enter command: ");
         // ensure prompt is visible

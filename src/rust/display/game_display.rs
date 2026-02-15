@@ -1,61 +1,92 @@
 // Game display module for watersort (Rust)
 // Ported and adapted from the Python implementation
 
-use crate::core::game::Game;
 use crate::core::color::Color;
+use crate::core::game::Game;
+use crate::display::colorama_ansi::STYLE;
 use crate::types::constants::NUM_SPACES_PER_VIAL;
+use std::fmt::Write;
 
-pub fn print_vials(game: &Game, number_spaces: bool) {
-    let num_spaces = NUM_SPACES_PER_VIAL;
+type Response = Result<(), Box<dyn std::error::Error>>;
+
+pub fn print_vials(game: &Game) -> Response {
+    print_vials_numbered(game, false)
+}
+
+/// Prints the vials of a game, optionally numbering each output line for uniques in debuggers
+pub fn print_vials_numbered(game: &Game, number_spaces: bool) -> Response {
     let num_vials = game.num_vials();
-    let mut lines: Vec<Vec<String>> = vec![vec![]; num_spaces + 1];
+    let reserve_chars_per_vial = 60; // Formatting can be 40 chars (fore + back styles)
+    let mut lines: Vec<String> =
+        vec![String::with_capacity(num_vials * reserve_chars_per_vial); NUM_SPACES_PER_VIAL + 1];
 
     if number_spaces {
-        for line_index in 0..=num_spaces {
-            lines[line_index].push(if line_index == 0 { " ".to_string() } else { (line_index).to_string() });
+        write!(&mut lines[0], " ")?;
+        for line in 1..=NUM_SPACES_PER_VIAL {
+            write!(&mut lines[line], "{}", line)?;
         }
     }
+
     for i in 0..num_vials {
-        lines[0].push(format!("\t{}", i + 1));
+        write!(&mut lines[0], "\t{}", i + 1)?;
     }
-    for space_index in 0..num_spaces {
-        for vial_index in 0..num_vials {
-            let color = &game.get_vial_color(vial_index)[space_index];
-            lines[space_index + 1].push(format!("\t{}", format_vial_color(color, color, 0, false)));
+
+    let allocator = &game.settings.borrow().allocator;
+    let all_spaces = game.get_spaces_code();
+    let mut cur_idx = 0;
+    for _vial_index in 0..num_vials {
+        for space_index in 0..NUM_SPACES_PER_VIAL {
+            let color = allocator.interpret_code_as_ref(all_spaces[cur_idx]);
+            let s = &mut lines[space_index + 1];
+            s.push('\t');
+            write_vial_color_text(s, color, &color.key, 0, false);
+            cur_idx += 1;
         }
     }
-    for line in lines {
-        println!("{}", line.join(""));
-    }
+
+    print_lines(lines);
+    Ok(())
 }
 
-pub fn print_vials_dense(game: &Game) {
-    let num_spaces = NUM_SPACES_PER_VIAL;
-    let num_vials = game.num_vials();
-    let mut out = String::new();
-    for vial in 0..num_vials {
-        for space in 0..num_spaces {
-            let color = &game.get_vial_color(vial)[space];
-            let s = format_space_ref(color);
-            out.push_str(&s);
-            if s.len() < 2 {
-                out.push(' ');
-            }
-        }
-    }
-    println!("{}", out);
-}
-
-/// Formats a color for display in a vial (with ANSI if available)
-pub fn format_vial_color(color: &Color, _ref_color: &Color, _width: usize, _dense: bool) -> String {
-    if let Some(style) = &color.style_primary {
-        format!("{}{}\x1b[0m", style, color.key)
+pub fn write_vial_color(s: &mut String, color: &Color, foreground_only: bool) {
+    if let Some(style) = if foreground_only {
+        &color.style_secondary
     } else {
-        color.key.clone()
+        &color.style_primary
+    } {
+        s.push_str(&style);
     }
 }
 
-/// Formats a color for dense display (single char, no ANSI)
-pub fn format_space_ref(color: &Color) -> String {
-    color.key.clone()
+pub fn write_vial_color_text(
+    s: &mut String,
+    color: &Color,
+    text: &str,
+    ljust: usize,
+    foreground_only: bool,
+) {
+    write_vial_color(s, color, foreground_only);
+
+    s.push_str(text);
+    s.push_str(&STYLE["RESET_ALL"]);
+
+    if ljust <= text.len() { return; }
+    for _ in 0..(ljust - text.len()) {
+        s.push(' ');
+    }
+}
+
+pub fn write_space_ref(s: &mut String, vial_idx: usize, space_idx: usize) -> Response {
+    write!(s, "{}:{}", vial_idx + 1, space_idx + 1)?;
+    Ok(())
+}
+
+fn print_lines(lines: Vec<String>) {
+    // Write the results to stdout using different traits than the rest of this file.
+    use std::io::{Write, stdout};
+
+    let mut lock = stdout().lock();
+    lines
+        .iter()
+        .for_each(|line| writeln!(lock, "{}", line).unwrap());
 }

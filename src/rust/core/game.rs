@@ -225,13 +225,9 @@ impl<'a> Game<'a> {
         core::array::from_fn(|i| allocator.interpret_code(self.spaces[start_idx + i]))
     }
 
+    /// Returns an array of NUM_SPACES_PER_VIAL * num_vials ColorCodes, in vial-major order.
     pub fn get_spaces_code(&self) -> &[ColorCode] {
         &self.spaces
-    }
-
-    pub fn get_spaces_color(&self) -> Vec<Rc<Color>> {
-        let allocator = &self.settings.borrow().allocator;
-        Vec::from_iter(self.spaces.iter().map(|&i| allocator.interpret_code(i)))
     }
 
     // ============ Game State Queries ============
