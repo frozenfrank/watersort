@@ -700,11 +700,6 @@ class Game:
     self.root._hasUnknowns = hasUnknowns
     self.root._colorError = len(errors) > 0
     return (countColors, errors)
-  def printVialsDense(self) -> None:
-    out = list()
-    for vial, space in itertools.product(range(self.__numVials), range(NUM_SPACES_PER_VIAL)):
-      out.append(self.vials[vial][space].ljust(2))
-    print("".join(out))
 
 
   def isFinished(self) -> bool:

@@ -1,9 +1,9 @@
+use crate::NUM_SPACES_PER_VIAL;
 use crate::core::Color;
 use crate::core::Game;
 use crate::io::constants::*;
 use crate::io::path::generate_file_name;
 use crate::types::Vial;
-use crate::types::constants::NUM_SPACES_PER_VIAL;
 use std::error::Error;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
