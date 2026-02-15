@@ -2,7 +2,7 @@
 //! This module generates ANSI character codes for printing colors to terminals.
 //! See: http://en.wikipedia.org/wiki/ANSI_escape_code
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::LazyLock};
 
 const CSI: &str = "\x1b[";
 const OSC: &str = "\x1b]";
@@ -86,7 +86,7 @@ impl AnsiCursor {
 }
 
 #[rustfmt::skip]
-pub fn fore() -> AnsiCodes {
+pub fn ansi_fore() -> AnsiCodes {
     AnsiCodes::from_codes(&[
         ("BLACK",               30),
         ("RED",                 31),
@@ -111,7 +111,7 @@ pub fn fore() -> AnsiCodes {
 }
 
 #[rustfmt::skip]
-pub fn back() -> AnsiCodes {
+fn ansi_back() -> AnsiCodes {
     AnsiCodes::from_codes(&[
         ("BLACK",               40),
         ("RED",                 41),
@@ -136,7 +136,7 @@ pub fn back() -> AnsiCodes {
 }
 
 #[rustfmt::skip]
-pub fn style() -> AnsiCodes {
+fn ansi_style() -> AnsiCodes {
     AnsiCodes::from_codes(&[
         ("BRIGHT",              1),
         ("DIM",                 2),
@@ -153,3 +153,7 @@ pub fn style() -> AnsiCodes {
 pub fn cursor() -> AnsiCursor {
     AnsiCursor
 }
+
+pub static STYLE: LazyLock<AnsiCodes> = LazyLock::new(ansi_style);
+pub static FORE: LazyLock<AnsiCodes> = LazyLock::new(ansi_fore);
+pub static BACK: LazyLock<AnsiCodes> = LazyLock::new(ansi_back);
