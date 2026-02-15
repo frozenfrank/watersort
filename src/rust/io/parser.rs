@@ -1,5 +1,5 @@
 use crate::core::Color;
-use crate::core::{ColorCodeAllocator, Game};
+use crate::core::Game;
 use crate::io::constants::*;
 use crate::io::path::generate_file_name;
 use crate::types::Vial;
@@ -8,7 +8,7 @@ use std::error::Error;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-type ReadFileResult = Result<(ColorCodeAllocator, std::sync::Arc<Game>), Box<dyn Error + 'static>>;
+type ReadFileResult = Result<Game<'static>, Box<dyn Error + 'static>>;
 
 pub fn read_game_level(level: &str) -> ReadFileResult {
     let file_path = generate_file_name(level, false);
@@ -54,8 +54,7 @@ pub fn read_game_file(path: &str) -> ReadFileResult {
         vials.push(vial);
     }
 
-    let mut allocator = ColorCodeAllocator::new();
-    let game = Game::create(&mut allocator, vials);
+    let game = Game::create(vials);
 
     let mut settings = game.settings.borrow_mut();
     settings.level = level.to_string();
@@ -65,5 +64,5 @@ pub fn read_game_file(path: &str) -> ReadFileResult {
     settings.blind_mode = special_modes.contains(&BLIND_MODE_FLAG);
     drop(settings);
 
-    Ok((allocator, game))
+    Ok(game)
 }

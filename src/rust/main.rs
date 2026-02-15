@@ -1,43 +1,51 @@
+use std::sync::Arc;
+
 /// Main entry point for the Water Sort Puzzle CLI
-use std::env;
 use watersort::{
-    io::{file_io, parser},
-    types::constants::NUM_SPACES_PER_VIAL,
+    Game, Move,
+    io::{parser, save_game_to_file},
 };
 
-fn display_game(game: &std::sync::Arc<watersort::core::Game>) {
-    let settings = game.settings.borrow();
-
-    println!("Level: {}", settings.level);
-    println!("Mystery: {}", settings.had_mystery_spaces);
-    println!("Had Unknowns: {}", settings.has_unknowns);
-    println!("Drain mode: {}", settings.drain_mode);
-
-    for vial_idx in 0..game.num_vials() {
-        print!("Vial {}: ", vial_idx + 1);
-        for space_idx in 0..NUM_SPACES_PER_VIAL {
-            let color_str = game.get_vial_space(vial_idx, space_idx);
-            print!("{} ", color_str);
-        }
-        println!();
-    }
-}
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 3 {
+    let mut args: Vec<String> = std::env::args().collect();
+    if cfg!(debug_assertions) && args.len() < 2 {
+        args.push(String::from("1")); // Debugging - fix the level input
+    }
+    if args.len() < 2 {
         eprintln!("Usage: {} <level> <output_file>", args[0]);
         std::process::exit(1);
     }
 
     let level = &args[1];
-    let output_path = &args[2];
 
-    let (_allocator, game) = parser::read_game_level(level)?;
+    let mut game: Game = parser::read_game_level(level)?;
+    println!("{}", game);
 
-    display_game(&game);
+    {
+        let settings = game.settings.borrow();
+        println!("{:?}\n", settings);
+        println!("{:?}\n", settings.allocator);
+        println!("{:?}\n", game);
+    }
 
-    file_io::save_game_to_file(&game, output_path)?;
+    let mut move_valid: bool;
+    move_valid = game.apply_move(0, game.num_vials() - 1);
+    println!("Move Valid: {}\n{}", move_valid, game);
+
+    move_valid = game.apply_move(0, game.num_vials() - 2);
+    println!("Move Valid: {}\n{}", move_valid, game);
+
+    move_valid = game.apply_move(1, 0);
+    println!("Move Valid: {}\n{}", move_valid, game);
+
+    let game = Arc::new(game);
+    let game2 = game.spawn(Move { from: 0, to: 1 });
+    println!("Spawned game:\n{}", game2);
+
+    if args.len() >= 3 {
+        let output_path = &args[2];
+        save_game_to_file(&game, output_path)?;
+    }
 
     Ok(())
 }
