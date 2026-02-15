@@ -1,7 +1,9 @@
 /// Internal debugging module for ColorCodeAllocator
 /// Tests color code allocation, deallocation, and memory management
-
-use crate::core::{Color, ColorCodeAllocator, color::{EMPTY_SPACE, UNKNOWN_VALUE}};
+use crate::core::{
+    Color, ColorCodeAllocator,
+    color::{EMPTY_SPACE, UNKNOWN_VALUE},
+};
 
 pub fn run_color_allocator_debug() {
     let mut allocator = ColorCodeAllocator::new();
@@ -41,5 +43,8 @@ fn print_color_with_code_stats(allocator: &mut ColorCodeAllocator, color_name: &
     let color = Color::new(color_name);
     let color_code = allocator.assign_code(&color);
     let managed_color = allocator.interpret_code(color_code);
-    println!("Color Code [{} = {}, color ~ {:p}, str ~ {:p}, managed_color ~ {:p}, managed_string ~ {:p}]", color_name, color_code, &color, &color.0, managed_color, &managed_color.0);
+    println!(
+        "Color Code [{} = {}, color ~ {:p}, str ~ {:p}, managed_color ~ {:p}, managed_string ~ {:p}]",
+        color_name, color_code, &color, &color.0, managed_color, &managed_color.0
+    );
 }

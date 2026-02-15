@@ -1,6 +1,5 @@
 use crate::types::VialIndex;
 
-
 /// Shared global settings for a game tree
 /// Stored once on the root game to avoid duplication
 #[derive(Debug, Clone)]

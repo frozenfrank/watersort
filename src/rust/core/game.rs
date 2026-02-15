@@ -1,18 +1,12 @@
-/// Core Game structure and state management
-///
-/// The Game struct represents the state of a Water Sort Puzzle game.
-/// It maintains a game tree structure where each Game can have a parent (prev)
-/// and can spawn children. The root Game serves as the origin point.
-
-use std::sync::{Arc};
-use std::ops::Deref;
 use crate::core::color_code::{COLOR_CODE_EMPTY, COLOR_CODE_UNKNOWN};
 use crate::core::game_settings::GameSettings;
 use crate::core::{ColorCode, ColorCodeAllocator, ColorCodeExt};
+use crate::types::constants::NUM_SPACES_PER_VIAL;
 use crate::types::{Completion, DepthSize, Move, SpaceIndex, Vial, VialIndex};
-use crate::types::constants::{NUM_SPACES_PER_VIAL};
 use crate::utils::helpers::RangeIter;
-
+use std::cell::RefCell;
+use std::ops::Deref;
+use std::sync::Arc;
 
 /// Represents the state of a single game configuration
 ///
@@ -40,7 +34,7 @@ pub struct Game {
 
     // A reference to the root game, or None if this is the root game
     root: Option<Arc<Game>>,
-    settings: Arc<GameSettings>,
+    pub settings: RefCell<GameSettings>,
 }
 
 /// Stores the result of analyzing a move
@@ -69,15 +63,8 @@ struct CountOnTopResult {
 
 impl Game {
     /// Creates a new root game with the given vials and gameplay modes
-    pub fn create(
-        allocator: &mut ColorCodeAllocator,
-        vials: Vec<Vial>,
-        drain_mode: bool,
-        blind_mode: bool,
-    ) -> Arc<Game> {
-        let settings = Arc::new(GameSettings {
-            drain_mode,
-            blind_mode,
+    pub fn create(allocator: &mut ColorCodeAllocator, vials: Vec<Vial>) -> Arc<Game> {
+        let settings = RefCell::new(GameSettings {
             num_vials: vials.len() as VialIndex,
             ..Default::default()
         });
@@ -102,7 +89,7 @@ impl Game {
 
     /// Creates a simple root game with default settings
     pub fn new_root(allocator: &mut ColorCodeAllocator, vials: Vec<Vial>) -> Arc<Game> {
-        Game::create(allocator, vials, false, false)
+        Game::create(allocator, vials)
     }
 
     /// Creates a new game state by applying a move to the current game
@@ -111,8 +98,6 @@ impl Game {
         new_game.apply_move(move_.from as usize, move_.to as usize);
         Arc::new(new_game)
     }
-
-
 
     // ============ Accessors ============
 
@@ -126,7 +111,7 @@ impl Game {
 
     /// Returns the number of vials
     pub fn num_vials(&self) -> usize {
-        self.settings.num_vials as usize
+        self.settings.borrow().num_vials as usize
     }
 
     /// Returns the number of moves to reach this state
@@ -155,35 +140,35 @@ impl Game {
     }
 
     /// Returns the level identifier
-    pub fn level(&self) -> &str {
-        &self.settings.level
+    pub fn level(&self) -> String {
+        self.settings.borrow().level.clone()
     }
 
     /// Returns whether this game is modified
     pub fn is_modified(&self) -> bool {
-        self.settings.modified
+        self.settings.borrow().modified
     }
 
     /// Returns whether there is a color error
     pub fn has_color_error(&self) -> bool {
-        self.settings.color_error
+        self.settings.borrow().color_error
     }
 
     /// Returns whether there are unknown values
     pub fn has_unknowns(&self) -> bool {
-        self.settings.has_unknowns
+        self.settings.borrow().has_unknowns
     }
 
     /// Returns the game modes active in this game
     pub fn special_modes(&self) -> Vec<&'static str> {
         let mut modes = Vec::new();
-        if self.settings.drain_mode {
+        if self.settings.borrow().drain_mode {
             modes.push("drain");
         }
-        if self.settings.blind_mode {
+        if self.settings.borrow().blind_mode {
             modes.push("blind");
         }
-        if self.settings.had_mystery_spaces {
+        if self.settings.borrow().had_mystery_spaces {
             modes.push("mystery");
         }
         modes
@@ -206,7 +191,7 @@ impl Game {
                 }
             }
         }
-        return true
+        return true;
     }
 
     /// Gets the top color of a vial (from top or bottom depending on drain_mode)
@@ -216,9 +201,9 @@ impl Game {
             if color.is_unknown() {
                 panic!("Watersort in Rust does not support unknown vial explorations")
             } else if color.is_empty() {
-                continue
+                continue;
             } else {
-                return color
+                return color;
             }
         }
         COLOR_CODE_EMPTY
@@ -232,50 +217,55 @@ impl Game {
     }
 
     fn prepare_move(&self, start_vial: usize, end_vial: usize) -> MoveValidityResult {
-        let invalid_move = MoveValidityResult{
+        let invalid_move = MoveValidityResult {
             valid: false,
             start_color: COLOR_CODE_UNKNOWN,
             end_color: COLOR_CODE_UNKNOWN,
             end_space: 0,
-            will_complete: false
+            will_complete: false,
         };
 
         if start_vial == end_vial {
-            return invalid_move;  // Can't move to the same place
+            return invalid_move; // Can't move to the same place
         }
-        if !self.settings.drain_mode && let Some(last_move) = self.last_move {
+        let settings = self.settings.borrow();
+        if !settings.drain_mode
+            && let Some(last_move) = self.last_move
+        {
             if start_vial == last_move.to as usize && end_vial == last_move.from as usize {
                 return invalid_move; // Can't simply undo the previous move
             }
         }
 
         // Verify core game mechanics
-        let start_color = self.get_top_vial_color(start_vial, self.settings.drain_mode);
+        let start_color = self.get_top_vial_color(start_vial, settings.drain_mode);
         if start_color.is_empty() || start_color.is_unknown() {
-            return invalid_move;  // Can only move an active color
+            return invalid_move; // Can only move an active color
         }
         let end_color = self.get_top_vial_color(end_vial, false);
         if !end_color.is_empty() && end_color != start_color {
-            return invalid_move;  // Can only place on the same color, or an empty space
+            return invalid_move; // Can only place on the same color, or an empty space
         }
 
         // Verify destination vial
         let end_r = self.count_on_top(end_color, end_vial, false);
         if end_r.num_empty_spaces == 0 {
-            return invalid_move;  // End vial is full
+            return invalid_move; // End vial is full
         }
 
         // Verify that this vial isn't full
-        let start_r = self.count_on_top(start_color, start_vial, self.settings.drain_mode);
+        let start_r = self.count_on_top(start_color, start_vial, settings.drain_mode);
         if start_r.is_complete {
-            return invalid_move;  // Start is fully filled
+            return invalid_move; // Start is fully filled
         }
         if start_r.num_on_top > end_r.num_empty_spaces {
             // CONSIDER: We may want to allow humans to make this move, although the solver never should.
-            return invalid_move;  // Only move when all the spaces can be received
+            return invalid_move; // Only move when all the spaces can be received
         }
-        if end_color.is_empty() && (start_r.only_color || self.find_solo_vial(start_color, Some(start_vial)).is_some()) {
-            return invalid_move;  // Never occupy a new container when we already have one
+        if end_color.is_empty()
+            && (start_r.only_color || self.find_solo_vial(start_color, Some(start_vial)).is_some())
+        {
+            return invalid_move; // Never occupy a new container when we already have one
         }
 
         // Prevent rules that lead to game-play backtracks
@@ -315,10 +305,21 @@ impl Game {
 
         // It's valid
         let will_complete = end_r.only_color && start_r.num_on_top == end_r.num_empty_spaces;
-        MoveValidityResult { valid: true, start_color, end_color, end_space: end_r.num_empty_spaces, will_complete }
+        MoveValidityResult {
+            valid: true,
+            start_color,
+            end_color,
+            end_space: end_r.num_empty_spaces,
+            will_complete,
+        }
     }
 
-    fn count_on_top(&self, top_color: ColorCode, vial_idx: usize, from_bottom: bool) -> CountOnTopResult {
+    fn count_on_top(
+        &self,
+        top_color: ColorCode,
+        vial_idx: usize,
+        from_bottom: bool,
+    ) -> CountOnTopResult {
         let mut result = CountOnTopResult {
             is_complete: true,
             only_color: true,
@@ -326,7 +327,7 @@ impl Game {
             num_on_top: 0,
         };
 
-        let mut empty_space_val: SpaceIndex = 1;  // Only count empty spaces BEFORE colors
+        let mut empty_space_val: SpaceIndex = 1; // Only count empty spaces BEFORE colors
         for i in RangeIter::new(0..NUM_SPACES_PER_VIAL, from_bottom) {
             let color = self.get_vial_space(vial_idx, i);
             if color.is_empty() {
@@ -353,8 +354,14 @@ impl Game {
         let mut vial_index: Option<usize> = None;
         let mut spaces_in_vial: SpaceIndex = 0;
         for search_vial in 0..self.num_vials() {
-            if skip_vial == Some(search_vial) { continue; }
-            let CountOnTopResult {only_color, num_on_top, ..} = self.count_on_top(color, search_vial, false);
+            if skip_vial == Some(search_vial) {
+                continue;
+            }
+            let CountOnTopResult {
+                only_color,
+                num_on_top,
+                ..
+            } = self.count_on_top(color, search_vial, false);
             if only_color && num_on_top > 0 {
                 if vial_index.is_none() || num_on_top >= spaces_in_vial {
                     vial_index = Some(search_vial);
@@ -376,10 +383,14 @@ impl Game {
         let mut move_range: usize = move_validity.end_space as usize;
         let mut start_colors: usize = 0;
 
-        let drain_mode = self.settings.drain_mode;
+        let drain_mode = self.settings.borrow().drain_mode;
 
         while pieces_moved < move_range && pieces_moved < NUM_SPACES_PER_VIAL {
-            let space_idx = if drain_mode {NUM_SPACES_PER_VIAL-pieces_moved-1} else {pieces_moved};
+            let space_idx = if drain_mode {
+                NUM_SPACES_PER_VIAL - pieces_moved - 1
+            } else {
+                pieces_moved
+            };
             let color = self.get_vial_space(start_vial, space_idx);
             if color.is_empty() {
                 move_range += 1;
@@ -397,7 +408,9 @@ impl Game {
             let pieces_moved = pieces_moved as isize;
             for space_idx in (0..NUM_SPACES_PER_VIAL as isize).rev() {
                 let shift_from = space_idx - pieces_moved;
-                let shift_color = if shift_from < 0 {COLOR_CODE_EMPTY} else {
+                let shift_color = if shift_from < 0 {
+                    COLOR_CODE_EMPTY
+                } else {
                     self.get_vial_space(start_vial, shift_from as usize)
                 };
                 self.set_vial_space(start_vial, space_idx as usize, shift_color);
@@ -414,7 +427,9 @@ impl Game {
                 self.set_vial_space(end_vial, space_idx, move_validity.start_color);
             }
             space_idx -= 1;
-            if space_idx == 0 { break; }
+            if space_idx == 0 {
+                break;
+            }
         }
 
         // Track completion order
@@ -427,7 +442,6 @@ impl Game {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::core::Color;
@@ -436,6 +450,7 @@ mod tests {
 
     #[test]
     fn test_game_creation() {
+        #[rustfmt::skip]
         let vials = [
             ['r', 'r', 'b', 'b'],
             ['g', 'g', 'y', 'y'],
@@ -447,7 +462,9 @@ mod tests {
     }
 
     #[test]
+
     fn test_finished_check() {
+        #[rustfmt::skip]
         let vials = [
             ['r', 'r', 'r', 'r'],
             ['-', '-', '-', '-'],
@@ -457,13 +474,15 @@ mod tests {
         assert!(game.is_finished());
     }
 
-
-    pub fn new_root_from_chars(vials: Vec<[char; NUM_SPACES_PER_VIAL]>) -> (ColorCodeAllocator, Arc<Game>) {
+    pub fn new_root_from_chars(
+        vials: Vec<[char; NUM_SPACES_PER_VIAL]>,
+    ) -> (ColorCodeAllocator, Arc<Game>) {
         let mut allocator = ColorCodeAllocator::new();
-        let vials = vials.iter().map(|vial_colors| {
-            vial_colors.map(|color_char| Color(color_char.to_string()))
-        }).collect();
-        let game = Game::create(&mut allocator, vials, false, false);
+        let vials = vials
+            .iter()
+            .map(|vial_colors| vial_colors.map(|color_char| Color(color_char.to_string())))
+            .collect();
+        let game = Game::create(&mut allocator, vials);
         (allocator, game)
     }
 }

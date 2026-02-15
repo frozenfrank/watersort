@@ -38,8 +38,6 @@ pub fn percent_str(value: f64, total: f64) -> String {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
