@@ -1,8 +1,6 @@
-use std::sync::Arc;
-
 /// Main entry point for the Water Sort Puzzle CLI
 use watersort::{
-    Game, Move,
+    Game,
     io::{parser, save_game_to_file},
 };
 
@@ -17,31 +15,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let level = &args[1];
-
     let mut game: Game = parser::read_game_level(level)?;
-    println!("{}", game);
 
-    {
-        let settings = game.settings.borrow();
-        println!("{:?}\n", settings);
-        println!("{:?}\n", settings.allocator);
-        println!("{:?}\n", game);
-    }
+    // Launch interactive gameplay loop
+    watersort::play::play_game(&mut game);
 
-    let mut move_valid: bool;
-    move_valid = game.apply_move(0, game.num_vials() - 1);
-    println!("Move Valid: {}\n{}", move_valid, game);
-
-    move_valid = game.apply_move(0, game.num_vials() - 2);
-    println!("Move Valid: {}\n{}", move_valid, game);
-
-    move_valid = game.apply_move(1, 0);
-    println!("Move Valid: {}\n{}", move_valid, game);
-
-    let game = Arc::new(game);
-    let game2 = game.spawn(Move { from: 0, to: 1 });
-    println!("Spawned game:\n{}", game2);
-
+    // Optionally save when an output path was provided
     if args.len() >= 3 {
         let output_path = &args[2];
         save_game_to_file(&game, output_path)?;

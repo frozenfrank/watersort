@@ -1,7 +1,7 @@
 /// Color handling and validation for the Water Sort Puzzle
 
 /// Represents a color in the game
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Color(pub String);
 
 impl Color {
@@ -30,6 +30,12 @@ impl Color {
 
     pub fn name(&self) -> &str {
         &self.0
+    }
+}
+
+impl std::fmt::Debug for Color {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
     }
 }
 

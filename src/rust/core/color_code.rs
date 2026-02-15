@@ -24,7 +24,7 @@ impl ColorCodeExt for ColorCode {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct ColorCodeAllocator {
     color_codes: HashMap<Rc<Color>, ColorCode>,
     colors: Vec<Rc<Color>>,
@@ -63,6 +63,10 @@ impl ColorCodeAllocator {
 
     pub fn interpret_code(&self, code: ColorCode) -> Rc<Color> {
         self.colors[code as usize].clone()
+    }
+
+    pub fn num_colors(&self) -> usize {
+        self.colors.len() - 2 // Subtract 2 for EMPTY_SPACE and UNKNOWN_COLOR
     }
 }
 

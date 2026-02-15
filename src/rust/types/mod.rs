@@ -1,6 +1,8 @@
 /// Type definitions and aliases for the Water Sort Puzzle engine
 pub mod constants;
 
+use std::fmt::Display;
+
 use crate::core::{Color, ColorCode};
 
 use self::constants::NUM_SPACES_PER_VIAL;
@@ -25,8 +27,23 @@ pub struct Move {
 }
 
 impl Move {
+    /// Creates a Move given 0-indexed vial numbers
     pub fn new(from: VialIndex, to: VialIndex) -> Self {
         Move { from, to }
+    }
+
+    /// Creates a Move provided human-friendly vial numbers
+    pub fn vials(from: VialIndex, to: VialIndex) -> Self {
+        Move {
+            from: from - 1,
+            to: to - 1,
+        }
+    }
+}
+
+impl Display for Move {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}->{}", self.from + 1, self.to + 1))
     }
 }
 

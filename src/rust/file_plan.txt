@@ -7,6 +7,10 @@ src/
 │   ├── game.rs              # Core Game struct, game state management
 │   ├── move_types.rs        # Move type definitions (Move, MoveInfo)
 │   └── color.rs             # Color handling, reserved colors, color validation
+|
+├── play/
+│   ├── mod.rs               # Play module exports
+│   └── interactive.rs       # Interactive gameplay loop (CLI)
 │
 ├── solver/
 │   ├── mod.rs               # Solver module exports

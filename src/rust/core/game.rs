@@ -67,12 +67,23 @@ struct CountOnTopResult {
 impl<'a> Game<'a> {
     /// Creates a new game with the given vials and gameplay modes
     pub fn create(vials: Vec<Vial>) -> Game<'a> {
-        let mut settings = RefCell::new(GameSettings {
+        let settings = GameSettings {
             num_vials: vials.len() as VialIndex,
             ..Default::default()
-        });
+        };
 
+        Game::create_with_settings(vials, settings)
+    }
+
+    pub fn create_sibling_game(vials: Vec<Vial>, sibling: &Game) -> Game<'a> {
+        let settings = sibling.settings.borrow().clone();
+        Game::create_with_settings(vials, settings)
+    }
+
+    fn create_with_settings(vials: Vec<Vial>, settings: GameSettings) -> Game<'a> {
+        let mut settings = RefCell::new(settings);
         let allocator = &mut settings.get_mut().allocator;
+
         let mut spaces: Vec<ColorCode> = Vec::with_capacity(vials.len() * NUM_SPACES_PER_VIAL);
         for vial in &vials {
             for space in vial {
@@ -97,8 +108,24 @@ impl<'a> Game<'a> {
 
     /// Creates a new game state by applying a move to the current game
     pub fn spawn(self: &Arc<Game<'a>>, move_: Move) -> Arc<Game<'a>> {
-        let mut new_game = self.deref().clone();
-        new_game.prev = Some(self.clone());
+        // SAFETY: The parent game is kept alive by the Arc in `prev`, and the
+        // parent game recursively references the Owned completion order, so the
+        // borrowed reference will remain valid for the entire lifetime of this game.
+        let completion_order = unsafe {
+            std::mem::transmute::<Cow<'_, Vec<Completion>>, Cow<'a, Vec<Completion>>>(
+                Cow::Borrowed(&self.completion_order),
+            )
+        };
+
+        let mut new_game: Game<'a> = Game {
+            completion_order,
+            prev: Some(self.clone()),
+            spaces: self.spaces.clone(),
+            last_move: self.last_move.clone(),
+            num_moves: self.num_moves,
+            root: self.root.clone(),
+            settings: self.settings.clone(),
+        };
         new_game.apply_move(move_.from as usize, move_.to as usize);
         Arc::new(new_game)
     }
@@ -131,6 +158,11 @@ impl<'a> Game<'a> {
     /// Returns the last move applied to reach this state
     pub fn last_move(&self) -> Option<Move> {
         self.last_move
+    }
+
+    /// Returns the number of moves applied to the root to get to this game
+    pub fn get_depth(&self) -> usize {
+        self.num_moves as usize
     }
 
     /// Returns a reference to the parent game, if any
@@ -176,6 +208,15 @@ impl<'a> Game<'a> {
         let start_idx = vial_idx * NUM_SPACES_PER_VIAL;
         let allocator = &self.settings.borrow().allocator;
         core::array::from_fn(|i| allocator.interpret_code(self.spaces[start_idx + i]))
+    }
+
+    pub fn get_spaces_code(&self) -> &[ColorCode] {
+        &self.spaces
+    }
+
+    pub fn get_spaces_color(&self) -> Vec<Rc<Color>> {
+        let allocator = &self.settings.borrow().allocator;
+        Vec::from_iter(self.spaces.iter().map(|&i| allocator.interpret_code(i)))
     }
 
     // ============ Game State Queries ============
@@ -429,25 +470,35 @@ impl<'a> Game<'a> {
                 move_range -= 1;
                 self.set_vial_space(end_vial, space_idx, move_validity.start_color);
             }
-            space_idx -= 1;
             if space_idx == 0 {
                 break;
             }
+            space_idx -= 1;
         }
 
         // Track completion order
         if move_validity.will_complete {
-            self.register_completion( move_validity.end_color);
+            self.register_completion(move_validity.end_color);
         }
 
         // Finish
+        self.num_moves += 1;
         true
     }
 
     fn register_completion(&mut self, completing_color: ColorCode) {
         let mut completions = self.completion_order.deref().clone();
-        completions.push(Completion { color: completing_color, depth: self.num_moves });
+        completions.push(Completion {
+            color: completing_color,
+            depth: self.num_moves,
+        });
         self.completion_order = Cow::Owned(completions);
+    }
+}
+
+impl PartialEq for Game<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.spaces == other.spaces && self.root == other.root && self.settings == other.settings
     }
 }
 
@@ -476,7 +527,10 @@ impl std::fmt::Debug for Game<'_> {
             .field("last_move", &self.last_move)
             .field("prev", &self.prev)
             .field("num_moves", &self.num_moves)
-            .field("completion_order", &format_args!("{:p}", self.completion_order.as_ptr()))
+            .field(
+                "completion_order",
+                &format_args!("{:p}", self.completion_order.as_ptr()),
+            )
             .field("completion_order", &self.completion_order)
             .field("root", &self.root)
             .field("settings", &"<settings>")
@@ -486,6 +540,8 @@ impl std::fmt::Debug for Game<'_> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use crate::core::Color;
 
     use super::*;
@@ -516,11 +572,237 @@ mod tests {
         assert!(game.is_finished());
     }
 
-    pub fn new_root_from_chars(vials: Vec<[char; NUM_SPACES_PER_VIAL]>) -> Game<'static> {
-        let vials = vials
+    #[test]
+    fn test_move_correctness() {
+        #[rustfmt::skip]
+        let vials1 = [
+            ['-', '-', 'r', 'r'],
+            ['-', '-', 'r', 'r'],
+            ['b', 'b', 'b', 'b'],
+        ].to_vec();
+
+        #[rustfmt::skip]
+        let vials2 = [
+            ['-', '-', '-', '-'],
+            ['r', 'r', 'r', 'r'],
+            ['b', 'b', 'b', 'b'],
+        ].to_vec();
+
+        let mut game1 = new_root_from_chars(vials1);
+        game1.apply_move(0, 1);
+
+        let game2 = Game::create_sibling_game(vec_to_vials(vials2), &game1);
+
+        assert_eq!(game1, game2);
+    }
+
+    #[test]
+    fn test_completion_order_address_stability() {
+        #[rustfmt::skip]
+        let vials = [
+            ['r', 'r', 'b', 'b'],
+            ['b', 'b', 'r', 'r'],
+            ['-', '-', '-', '-'],
+        ].to_vec();
+
+        let mut game = new_root_from_chars(vials);
+        let initial_completion_ptr = game.completion_order.as_ptr();
+
+        game.apply_move(1, 2);
+        let after_first_move_ptr = game.completion_order.as_ptr();
+
+        game.apply_move(1, 0);
+        let after_second_move_ptr = game.completion_order.as_ptr();
+
+        assert_eq!(
+            initial_completion_ptr, after_first_move_ptr,
+            "Completion order address changed after first move"
+        );
+        assert_eq!(
+            initial_completion_ptr, after_second_move_ptr,
+            "Completion order address changed after second move"
+        );
+    }
+
+    #[test]
+    fn test_completion_order_address_stability_spawning() {
+        #[rustfmt::skip]
+        let vials = [
+            ['r', 'r', 'b', 'b'],
+            ['b', 'b', 'r', 'r'],
+            ['-', '-', '-', '-'],
+        ].to_vec();
+
+        let game1 = Arc::new(new_root_from_chars(vials));
+        println!("{}", game1);
+
+        let game2 = game1.spawn(Move::vials(2, 3)); // Move blue
+        println!("{}", game2);
+        assert_ne!(
+            Arc::as_ptr(&game1),
+            Arc::as_ptr(&game2),
+            "Game2 should allocation to a new location"
+        );
+        assert_eq!(
+            game1.completion_order.as_ptr(),
+            game2.completion_order.as_ptr(),
+            "Game2 should reference the same completion vector"
+        );
+
+        let game3 = game2.spawn(Move::vials(1, 2)); // Complete red
+        println!("{}", game3);
+        assert_ne!(
+            Arc::as_ptr(&game2),
+            Arc::as_ptr(&game3),
+            "Game3 should allocation to a new location"
+        );
+        assert_ne!(
+            game2.completion_order.as_ptr(),
+            game3.completion_order.as_ptr(),
+            "Game3 should reference a new completion vector"
+        );
+
+        let game4 = game3.spawn(Move::vials(1, 3)); // Complete blue
+        println!("{}", game4);
+        assert_ne!(
+            Arc::as_ptr(&game3),
+            Arc::as_ptr(&game4),
+            "Game4 should allocation to a new location"
+        );
+        assert_ne!(
+            game3.completion_order.as_ptr(),
+            game4.completion_order.as_ptr(),
+            "Game4 should reference a new completion vector"
+        );
+    }
+
+    #[test]
+    fn test_completion_order_unique_count() {
+        #[rustfmt::skip]
+        let vials = [ // Level 100
+            ['m', 'g', 'o', 'y'],
+            ['r', 'p', 'k', 'l'], // k = pk
+            ['k', 'n', 'm', 'p'],
+            ['y', 'n', 'r', 'i'], // i = br
+            ['k', 'b', 'i', 'p'],
+            ['k', 'g', 'p', 'y'],
+            ['o', 'g', 'l', 'e'], // e = dg
+            ['r', 'e', 'l', 'n'], // l = lb
+            ['b', 'b', 'l', 'm'],
+            ['e', 'i', 'n', 'o'],
+            ['g', 'm', 'y', 'o'],
+            ['r', 'i', 'e', 'b'],
+            ['-', '-', '-', '-'],
+            ['-', '-', '-', '-'],
+        ].to_vec();
+
+        #[rustfmt::skip]
+        let moves = [
+            Move::vials(7, 13),   //  (1 o occupied)
+            Move::vials(5, 14),   //  (1 pk occupied)
+            Move::vials(6, 14),   //  (1 pk)
+            Move::vials(3, 14),   //  (1 pk)
+            Move::vials(11, 7),   //  (1 g)
+            Move::vials(1, 11),   //  (1 m)
+            Move::vials(1, 6),    //  (1 g)
+            Move::vials(1, 13),   //  (1 o)
+            Move::vials(4, 1),    //  (1 y)
+            Move::vials(4, 3),    //  (1 pn)
+            Move::vials(12, 4),   //  (1 r)
+            Move::vials(8, 4),    //  (1 r)
+            Move::vials(10, 8),   //  (1 dg)
+            Move::vials(10, 12),  //  (1 br)
+            Move::vials(3, 10),   //  (2 pn)
+            Move::vials(11, 3),   //  (2 m)
+            Move::vials(1, 11),   //  (2 y vacated)
+            Move::vials(9, 1),    //  (2 b occupied)
+            Move::vials(5, 1),    //  (1 b)
+            Move::vials(12, 5),   //  (2 br)
+            Move::vials(8, 12),   //  (2 dg)
+            Move::vials(8, 9),    //  (1 lb)
+            Move::vials(10, 8),   //  (3 pn complete)
+            Move::vials(10, 13),  //  (1 o vacated)
+            Move::vials(2, 10),   //  (1 r occupied)
+            Move::vials(4, 10),   //  (3 r complete)
+            Move::vials(5, 4),    //  (3 br complete)
+            Move::vials(2, 5),    //  (1 p)
+            Move::vials(2, 14),   //  (1 pk complete)
+            Move::vials(9, 2),    //  (2 lb)
+            Move::vials(3, 9),    //  (3 m complete)
+            Move::vials(3, 5),    //  (1 p vacated)
+            Move::vials(7, 3),    //  (2 g occupied)
+            Move::vials(7, 2),    //  (1 lb complete)
+            Move::vials(12, 7),   //  (3 dg complete)
+            Move::vials(6, 3),    //  (2 g complete)
+            Move::vials(6, 5),    //  (1 p complete)
+            Move::vials(11, 6),   //  (3 y complete)
+            Move::vials(11, 13),  //  (1 o complete)
+            Move::vials(12, 1),   //  (1 b complete)
+        ];
+
+        let num_colors = vials.len() - 2;
+        let mut completions = HashSet::<*const Completion>::with_capacity(vials.len());
+        let mut game = Game::new_root(vec_to_vials(vials));
+        let mut prev_depth = usize::MAX;
+
+        assert_eq!(
+            num_colors,
+            game.settings.borrow().allocator.num_colors(),
+            "Game should have as many colors as full vials"
+        );
+
+        for move_ in moves {
+            game = game.spawn(move_);
+
+            print!("D: {} ", game.get_depth());
+            print!("Completion Addr: {:p} ", game.completion_order.as_ptr());
+            print!("Completions Len: {:} ", game.completion_order.len());
+            // print!("Completions: {:?} ", game.completion_order);
+            // print!("V: {:?} ", game.get_spaces_color());
+
+            // if let Some(prev) = game.prev.as_ref() {
+            //     print!("\tMove: {:}", move_);
+
+            //     let start_vial = prev.get_vial_color(move_.from as usize);
+            //     let end_vial = prev.get_vial_color(move_.to as usize);
+            //     print!("\tBefore: {:?} -> {:?} ", start_vial, end_vial);
+
+            //     let start_vial = game.get_vial_color(move_.from as usize);
+            //     let end_vial = game.get_vial_color(move_.to as usize);
+            //     print!("\tAfter: {:?} -> {:?} ", start_vial, end_vial);
+            // }
+
+            if game.get_depth() == prev_depth {
+                print!("No change! ");
+            }
+
+            println!("");
+            prev_depth = game.get_depth();
+            completions.insert(game.completion_order.as_ptr());
+        }
+
+        assert_eq!(
+            moves.len(),
+            game.get_depth(),
+            "The final game should include all scheduled moves"
+        );
+        assert_eq!(
+            num_colors + 1,
+            completions.len(),
+            "There should be 13 unique completions (1 for the blank state, and 12 unique ones for each completion)"
+        );
+
+        println!("{:#?}", game.completion_order);
+    }
+
+    fn vec_to_vials(vials: Vec<[char; NUM_SPACES_PER_VIAL]>) -> Vec<Vial> {
+        vials
             .iter()
             .map(|vial_colors| vial_colors.map(|color_char| Color(color_char.to_string())))
-            .collect();
-        Game::create(vials)
+            .collect()
+    }
+
+    pub fn new_root_from_chars(vials: Vec<[char; NUM_SPACES_PER_VIAL]>) -> Game<'static> {
+        Game::create(vec_to_vials(vials))
     }
 }
