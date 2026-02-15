@@ -4,6 +4,7 @@
     "addl",
     "chrono",
     "Datelike",
+    "Deque",
     "Poststep",
     "poststeps",
     "Prestep",

@@ -4,4 +4,4 @@ pub mod colors;
 pub mod game;
 pub mod util;
 
-pub use game::print_vials::print_vials;
+pub use game::*;
