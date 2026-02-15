@@ -2,12 +2,12 @@
 
 
 /// Represents a color in the game
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Color(pub char);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Color(pub String);
 
 impl Color {
-    pub fn new(ch: char) -> Self {
-        Color(ch)
+    pub fn new(name: &str) -> Self {
+        Color(name.to_string())
     }
 
     /// Returns true if this is a valid game color (not empty or unknown)
@@ -26,21 +26,21 @@ impl Color {
     }
 
     pub fn is_reserved(&self) -> bool {
-      is_reserved(self.0)
+      is_reserved(&self.0)
     }
 }
 
 /// Special character representing an empty space in a vial
-pub const EMPTY_SPACE: char = '-';
+pub const EMPTY_SPACE: &'static str = "-";
 
 /// Special character representing an unknown/mystery value
-pub const UNKNOWN_VALUE: char = '?';
+pub const UNKNOWN_VALUE: &'static str = "?";
 
 /// Reserved colors that have special meanings in the game
-pub const RESERVED_COLORS: &[char] = &[EMPTY_SPACE, UNKNOWN_VALUE];
+pub const RESERVED_COLORS: &[&str] = &[EMPTY_SPACE, UNKNOWN_VALUE];
 
 /// Validates that a color character is acceptable
-pub fn is_reserved(ch: char) -> bool {
+pub fn is_reserved(ch: &str) -> bool {
     RESERVED_COLORS.contains(&ch)
 }
 
@@ -50,16 +50,16 @@ mod tests {
 
     #[test]
     fn test_color_validation() {
-        let red = Color('r');
+        let red = Color::new("r");
         assert!(red.is_valid());
         assert!(!red.is_empty());
         assert!(!red.is_unknown());
 
-        let empty = Color('-');
+        let empty = Color::new("-");
         assert!(!empty.is_valid());
         assert!(empty.is_empty());
 
-        let unknown = Color('?');
+        let unknown = Color::new("?");
         assert!(!unknown.is_valid());
         assert!(unknown.is_unknown());
     }

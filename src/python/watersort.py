@@ -724,12 +724,13 @@ class Game:
     if not self.root.drainMode and self.move and startVial == self.move[1] and endVial == self.move[0]:
       return INVALID_MOVE # Can't simply undo the previous move
 
+    # Verify core game mechanics
     startColor = self.getTopVialColor(startVial, bottom=self.root.drainMode)
     if startColor == "-" or startColor == "?":
       return INVALID_MOVE # Can only move an active color
     endColor = self.getTopVialColor(endVial)
     if endColor != "-" and endColor != startColor:
-      return INVALID_MOVE # Can only place on the same color, or an empty square
+      return INVALID_MOVE # Can only place on the same color, or an empty space
 
     # Verify the destination vial
     endIsComplete, endOnlyColor, endNumOnTop, endEmptySpaces = self.__countOnTop(endColor, endVial)
@@ -803,7 +804,9 @@ class Game:
 
     return (isComplete, onlyColor, numOnTop, emptySpaces)
   def __findSoloVial(self, forColor: str, skipVial=None) -> int | None:
-    """Locates a vial that contains *only* the specified color. If multiple vials exist, returns the index with the most spaces. If no vial exists, returns None."""
+    """Locates a vial that contains *only* the specified color.
+    If multiple vials exist, returns the index with the most spaces of the specified color.
+    If no vial exists, returns None."""
     vialIndex: int|None = None
     spacesInVial: int|None = None
     for searchVial in range(len(self.vials)):
@@ -815,7 +818,7 @@ class Game:
           spacesInVial = numOnTop
     return vialIndex
 
-  def makeMove(self, startVial, endVial) -> bool:
+  def applyMove(self, startVial, endVial) -> bool:
     valid, startColor, endColor, endSpaces, willComplete = self.__prepareMove(startVial, endVial)
     if not valid:
       return False
@@ -823,7 +826,7 @@ class Game:
     fromVial = self.vials[startVial]
     toVial = self.vials[endVial]
 
-    # Remove up to that many colors from start
+    # Remove at most endSpaces colors from start
     piecesMoved = 0
     moveRange = endSpaces
     startColors = 0
@@ -869,7 +872,7 @@ class Game:
 
   def spawn(self, move: Move) -> "Game":
     newGame = Game(self.vials, move, self)
-    newGame.makeMove(move[0], move[1])
+    newGame.applyMove(move[0], move[1])
     return newGame
 
   def generateNextGames(self) -> list["Game"]:
