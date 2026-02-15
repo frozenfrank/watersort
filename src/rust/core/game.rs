@@ -1,7 +1,7 @@
+use crate::NUM_SPACES_PER_VIAL;
 use crate::core::color_code::{COLOR_CODE_EMPTY, COLOR_CODE_UNKNOWN};
 use crate::core::game_settings::GameSettings;
 use crate::core::{Color, ColorCode, ColorCodeAllocator, ColorCodeExt};
-use crate::types::constants::NUM_SPACES_PER_VIAL;
 use crate::types::{Completion, DepthSize, Move, SpaceIndex, Vial, VialIndex};
 use crate::utils::helpers::RangeIter;
 use std::borrow::Cow;

@@ -1,20 +1,19 @@
 // Game display module for watersort (Rust)
 // Ported and adapted from the Python implementation
 
+use crate::NUM_SPACES_PER_VIAL;
 use crate::core::color::Color;
 use crate::core::game::Game;
 use crate::display::colorama_ansi::STYLE;
-use crate::types::constants::NUM_SPACES_PER_VIAL;
+use crate::types::StdResult;
 use std::fmt::Write;
 
-type Response = Result<(), Box<dyn std::error::Error>>;
-
-pub fn print_vials(game: &Game) -> Response {
+pub fn print_vials(game: &Game) -> StdResult {
     print_vials_numbered(game, false)
 }
 
 /// Prints the vials of a game, optionally numbering each output line for uniques in debuggers
-pub fn print_vials_numbered(game: &Game, number_spaces: bool) -> Response {
+pub fn print_vials_numbered(game: &Game, number_spaces: bool) -> StdResult {
     let num_vials = game.num_vials();
     let reserve_chars_per_vial = 60; // Formatting can be 40 chars (fore + back styles)
     let mut lines: Vec<String> =
@@ -70,13 +69,15 @@ pub fn write_vial_color_text(
     s.push_str(text);
     s.push_str(&STYLE["RESET_ALL"]);
 
-    if ljust <= text.len() { return; }
+    if ljust <= text.len() {
+        return;
+    }
     for _ in 0..(ljust - text.len()) {
         s.push(' ');
     }
 }
 
-pub fn write_space_ref(s: &mut String, vial_idx: usize, space_idx: usize) -> Response {
+pub fn write_space_ref(s: &mut String, vial_idx: usize, space_idx: usize) -> StdResult {
     write!(s, "{}:{}", vial_idx + 1, space_idx + 1)?;
     Ok(())
 }
