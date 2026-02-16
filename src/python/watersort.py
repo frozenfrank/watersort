@@ -88,13 +88,13 @@ class SolutionStep:
   # Pre-compute stat values
   deadEndsSearch: DeadEndSearchResults|None = None
 
-  def __init__(self, game: "Game"=None, info: "Game.MoveInfo"=None, bigText: str = None):
+  def __init__(self, game: "Game"=None, bigText: str = None):
     self.bigText = bigText
 
     self.game = game
     self.move = game.move if game else None
 
-    if info is None and game is not None:
+    if game is not None:
       info = game.getMoveInfo()
 
     if info:
@@ -630,7 +630,7 @@ class Game:
       result = f"({numStr} {color}{extraStr})"
 
     return result.ljust(Game.TOTAL_MOVE_PRINT_WIDTH)
-  def getMoveInfo(self) -> MoveInfo:
+  def getMoveInfo(self) -> MoveInfo|None:
     if not self.move:
       return None
     start, end = self.move
