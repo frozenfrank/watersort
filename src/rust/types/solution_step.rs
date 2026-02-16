@@ -5,7 +5,7 @@ use crate::{Game, Move, MoveInfo};
 pub struct SolutionStep<'a> {
     pub game: Arc<Game<'a>>,
     pub move_: Option<Move>,
-    pub move_info: MoveInfo<'a>,
+    pub move_info: MoveInfo,
     pub is_same_as_previous: Option<bool>,
 }
 
@@ -14,7 +14,7 @@ impl<'a> SolutionStep<'a> {
         Self {
             game: game.clone(),
             move_: game.last_move(),
-            move_info: game.get_move_info(),
+            move_info: game.get_move_info().unwrap_or_default(),
             is_same_as_previous: None,
         }
     }

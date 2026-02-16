@@ -1,9 +1,9 @@
-use crate::NUM_SPACES_PER_VIAL;
 use crate::core::color_code::{COLOR_CODE_EMPTY, COLOR_CODE_UNKNOWN};
 use crate::core::game_settings::GameSettings;
 use crate::core::{Color, ColorCode, ColorCodeAllocator, ColorCodeExt};
 use crate::types::{Completion, DepthSize, Move, SpaceIndex, Vial, VialIndex};
 use crate::utils::helpers::RangeIter;
+use crate::{MoveInfo, NUM_SPACES_PER_VIAL};
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::fmt::{self, Formatter};
@@ -262,6 +262,45 @@ impl<'a> Game<'a> {
             }
         }
         COLOR_CODE_EMPTY
+    }
+
+    pub fn get_move_info(&self) -> Option<MoveInfo> {
+        if self.last_move.is_none() {
+            return None; // Also guarantees the presence of `prev`
+        }
+        let Move { from, to } = self.last_move.unwrap();
+        let start = from as usize;
+        let end = to as usize;
+
+        let settings = self.settings.borrow();
+        let drain_mode = settings.drain_mode;
+        let num_spaces_per_vial = NUM_SPACES_PER_VIAL as u8;
+
+        // Look up colors & quantities moved
+        let color_moved = self.get_top_vial_color(start, drain_mode);
+        let prev_game = self.prev.as_deref().unwrap();
+        let CountOnTopResult {
+            num_on_top: num_moved,
+            num_empty_spaces: start_empty_spaces,
+            ..
+        } = prev_game.count_on_top(color_moved, start, drain_mode);
+        let CountOnTopResult {
+            is_complete,
+            num_empty_spaces: end_empty_spaces,
+            ..
+        } = self.count_on_top(color_moved, end, drain_mode);
+
+        // Prepare and return
+        let color_moved = settings.allocator.interpret_code(color_moved);
+        let vacated_vial = num_moved + start_empty_spaces == num_spaces_per_vial;
+        let started_vial = num_spaces_per_vial - num_moved == end_empty_spaces;
+        Some(MoveInfo {
+            color_moved,
+            num_moved,
+            is_complete,
+            vacated_vial,
+            started_vial,
+        })
     }
 
     // ============ Game State Validation ============
