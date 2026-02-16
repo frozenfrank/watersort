@@ -3,6 +3,7 @@ pub mod completion;
 pub mod index_sizes;
 pub mod move_;
 pub mod move_info;
+pub mod solution_step;
 
 pub use assorted::*;
 pub use completion::Completion;

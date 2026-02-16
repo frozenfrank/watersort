@@ -69,7 +69,7 @@ class DeadEndSearchResults:
 
 class SolutionStep:
   game: "Game"
-  move: Move
+  move: Move|None
 
   # For special steps
   bigText: str|None
