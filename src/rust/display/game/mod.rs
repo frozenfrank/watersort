@@ -1,3 +1,4 @@
+pub mod solution_step_preparer;
 pub mod print_moves;
 pub mod print_vials;
 
