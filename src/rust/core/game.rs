@@ -35,8 +35,6 @@ pub struct Game<'a> {
     /// Order in which colors were completed (immutable)
     completion_order: Cow<'a, Vec<Completion>>,
 
-    // A reference to the root game, or None if this is the root game
-    root: Option<Arc<Game<'a>>>,
     pub settings: RefCell<GameSettings>,
 }
 
@@ -108,7 +106,6 @@ impl<'a> Game<'a> {
             prev: None,
             num_moves: 0,
             completion_order: Cow::Owned(Vec::new()),
-            root: None,
             settings,
         }
     }
@@ -138,7 +135,6 @@ impl<'a> Game<'a> {
             spaces: self.spaces.clone(),
             last_move: self.last_move.clone(),
             num_moves: self.num_moves,
-            root: self.root.clone(),
             settings: self.settings.clone(),
         };
         new_game.apply_move(move_.from as usize, move_.to as usize);
@@ -191,7 +187,7 @@ impl<'a> Game<'a> {
 
     /// Returns whether this is the root game
     pub fn is_root(&self) -> bool {
-        self.root.is_none()
+        self.num_moves == 0
     }
 
     /// Returns the level identifier
@@ -552,7 +548,7 @@ impl<'a> Game<'a> {
 
 impl PartialEq for Game<'_> {
     fn eq(&self, other: &Self) -> bool {
-        self.spaces == other.spaces && self.root == other.root && self.settings == other.settings
+        self.spaces == other.spaces && self.settings == other.settings
     }
 }
 
@@ -586,7 +582,6 @@ impl std::fmt::Debug for Game<'_> {
                 &format_args!("{:p}", self.completion_order.as_ptr()),
             )
             .field("completion_order", &self.completion_order)
-            .field("root", &self.root)
             .field("settings", &"<settings>")
             .finish()
     }
