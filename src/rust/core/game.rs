@@ -145,6 +145,10 @@ impl<'a> Game<'a> {
         Arc::new(new_game)
     }
 
+    pub fn to_arc(self: Game<'a>) -> Arc<Game<'a>> {
+        Arc::new(self)
+    }
+
     // ============ Accessors ============
 
     /// Returns a reference to the vials

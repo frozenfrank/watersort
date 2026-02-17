@@ -11,8 +11,11 @@ pub struct Move {
 
 impl Move {
     /// Creates a Move given 0-indexed vial numbers
-    pub fn new(from: VialIndex, to: VialIndex) -> Self {
-        Move { from, to }
+    pub fn new(from: usize, to: usize) -> Self {
+        Move {
+            from: from as VialIndex,
+            to: to as VialIndex,
+        }
     }
 
     /// Creates a Move provided human-friendly vial numbers

@@ -8,21 +8,25 @@ pub struct SolutionStepPreparer {
     last_printed_moves: Option<VecDeque<Move>>,
 }
 
+pub type GameInputType<'a> = &'a Arc<Game<'a>>;
 pub type SolutionStepsResult<'a> = VecDeque<SolutionStep<'a>>;
 
-
 impl<'a> SolutionStepPreparer {
-    pub fn prepare_solution_steps(&mut self, game: &'a Arc<Game<'a>>) -> SolutionStepsResult<'a> {
+    pub fn prepare_solution_steps(&mut self, game: GameInputType<'a>) -> SolutionStepsResult<'a> {
         self.do_prepare_solution_steps(game, None)
     }
 
-    pub fn prepare_solution_steps_from(&mut self, game: &'a Arc<Game<'a>>, from_game: &Game) -> SolutionStepsResult<'a> {
+    pub fn prepare_solution_steps_from(
+        &mut self,
+        game: GameInputType<'a>,
+        from_game: &Game,
+    ) -> SolutionStepsResult<'a> {
         self.do_prepare_solution_steps(game, Some(from_game))
     }
 
-    fn do_prepare_solution_steps(
+    pub fn do_prepare_solution_steps(
         &mut self,
-        game: &'a Arc<Game<'a>>,
+        game: GameInputType<'a>,
         from_game: Option<&Game>,
     ) -> SolutionStepsResult<'a> {
         let mut steps = VecDeque::with_capacity(game.num_moves());
