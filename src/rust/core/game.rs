@@ -133,7 +133,7 @@ impl<'a> Game<'a> {
             completion_order,
             prev: Some(self.clone()),
             spaces: self.spaces.clone(),
-            last_move: self.last_move.clone(),
+            last_move: Some(move_),
             num_moves: self.num_moves,
             settings: self.settings.clone(),
         };
@@ -277,7 +277,7 @@ impl<'a> Game<'a> {
         let num_spaces_per_vial = NUM_SPACES_PER_VIAL as u8;
 
         // Look up colors & quantities moved
-        let color_moved = self.get_top_vial_color(start, drain_mode);
+        let color_moved = self.get_top_vial_color(end, false); // The color is always the one on top, even in drain mode
         let prev_game = self.prev.as_deref().unwrap();
         let CountOnTopResult {
             num_on_top: num_moved,

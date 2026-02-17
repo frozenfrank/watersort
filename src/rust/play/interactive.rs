@@ -18,6 +18,7 @@ pub fn play_game(game: &Game) {
 
     loop {
         // Print minimal state for the user
+        println!();
         print_moves(&game);
         print_vials(&game);
 

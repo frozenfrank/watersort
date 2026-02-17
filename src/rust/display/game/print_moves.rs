@@ -32,16 +32,20 @@ pub fn print_moves_from(game: GameInputType, from_game: &Game) {
 fn do_print_moves(game: GameInputType, from_game: Option<&Game>) -> StdResult {
     let mut mutex_guard = PREPARER.deref().lock()?;
     let preparer = mutex_guard.deref_mut();
+    let settings = game.settings.borrow();
     let steps = preparer.do_prepare_solution_steps(game, from_game);
 
     let chars_per_line = 100; // Estimates with the python version show 80-90 per line. A little extra won't hurt.
     let mut output = String::with_capacity(chars_per_line * steps.len());
+
+    writeln!(&mut output, "Moves ({steps}){mode}:", steps = steps.len(), mode = (if settings.drain_mode {" [Drain Gameplay]"} else {""}))?;
     if steps.len() == 0 {
         writeln!(&mut output, "{INDENT}None")?;
     } else {
         for step in steps {
             write!(&mut output, "{INDENT}")?;
             write_move_str(&mut output, step);
+            writeln!(&mut output)?;
         }
     }
 
