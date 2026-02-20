@@ -5,12 +5,13 @@ use crate::{
     },
     display::colors::DEFAULT_COLORS,
 };
-use std::{collections::HashMap, rc::Rc};
+use std::{cmp::max, collections::HashMap, rc::Rc};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct ColorCodeAllocator {
     color_codes: HashMap<Rc<Color>, ColorCode>,
     colors: Vec<Rc<Color>>,
+    max_name_len: usize,
 }
 
 impl ColorCodeAllocator {
@@ -19,6 +20,7 @@ impl ColorCodeAllocator {
         let mut allocator = Self {
             color_codes: HashMap::new(),
             colors: Vec::new(),
+            max_name_len: 0,
         };
 
         // Reserve 0 and 1 for EMPTY_SPACE and UNKNOWN_COLOR
@@ -43,6 +45,9 @@ impl ColorCodeAllocator {
         let boxed_color = Rc::new(color.clone());
         self.color_codes.insert(boxed_color.clone(), assigned_code);
         self.colors.push(boxed_color);
+        if let Some(color_name) = color.name {
+            self.max_name_len = max(self.max_name_len, color_name.len());
+        }
         assigned_code
     }
 
@@ -66,6 +71,10 @@ impl ColorCodeAllocator {
 
     pub fn num_colors(&self) -> usize {
         self.colors.len() - 2 // Subtract 2 for EMPTY_SPACE and UNKNOWN_COLOR
+    }
+
+    pub fn max_color_name_len(&self) -> usize {
+        self.max_name_len
     }
 }
 
