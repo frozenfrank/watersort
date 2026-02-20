@@ -48,19 +48,13 @@ impl<'a> SolutionStepPreparer {
                 return steps; // Skip comparison against previous prints
             }
 
-            // Do something fancy for many lines
             let move_ = match game.last_move() {
                 Some(move_) => move_,
                 None => break,
             };
 
             moves.push_front(move_);
-            steps.push_front(SolutionStep {
-                game: curr_game.unwrap().clone(),
-                move_: Some(move_),
-                move_info: game.get_move_info().unwrap(),
-                is_same_as_previous: None,
-            });
+            steps.push_front(SolutionStep::new(game));
 
             curr_game = game.prev();
         }
