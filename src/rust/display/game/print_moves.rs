@@ -63,7 +63,15 @@ fn do_print_moves(game: GameInputType, from_game: Option<&Game>) -> StdResult {
         };
         for step in steps {
             write!(&mut output, "{INDENT}")?;
-            write_move_str(&mut output, step, &cache);
+            write_move_str(&mut output, &step, &cache);
+            if let Some(is_same_as_prev) = step.is_same_as_previous {
+                let word = if is_same_as_prev {
+                    &"(same)"
+                } else {
+                    &"(different)"
+                };
+                write!(&mut output, "{}{}", SEPARATOR, word)?;
+            }
             writeln!(&mut output)?;
         }
     }
@@ -73,8 +81,8 @@ fn do_print_moves(game: GameInputType, from_game: Option<&Game>) -> StdResult {
 }
 
 /// Writes a string with a fixed justification, including escape character for formatting, that describes the move.
-fn write_move_str(s: &mut String, step: SolutionStep, cache: &PrintMovesCache) {
-    let move_data = match step.data {
+fn write_move_str(s: &mut String, step: &SolutionStep, cache: &PrintMovesCache) {
+    let move_data = match &step.data {
         Some(data) => data,
         None => return,
     };
