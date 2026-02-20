@@ -22,6 +22,11 @@ pub fn play_game(game: &Game) {
         print_moves(&game);
         print_vials(&game);
 
+        if game.is_finished() {
+            println!("Congratulations, you solved it!\n");
+            break;
+        }
+
         print!("Enter command: ");
         // ensure prompt is visible
         io::stdout().flush().ok();
@@ -77,11 +82,6 @@ pub fn play_game(game: &Game) {
 
         // Perform the move mutably
         game = game.spawn(Move::new(start, end));
-        if game.is_finished() {
-            print_vials(&game);
-            println!("Congratulations, you solved it!\n");
-            break;
-        }
     }
 
     println!("Goodbye.");
