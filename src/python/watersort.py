@@ -608,26 +608,22 @@ class Game:
     result = formatVialColor(step.colorMoved, f"{start+1}->{end+1}", ljust=8)
     result += self._getMoveInfoString(step.info)
     return result
-  def _getMoveInfoString(self, info: MoveInfo = None) -> str:
-    if not info:
-      info = self.getMoveInfo()
-
-    result: str
+  def _getMoveInfoString(self, info: MoveInfo) -> str:
     if info is None:
-      result = ""
-    else:
-      color, num, complete, vacated, startedVial = info
-      extraStr = ""
-      if complete:
-        extraStr = Game.COMPLETE_STR
-      elif vacated:
-        extraStr = Game.VACATED_STR
-      elif startedVial:
-        extraStr = Game.STARTED_STR
+      return ""
 
-      numStr = Style.BRIGHT + str(num) + Style.NORMAL if num > 1 else num
-      if extraStr: extraStr = " " + extraStr
-      result = f"({numStr} {color}{extraStr})"
+    color, num, complete, vacated, startedVial = info
+    extraStr = ""
+    if complete:
+      extraStr = Game.COMPLETE_STR
+    elif vacated:
+      extraStr = Game.VACATED_STR
+    elif startedVial:
+      extraStr = Game.STARTED_STR
+
+    numStr = Style.BRIGHT + str(num) + Style.NORMAL if num > 1 else num
+    if extraStr: extraStr = " " + extraStr
+    result = f"({numStr} {color}{extraStr})"
 
     return result.ljust(Game.TOTAL_MOVE_PRINT_WIDTH)
   def getMoveInfo(self) -> MoveInfo|None:
