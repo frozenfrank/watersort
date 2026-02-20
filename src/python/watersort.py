@@ -1713,6 +1713,9 @@ def playGame(game: "Game"):
   while True:
     currentGame.printMoves()
     currentGame.printVials()
+    if currentGame.isFinished():
+      break
+
     read = input().strip()
     if not read:
       continue
