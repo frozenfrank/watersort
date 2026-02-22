@@ -19,6 +19,15 @@ src/
 │   ├── analysis_solver.rs   # Dead-end analysis, move evaluation
 │   ├── safe_game_solver.rs  # Safe move detection
 │   └── strategy.rs          # Solve methods (MIX, BFS, DFS, DFR)
+/*
+Solver Port Plan
+----------------
+Each solver struct (AnalysisSolver, SolutionSolver, SafeGameSolver) contains a BaseSolver instance via composition.
+All solvers implement the Solver trait, allowing interchangeability and polymorphism.
+Shared logic and fields live in BaseSolver; solver-specific logic in their respective structs.
+Use enums for solve methods (MIX, BFS, DFS, DFR).
+Prefer explicit method signatures and trait objects for flexibility.
+*/
 │
 ├── analysis/
 │   ├── mod.rs               # Analysis module exports
