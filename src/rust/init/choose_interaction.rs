@@ -2,13 +2,12 @@
 // Ported from Python's chooseInteraction() logic in watersort.py
 // This module provides a function to handle user interaction and mode selection for the game.
 
-use std::collections::HashSet;
 use std::env;
 use std::io::{self, Write};
 
 use crate::init::Mode;
 use crate::init::interaction_result::InteractionResult;
-use crate::utils::helpers::vec_replace;
+use crate::utils::helpers::vec_take;
 use crate::{
     DEFAULT_ANALYZE_ATTEMPTS, DEFAULT_DFR_SEARCH_ATTEMPTS, FORCE_INTERACTION_MODE,
     FORCE_SOLVE_LEVEL,
@@ -28,10 +27,15 @@ pub fn choose_interaction() -> InteractionResult {
         interpret_command_args(&mut result);
     }
 
-    let mut user_interacting = true;
     if result.mode == Mode::Unknown {
         prompt_for_mode(&mut result);
     }
+
+    assert_ne!(
+        result.mode,
+        Mode::Unknown,
+        "Mode is known after prompting user"
+    );
 
     // Step 4: Handle quit
     if result.mode == Mode::Quit {
@@ -41,10 +45,10 @@ pub fn choose_interaction() -> InteractionResult {
     // Step 5: Prompt for level if needed
     if matches!(
         result.mode,
-        Mode::Interact | Mode::Solve | Mode::Analyze | Mode::Unknown
+        Mode::Interact | Mode::Solve | Mode::Analyze | Mode::NewGame
     ) && result.level.is_none()
     {
-        if user_interacting {
+        if result.user_interacting {
             result.level = prompt_for_level();
         }
     }
@@ -60,11 +64,10 @@ fn interpret_command_args(result: &mut InteractionResult) {
 
     // Analyze Mode
     if args[1] == "a" {
-        result.set_analyze_mode(args.get(3));
+        let analyze_samples = args.get(3).map(|s| s.as_str());
+        result.set_analyze_mode(analyze_samples);
         if args.len() > 2 {
-            let mut level = String::new();
-            vec_replace(&mut args, 2, &mut level);
-            result.level = Some(level);
+            result.level = Some(vec_take(&mut args, 2));
         }
 
     // Discover and solve a level
@@ -85,7 +88,8 @@ fn interpret_command_args(result: &mut InteractionResult) {
         // Read solve method
         if args.len() > 2 {
             if args[2] == "a" {
-                result.set_analyze_mode(args.get(3));
+                let analyze_samples = args.get(3).map(|s| s.as_str());
+                result.set_analyze_mode(analyze_samples);
             } else {
                 result.solve_method = Some(args[2].to_string());
             }
@@ -105,9 +109,6 @@ fn interpret_command_args(result: &mut InteractionResult) {
 
 // Prompt the user for mode and related info if not set by args
 fn prompt_for_mode(result: &mut InteractionResult) {
-    let valid_modes = valid_modes();
-    let mut user_interacting = true;
-
     let mut response = String::new();
 
     while result.mode == Mode::Unknown {
@@ -123,14 +124,17 @@ fn prompt_for_mode(result: &mut InteractionResult) {
           d                         debug mode
           m METHOD                  method of solving
           "#);
+
         print!("> ");
         io::stdout().flush().unwrap();
         response.clear();
         io::stdin().read_line(&mut response).unwrap();
+
         let response = response.trim();
         let words: Vec<&str> = response.split_whitespace().collect();
         let first_word = words.get(0).copied().unwrap_or("");
         // first_word.make_ascii_lowercase();
+
         match first_word {
             "d" => {
                 println!("{:?}", response);
@@ -139,16 +143,13 @@ fn prompt_for_mode(result: &mut InteractionResult) {
                 if words.len() < 2 {
                     println!("Cannot set the solve method without the method as well");
                 } else {
-                    // set_solve_method(words[1]);
+                    result.solve_method = Some(words[1].to_string());
                 }
             }
             "a" => {
-                result.mode = Mode::Analyze;
+                result.set_analyze_mode(words.get(2).map(|w| &**w));
                 if words.len() > 1 {
                     result.level = Some(words[1].to_string());
-                }
-                if words.len() > 2 {
-                    result.num_iterations = words[2].parse().unwrap_or(DEFAULT_ANALYZE_ATTEMPTS);
                 }
             }
             "p" => {
@@ -157,15 +158,17 @@ fn prompt_for_mode(result: &mut InteractionResult) {
                     result.level = Some(words[1].to_string());
                 }
             }
-            fw if valid_modes.contains(fw) => {
-                result.mode = Mode::from_str(fw);
-                if result.mode == Mode::Interact {
-                    user_interacting = false;
-                }
-            }
             _ => {
-                result.level = Some(response.to_string());
-                result.mode = Mode::Interact;
+                let mode = Mode::from_str(first_word);
+                if mode != Mode::Unknown {
+                    result.mode = mode;
+                    if result.mode == Mode::Interact {
+                        result.user_interacting = false;
+                    }
+                } else {
+                    result.level = Some(response.to_string());
+                    result.mode = Mode::Interact;
+                }
             }
         }
     }
@@ -179,12 +182,8 @@ fn prompt_for_level() -> Option<String> {
     Some(input_level.trim().to_string())
 }
 
-fn valid_modes() -> HashSet<&'static str> {
-    ["p", "s", "q", "i", "n"].iter().cloned().collect()
-}
-
 impl InteractionResult {
-    pub fn set_analyze_mode(&mut self, analyze_samples: Option<&String>) {
+    pub fn set_analyze_mode(&mut self, analyze_samples: Option<&str>) {
         self.mode = Mode::Analyze;
         self.num_iterations = DEFAULT_ANALYZE_ATTEMPTS;
         if let Some(samples) = analyze_samples
