@@ -10,15 +10,15 @@ pub enum Mode {
 }
 
 impl Mode {
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn from_str(s: &str) -> Self {
         match s {
-            "p" => Some(Mode::Play),
-            "s" => Some(Mode::Solve),
-            "q" => Some(Mode::Quit),
-            "i" => Some(Mode::Interact),
-            "a" => Some(Mode::Analyze),
-            "d" => Some(Mode::Debug),
-            _ => None,
+            "p" => Mode::Play,
+            "s" => Mode::Solve,
+            "q" => Mode::Quit,
+            "i" => Mode::Interact,
+            "a" => Mode::Analyze,
+            "d" => Mode::Debug,
+            _ => Mode::Unknown,
         }
     }
 }

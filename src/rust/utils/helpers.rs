@@ -33,6 +33,11 @@ pub fn percent_str(value: f64, total: f64) -> String {
     }
 }
 
+/// Efficiently replaces an element at one index of a vector with `other`
+pub fn vec_replace<T>(vec: &mut Vec<T>, index: usize, other: &mut T) {
+    std::mem::swap(&mut vec[index], other);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

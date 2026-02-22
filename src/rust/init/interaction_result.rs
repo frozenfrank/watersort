@@ -12,4 +12,5 @@ pub struct InteractionResult {
     pub known_blind_mode: Option<bool>,
     /// If the mode supports repeating actions, this is the number of times to repeat the action.
     pub num_iterations: usize,
+    pub solve_method: Option<String>,
 }
