@@ -6,12 +6,8 @@ use std::collections::HashSet;
 use std::env;
 use std::io::{self, Write};
 
-// Placeholder types and constants. Replace with actual implementations.
-const ANALYZE_ATTEMPTS: usize = 100;
-const DFR_SEARCH_ATTEMPTS: usize = 100;
-const FORCE_SOLVE_LEVEL: Option<&str> = None;
-const FORCE_INTERACTION_MODE: Option<&str> = None;
-const SOLVE_METHOD: &str = "MIX";
+use crate::{DEFAULT_ANALYZE_ATTEMPTS, DEFAULT_DFR_SEARCH_ATTEMPTS, DEFAULT_SOLVE_METHOD, FORCE_INTERACTION_MODE, FORCE_SOLVE_LEVEL};
+
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
@@ -48,15 +44,15 @@ pub struct InteractionResult {
     pub dfr_search_attempts: usize,
 }
 
+
 pub fn choose_interaction() -> InteractionResult {
-    let valid_modes: HashSet<&str> = ["p", "s", "q", "i", "n"].iter().cloned().collect();
     let mut mode: Option<Mode> = None;
     let mut level: Option<String> = None;
     let mut drain_mode = false;
     let mut blind_mode = false;
     let mut user_interacting = true;
-    let mut analyze_samples = ANALYZE_ATTEMPTS;
-    let mut dfr_search_attempts = DFR_SEARCH_ATTEMPTS;
+    let mut analyze_samples = DEFAULT_ANALYZE_ATTEMPTS;
+    let mut dfr_search_attempts = DEFAULT_DFR_SEARCH_ATTEMPTS;
 
     // Level override
     if let Some(force_level) = FORCE_SOLVE_LEVEL {
@@ -72,7 +68,7 @@ pub fn choose_interaction() -> InteractionResult {
                     level = Some(args[2].clone());
                 }
                 if args.len() > 3 {
-                    analyze_samples = args[3].parse().unwrap_or(ANALYZE_ATTEMPTS);
+                    analyze_samples = args[3].parse().unwrap_or(DEFAULT_ANALYZE_ATTEMPTS);
                 }
             } else {
                 // Special modes
@@ -91,20 +87,21 @@ pub fn choose_interaction() -> InteractionResult {
                     if args[2] == "a" {
                         mode = Some(Mode::Analyze);
                         if args.len() > 3 {
-                            analyze_samples = args[3].parse().unwrap_or(ANALYZE_ATTEMPTS);
+                            analyze_samples = args[3].parse().unwrap_or(DEFAULT_ANALYZE_ATTEMPTS);
                         }
                     } else {
                         // set_solve_method(args[2].as_str());
                     }
                 }
-                if args.len() > 3 && SOLVE_METHOD == "DFR" {
-                    dfr_search_attempts = args[3].parse().unwrap_or(DFR_SEARCH_ATTEMPTS);
+                if args.len() > 3 && DEFAULT_SOLVE_METHOD == "DFR" {
+                    dfr_search_attempts = args[3].parse().unwrap_or(DEFAULT_DFR_SEARCH_ATTEMPTS);
                 }
             }
         }
     }
 
     // Request the mode if not set
+    let valid_modes = valid_modes();
     while mode.is_none() {
         println!(r#"
           How are we interacting?
@@ -142,7 +139,7 @@ pub fn choose_interaction() -> InteractionResult {
                     level = Some(words[1].to_string());
                 }
                 if words.len() > 2 {
-                    analyze_samples = words[2].parse().unwrap_or(ANALYZE_ATTEMPTS);
+                    analyze_samples = words[2].parse().unwrap_or(DEFAULT_ANALYZE_ATTEMPTS);
                 }
             }
             "p" => {
@@ -190,4 +187,7 @@ pub fn choose_interaction() -> InteractionResult {
     }
 }
 
-// Add additional functions for play_game, solve_game, save_game, etc. as needed.
+
+fn valid_modes() -> HashSet<&'static str> {
+    ["p", "s", "q", "i", "n"].iter().cloned().collect()
+}
