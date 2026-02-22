@@ -8,7 +8,6 @@ pub enum Mode {
     Interact,
     Analyze,
     Quit,
-    Debug,
     Unknown,
 }
 
@@ -21,7 +20,6 @@ impl Mode {
             "q" => Mode::Quit,
             "i" => Mode::Interact,
             "a" => Mode::Analyze,
-            "d" => Mode::Debug,
             _ => Mode::Unknown,
         }
     }
