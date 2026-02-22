@@ -34,14 +34,21 @@ impl Mode {
     }
 }
 
+impl Default for Mode {
+    fn default() -> Self {
+        Mode::Unknown
+    }
+}
+
 /// Represents the User's choice of intended utility behavior
+#[derive(Default)]
 pub struct InteractionResult {
     pub mode: Mode,
     pub level: Option<String>,
-    pub drain_mode: bool,
-    pub blind_mode: bool,
-    pub analyze_samples: usize,
-    pub dfr_search_attempts: usize,
+    pub known_drain_mode: Option<bool>,
+    pub known_blind_mode: Option<bool>,
+    /// If the mode supports repeating actions, this is the number of times to repeat the action.
+    pub num_iterations: usize,
 }
 
 
@@ -53,10 +60,9 @@ pub fn choose_interaction() -> InteractionResult {
         return InteractionResult {
             mode,
             level: Some(force_level.to_string()),
-            drain_mode: false,
-            blind_mode: false,
-            analyze_samples: DEFAULT_ANALYZE_ATTEMPTS,
-            dfr_search_attempts: DEFAULT_DFR_SEARCH_ATTEMPTS,
+            known_drain_mode: None,
+            known_blind_mode: None,
+            num_iterations: DEFAULT_ANALYZE_ATTEMPTS,
         };
     }
 
@@ -89,10 +95,9 @@ pub fn choose_interaction() -> InteractionResult {
     InteractionResult {
         mode: mode.unwrap_or(Mode::Unknown),
         level,
-        drain_mode,
-        blind_mode,
-        analyze_samples,
-        dfr_search_attempts,
+        known_drain_mode: Some(drain_mode),
+        known_blind_mode: Some(blind_mode),
+        num_iterations: analyze_samples,
     }
 }
 
@@ -151,6 +156,9 @@ fn prompt_for_mode() -> (Option<Mode>, Option<String>, usize, bool) {
     let mut level: Option<String> = None;
     let mut analyze_samples = DEFAULT_ANALYZE_ATTEMPTS;
     let mut user_interacting = true;
+
+    let mut response = String::new();
+
     while mode.is_none() {
         println!(r#"
           How are we interacting?
@@ -165,7 +173,7 @@ fn prompt_for_mode() -> (Option<Mode>, Option<String>, usize, bool) {
           "#);
         print!("> ");
         io::stdout().flush().unwrap();
-        let mut response = String::new();
+        response.clear();
         io::stdin().read_line(&mut response).unwrap();
         let response = response.trim();
         let words: Vec<&str> = response.split_whitespace().collect();
