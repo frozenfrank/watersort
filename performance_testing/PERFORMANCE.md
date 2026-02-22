@@ -19,6 +19,7 @@ In this test, each program will read in moves from the command line. Each move w
 
 The results compare the Total time in seconds.
 
+Completed at commit: f7324e78ff812d1171d79e9a1cddfcf1fc4a4e90
 
 **Average Extraction**
 ```shell
@@ -33,11 +34,13 @@ done
 ```
 
 ```shell
+read "test?Test number: "
+read "executions?Num executions: "
 echo "| Execution | Python Avg | Rust Avg | % Faster |"
 echo "|---|---------|---------|------------|"
-for i in {1..4}; do
-  py_file="performance_testing/results/test1/python${i}.txt"
-  rs_file="performance_testing/results/test1/rust${i}.txt"
+for i in {1..$executions}; do
+  py_file="performance_testing/results/test$test/python${i}.txt"
+  rs_file="performance_testing/results/test$test/rust${i}.txt"
 
   py_avg=$(awk '{s+=$(NF-1);c++} END{if(c) print s/c}' "$py_file")
   rs_avg=$(awk '{s+=$(NF-1);c++} END{if(c) print s/c}' "$rs_file")
@@ -109,6 +112,60 @@ done
 | 4 | 0.096066 | 0.009776 | **882.7%** | Interleaved |
 
 Therefore, Rust is roughly **4×–9× faster** depending on the run.
+
+## Test 2: Complete A Game with Mode Processing
+
+Nearly the same as Test 1, except mode switching functionality was added to the Rust solver.
+
+Completed at commit: 69096b9609cf4a7484db7eac39f9a7e660a12821
+
+**Code**
+Directly Interleaved:
+```zsh
+read "execution?Execution Number: "
+read "trials?Num Trials: "
+cargo build
+for i in {1..$trials}; do
+  echo "Trial $i"
+  (time python src/python/watersort.py < performance_testing/ans-100.txt > /dev/null) 2>> "performance_testing/results/test2/python$execution.txt"
+  (time ./target/debug/watersort < performance_testing/ans-100.txt > /dev/null) 2>> "performance_testing/results/test2/rust$execution.txt"
+done
+echo "Completed execution $execution"
+```
+
+Spaced out:
+```zsh
+read "execution?Execution Number: "
+read "trials?Num Trials: "
+cargo build
+for i in {1..$trials}; do
+  echo "Trial $i"
+  (time python src/python/watersort.py < performance_testing/ans-100.txt > /dev/null) 2>> "performance_testing/results/test2/python$execution.txt"
+  (time ./target/debug/watersort < performance_testing/ans-100.txt > /dev/null) 2>> "performance_testing/results/test2/rust$execution.txt"
+  sleep 1
+  (time ./target/debug/watersort < performance_testing/ans-100.txt > /dev/null) 2>> "performance_testing/results/test2/rust$execution.txt"
+  (time python src/python/watersort.py < performance_testing/ans-100.txt > /dev/null) 2>> "performance_testing/results/test2/python$execution.txt"
+  sleep 1
+done
+echo "Completed execution $execution"
+```
+
+**Results**
+| Execution | Python Avg | Rust Avg | % Faster |
+|---|---------|---------|------------|
+| 1 | 0.059178 | 0.006422 | **821.5%** |
+| 2 | 0.06104 | 0.00684 | **792.4%** |
+| 3 | 0.06613 | 0.006712 | **885.3%** |
+| 4 | 0.060876 | 0.006349 | **858.8%** |
+
+| Execution | Python Avg | Rust Avg | % Faster | Interleaving |
+|---|---------|---------|--------------|-------------|
+| 1 | 0.059178 | 0.006422 | **821.5%** | Back-to-back |
+| 2 | 0.06104 | 0.00684 | **792.4%** | Back-to-back |
+| 3 | 0.06613 | 0.006712 | **885.3%** | Back-to-back |
+| 4 | 0.060876 | 0.006349 | **858.8%** | Back-to-back |
+| 5 | 0.08564 | 0.01782 | **380.6%** | Spaced out |
+| 6 | 0.084225 | 0.0149 | **465.3%** | Spaced out |
 
 ## Appendix A: Shell Reference
 
