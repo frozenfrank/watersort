@@ -3,10 +3,22 @@ This watersort solve has now been implemented in two languages: Python and Rust.
 
 We will benchmark equivalent output from both programs and compare their performance.
 
+**Percent Faster Calculation**
+
+To measure how much faster Rust is compared to Python, we compute the relative speedup by comparing their average execution times. Specifically, we divide the Python runtime by the Rust runtime to determine how many times faster Rust is, then subtract 1 to convert that ratio into a percentage increase in speed.
+
+In mathematical terms, the formula is:
+
+$$\text{Percent Faster} = \left(\frac{T_{\text{Python}}}{T_{\text{Rust}}} - 1\right) \times 100$$
+
+Here, $T_{\text{Python}}$ and $T_{\text{Rust}}$ represent the average execution times of the Python and Rust implementations, respectively. This expresses the performance improvement as a percentage relative to Rust’s runtime.
+
+
 ## Test 1: Complete A Game With Commands
 In this test, each program will read in moves from the command line. Each move will be valid. The program will apply the move, print out the moves and new game state, and then prompt for the next input. When the game is completed, the program will terminate.
 
 The results compare the Total time in seconds.
+
 
 **Average Extraction**
 ```shell
@@ -21,6 +33,8 @@ done
 ```
 
 ```shell
+echo "| Execution | Python Avg | Rust Avg | % Faster |"
+echo "|---|---------|---------|------------|"
 for i in {1..4}; do
   py_file="performance_testing/results/test1/python${i}.txt"
   rs_file="performance_testing/results/test1/rust${i}.txt"
@@ -30,8 +44,7 @@ for i in {1..4}; do
 
   percent=$(awk -v p="$py_avg" -v r="$rs_avg" 'BEGIN{ printf "%.1f", (p/r - 1) * 100 }')
 
-  # echo "Run $i: Rust is $percent% faster"
-  echo "| $i | $py_avg | $rs_avg | $percent% |"
+  echo "| $i | $py_avg | $rs_avg | **$percent%** |"
 done
 ```
 
@@ -61,8 +74,6 @@ cp results.txt performance_testing/results/test1/rustN.txt
 ```
 
 **Results**
-
-**Results**
 | Execution | Python Avg | Rust Avg | % Faster |
 |---|---------|---------|--------|
 | 1 | 0.08491 | 0.01377 | 516.6% |
@@ -82,10 +93,22 @@ done
 ```
 
 **Results**
-| Execution | Python Avg | Rust Avg |
+
+| Execution | Python Avg | Rust Avg | % Faster |
 |---|---------|---------|--------|
 | 3 | 0.10106 | 0.01506 | 571.0% |
 | 4 | 0.096066 | 0.009776 | 882.7% |
+
+### Test 1 - Overall Results
+
+| Execution | Python Avg | Rust Avg | % Faster | Type |
+|---|---------|---------|------------|-------------|
+| 1 | 0.08491 | 0.01377 | **516.6%** | Independent |
+| 2 | 0.11936 | 0.02336 | **411.0%** | Independent |
+| 3 | 0.10106 | 0.01506 | **571.0%** | Interleaved |
+| 4 | 0.096066 | 0.009776 | **882.7%** | Interleaved |
+
+Therefore, Rust is roughly **4×–9× faster** depending on the run.
 
 ## Appendix A: Shell Reference
 
