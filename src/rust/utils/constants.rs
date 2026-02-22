@@ -10,7 +10,6 @@ pub const FEW_VIALS_THRESHOLD: usize = 5;
 pub const SOLVER_VERSION: u32 = 4;
 pub const ANALYZER_VERSION: u32 = 6;
 
-
 // ### Choose interaction defaults ###
 
 pub const DEFAULT_ANALYZE_ATTEMPTS: usize = 100;

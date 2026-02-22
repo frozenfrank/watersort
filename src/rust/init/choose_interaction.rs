@@ -6,51 +6,12 @@ use std::collections::HashSet;
 use std::env;
 use std::io::{self, Write};
 
-use crate::{DEFAULT_ANALYZE_ATTEMPTS, DEFAULT_DFR_SEARCH_ATTEMPTS, DEFAULT_SOLVE_METHOD, FORCE_INTERACTION_MODE, FORCE_SOLVE_LEVEL};
-
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Mode {
-    Play,
-    Solve,
-    Interact,
-    Analyze,
-    Quit,
-    Debug,
-    Unknown,
-}
-
-impl Mode {
-    fn from_str(s: &str) -> Option<Self> {
-        match s {
-            "p" => Some(Mode::Play),
-            "s" => Some(Mode::Solve),
-            "q" => Some(Mode::Quit),
-            "i" => Some(Mode::Interact),
-            "a" => Some(Mode::Analyze),
-            "d" => Some(Mode::Debug),
-            _ => None,
-        }
-    }
-}
-
-impl Default for Mode {
-    fn default() -> Self {
-        Mode::Unknown
-    }
-}
-
-/// Represents the User's choice of intended utility behavior
-#[derive(Default)]
-pub struct InteractionResult {
-    pub mode: Mode,
-    pub level: Option<String>,
-    pub known_drain_mode: Option<bool>,
-    pub known_blind_mode: Option<bool>,
-    /// If the mode supports repeating actions, this is the number of times to repeat the action.
-    pub num_iterations: usize,
-}
-
+use crate::init::Mode;
+use crate::init::interaction_result::InteractionResult;
+use crate::{
+    DEFAULT_ANALYZE_ATTEMPTS, DEFAULT_DFR_SEARCH_ATTEMPTS, DEFAULT_SOLVE_METHOD,
+    FORCE_INTERACTION_MODE, FORCE_SOLVE_LEVEL,
+};
 
 pub fn choose_interaction() -> InteractionResult {
     // Step 1: Check for forced level/mode
@@ -86,7 +47,11 @@ pub fn choose_interaction() -> InteractionResult {
     }
 
     // Step 5: Prompt for level if needed
-    if matches!(mode, Some(Mode::Interact) | Some(Mode::Solve) | Some(Mode::Analyze) | Some(Mode::Unknown)) && level.is_none() {
+    if matches!(
+        mode,
+        Some(Mode::Interact) | Some(Mode::Solve) | Some(Mode::Analyze) | Some(Mode::Unknown)
+    ) && level.is_none()
+    {
         if user_interacting {
             level = prompt_for_level();
         }
@@ -146,7 +111,14 @@ fn parse_args() -> (Option<Mode>, Option<String>, bool, bool, usize, usize) {
             }
         }
     }
-    (mode, level, drain_mode, blind_mode, analyze_samples, dfr_search_attempts)
+    (
+        mode,
+        level,
+        drain_mode,
+        blind_mode,
+        analyze_samples,
+        dfr_search_attempts,
+    )
 }
 
 // Prompt the user for mode and related info if not set by args
@@ -160,6 +132,7 @@ fn prompt_for_mode() -> (Option<Mode>, Option<String>, usize, bool) {
     let mut response = String::new();
 
     while mode.is_none() {
+        #[rustfmt::skip]
         println!(r#"
           How are we interacting?
           NAME                      level name
@@ -226,7 +199,6 @@ fn prompt_for_level() -> Option<String> {
     io::stdin().read_line(&mut input_level).unwrap();
     Some(input_level.trim().to_string())
 }
-
 
 fn valid_modes() -> HashSet<&'static str> {
     ["p", "s", "q", "i", "n"].iter().cloned().collect()
