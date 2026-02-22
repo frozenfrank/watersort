@@ -5,6 +5,7 @@
 /// while achieving better memory efficiency and performance.
 pub mod core;
 pub mod display;
+pub mod init;
 pub mod io;
 pub mod play;
 pub mod types;

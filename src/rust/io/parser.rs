@@ -12,7 +12,12 @@ type ReadFileResult = Result<Game<'static>, Box<dyn Error + 'static>>;
 
 pub fn read_game_level(level: &str) -> ReadFileResult {
     let file_path = generate_file_name(level, false);
-    read_game_file(&file_path)
+    let game = read_game_file(&file_path);
+    if let Ok(game) = &game {
+        let mut settings = game.settings.borrow_mut();
+        settings.level = level.to_string();
+    }
+    game
 }
 
 pub fn read_game_file(path: &str) -> ReadFileResult {

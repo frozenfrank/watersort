@@ -1,30 +1,41 @@
 /// Main entry point for the Water Sort Puzzle CLI
 use watersort::{
     Game,
-    io::{parser, save_game_to_file},
+    init::{Mode, choose_interaction},
+    io::{parser, save_game},
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut args: Vec<String> = std::env::args().collect();
-    if cfg!(debug_assertions) && args.len() < 2 {
-        args.push(String::from("1")); // Debugging - fix the level input
-    }
-    if args.len() < 2 {
-        eprintln!("Usage: {} <level> <output_file>", args[0]);
-        std::process::exit(1);
+    let mut game: Game;
+
+    let interaction = choose_interaction();
+    if interaction.mode == Mode::Quit {
+        std::process::exit(0);
     }
 
-    let level = &args[1];
-    let mut game: Game = parser::read_game_level(level)?;
-
-    // Launch interactive gameplay loop
-    watersort::play::play_game(&mut game);
-
-    // Optionally save when an output path was provided
-    if args.len() >= 3 {
-        let output_path = &args[2];
-        save_game_to_file(&game, output_path)?;
+    if interaction.mode != Mode::NewGame
+        && let Some(level) = interaction.level
+    {
+        game = parser::read_game_level(&level)?;
+    } else {
+        // TODO: Attempt to read the game state out of a file
+        unimplemented!("This version of watersort does not support reading in games manually.");
     }
+
+    // TODO: Verify game is error-free
+    // game.attempt_correct_errors()
+
+    match interaction.mode {
+        Mode::Play => watersort::play::play_game(&mut game),
+        Mode::NewGame | Mode::Solve | Mode::Interact => unimplemented!("Solve game functionality"),
+        Mode::Analyze => unimplemented!("Analyze game functionality"),
+        Mode::Quit => unreachable!("The program has already interpreted this option."),
+        Mode::Unknown => {
+            unreachable!("After selecting an interaction, game mode should always be known.")
+        }
+    }
+
+    save_game(&game, false)?;
 
     Ok(())
 }

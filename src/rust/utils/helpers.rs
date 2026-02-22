@@ -33,6 +33,18 @@ pub fn percent_str(value: f64, total: f64) -> String {
     }
 }
 
+/// Efficiently replaces an element at one index of a vector with `other`
+pub fn vec_replace<T>(vec: &mut Vec<T>, index: usize, other: &mut T) {
+    std::mem::swap(&mut vec[index], other);
+}
+
+/// Efficiently takes an element at one index of a vector, replacing it with the default value.
+pub fn vec_take<T: Default>(vec: &mut Vec<T>, index: usize) -> T {
+    let mut existing = T::default();
+    vec_replace(vec, index, &mut existing);
+    existing
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
