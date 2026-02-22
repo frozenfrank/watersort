@@ -2511,6 +2511,7 @@ def debugLevel(level,dfrSearchAttempts=DFR_SEARCH_ATTEMPTS):
   originalGame.level = level
   solveGame(originalGame, solveMethod=SOLVE_METHOD, probeDFRSamples=dfrSearchAttempts)
   saveGame(originalGame)
+  quit(0)
 
 def saveGame(game: "Game", forceSave = False) -> None:
   if not game or not game.level or (not forceSave and not game.modified):
@@ -2813,6 +2814,9 @@ def signalHandler(signum, frame):
   exit(0)
 signal.signal(signal.SIGINT, signalHandler)
 
+
+# debugLevel("dec15", dfrSearchAttempts=1)
+
 # Run the program!
 # Call signatures:
 # py watersort.py LEVEL a SAMPLES?
@@ -2824,5 +2828,3 @@ signal.signal(signal.SIGINT, signalHandler)
 # py watersort.py LEVEL <MODE> <GAMEPLAY_MODE?>
 # py watersort.py <GAMEPLAY_MODE?> LEVEL dfr SAMPLES?
 chooseInteraction()
-
-# debugLevel("dec15", dfrSearchAttempts=1)
