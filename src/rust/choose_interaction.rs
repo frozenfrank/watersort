@@ -46,62 +46,111 @@ pub struct InteractionResult {
 
 
 pub fn choose_interaction() -> InteractionResult {
+    // Step 1: Check for forced level/mode
+    if let Some(force_level) = FORCE_SOLVE_LEVEL {
+        let mode = Mode::from_str(FORCE_INTERACTION_MODE.unwrap_or("i")).unwrap_or(Mode::Interact);
+        println!("FORCING SOLVE LEVEL to {}. Mode={:?}", force_level, mode);
+        return InteractionResult {
+            mode,
+            level: Some(force_level.to_string()),
+            drain_mode: false,
+            blind_mode: false,
+            analyze_samples: DEFAULT_ANALYZE_ATTEMPTS,
+            dfr_search_attempts: DEFAULT_DFR_SEARCH_ATTEMPTS,
+        };
+    }
+
+    // Step 2: Parse command-line arguments
+    let (mut mode, mut level, drain_mode, blind_mode, mut analyze_samples, dfr_search_attempts) =
+        parse_args();
+
+    // Step 3: Prompt for mode if not set
+    let mut user_interacting = true;
+    if mode.is_none() {
+        let prompt_result = prompt_for_mode();
+        mode = prompt_result.0;
+        level = prompt_result.1;
+        analyze_samples = prompt_result.2;
+        user_interacting = prompt_result.3;
+    }
+
+    // Step 4: Handle quit
+    if mode == Some(Mode::Quit) {
+        std::process::exit(0);
+    }
+
+    // Step 5: Prompt for level if needed
+    if matches!(mode, Some(Mode::Interact) | Some(Mode::Solve) | Some(Mode::Analyze) | Some(Mode::Unknown)) && level.is_none() {
+        if user_interacting {
+            level = prompt_for_level();
+        }
+    }
+
+    InteractionResult {
+        mode: mode.unwrap_or(Mode::Unknown),
+        level,
+        drain_mode,
+        blind_mode,
+        analyze_samples,
+        dfr_search_attempts,
+    }
+}
+
+// Parse command-line arguments for mode, level, and flags
+fn parse_args() -> (Option<Mode>, Option<String>, bool, bool, usize, usize) {
     let mut mode: Option<Mode> = None;
     let mut level: Option<String> = None;
     let mut drain_mode = false;
     let mut blind_mode = false;
-    let mut user_interacting = true;
     let mut analyze_samples = DEFAULT_ANALYZE_ATTEMPTS;
     let mut dfr_search_attempts = DEFAULT_DFR_SEARCH_ATTEMPTS;
-
-    // Level override
-    if let Some(force_level) = FORCE_SOLVE_LEVEL {
-        level = Some(force_level.to_string());
-        mode = Some(Mode::from_str(FORCE_INTERACTION_MODE.unwrap_or("i")).unwrap_or(Mode::Interact));
-        println!("FORCING SOLVE LEVEL to {}. Mode={:?}", force_level, mode);
-    } else {
-        let args: Vec<String> = env::args().collect();
-        if args.len() > 1 {
-            if args[1] == "a" {
-                mode = Some(Mode::Analyze);
-                if args.len() > 2 {
-                    level = Some(args[2].clone());
-                }
-                if args.len() > 3 {
-                    analyze_samples = args[3].parse().unwrap_or(DEFAULT_ANALYZE_ATTEMPTS);
-                }
-            } else {
-                // Special modes
-                let mut args = args;
-                if let Some(pos) = args.iter().position(|x| x == "drain") {
-                    drain_mode = true;
-                    args.remove(pos);
-                }
-                if let Some(pos) = args.iter().position(|x| x == "blind") {
-                    blind_mode = true;
-                    args.remove(pos);
-                }
-                mode = Some(Mode::Interact);
-                level = Some(args[1].clone());
-                if args.len() > 2 {
-                    if args[2] == "a" {
-                        mode = Some(Mode::Analyze);
-                        if args.len() > 3 {
-                            analyze_samples = args[3].parse().unwrap_or(DEFAULT_ANALYZE_ATTEMPTS);
-                        }
-                    } else {
-                        // set_solve_method(args[2].as_str());
+    let args: Vec<String> = env::args().collect();
+    if args.len() > 1 {
+        if args[1] == "a" {
+            mode = Some(Mode::Analyze);
+            if args.len() > 2 {
+                level = Some(args[2].clone());
+            }
+            if args.len() > 3 {
+                analyze_samples = args[3].parse().unwrap_or(DEFAULT_ANALYZE_ATTEMPTS);
+            }
+        } else {
+            let mut args = args;
+            if let Some(pos) = args.iter().position(|x| x == "drain") {
+                drain_mode = true;
+                args.remove(pos);
+            }
+            if let Some(pos) = args.iter().position(|x| x == "blind") {
+                blind_mode = true;
+                args.remove(pos);
+            }
+            mode = Some(Mode::Interact);
+            level = Some(args[1].clone());
+            if args.len() > 2 {
+                if args[2] == "a" {
+                    mode = Some(Mode::Analyze);
+                    if args.len() > 3 {
+                        analyze_samples = args[3].parse().unwrap_or(DEFAULT_ANALYZE_ATTEMPTS);
                     }
+                } else {
+                    // set_solve_method(args[2].as_str());
                 }
-                if args.len() > 3 && DEFAULT_SOLVE_METHOD == "DFR" {
-                    dfr_search_attempts = args[3].parse().unwrap_or(DEFAULT_DFR_SEARCH_ATTEMPTS);
-                }
+            }
+            if args.len() > 3 && DEFAULT_SOLVE_METHOD == "DFR" {
+                dfr_search_attempts = args[3].parse().unwrap_or(DEFAULT_DFR_SEARCH_ATTEMPTS);
             }
         }
     }
+    (mode, level, drain_mode, blind_mode, analyze_samples, dfr_search_attempts)
+}
 
-    // Request the mode if not set
+// Prompt the user for mode and related info if not set by args
+fn prompt_for_mode() -> (Option<Mode>, Option<String>, usize, bool) {
     let valid_modes = valid_modes();
+    let mut mode: Option<Mode> = None;
+    let mut level: Option<String> = None;
+    let mut analyze_samples = DEFAULT_ANALYZE_ATTEMPTS;
+    let mut user_interacting = true;
     while mode.is_none() {
         println!(r#"
           How are we interacting?
@@ -124,7 +173,6 @@ pub fn choose_interaction() -> InteractionResult {
         match first_word {
             "d" => {
                 // Toggle debug mode (implement as needed)
-                // DEBUG_ONLY = !DEBUG_ONLY;
             }
             "m" => {
                 if words.len() < 2 {
@@ -160,31 +208,15 @@ pub fn choose_interaction() -> InteractionResult {
             }
         }
     }
+    (mode, level, analyze_samples, user_interacting)
+}
 
-    if mode == Some(Mode::Quit) {
-        std::process::exit(0);
-    }
-
-    // Read initial state if needed
-    if matches!(mode, Some(Mode::Interact) | Some(Mode::Solve) | Some(Mode::Analyze) | Some(Mode::Unknown)) && level.is_none() {
-        if user_interacting {
-            println!("What level is this?");
-        }
-        let mut input_level = String::new();
-        io::stdin().read_line(&mut input_level).unwrap();
-        level = Some(input_level.trim().to_string());
-    }
-
-    // The rest of the logic (file reading, game state, etc.) should be implemented as needed.
-    // This function returns the parsed interaction result.
-    InteractionResult {
-        mode: mode.unwrap_or(Mode::Unknown),
-        level,
-        drain_mode,
-        blind_mode,
-        analyze_samples,
-        dfr_search_attempts,
-    }
+// Prompt the user for the level name if needed
+fn prompt_for_level() -> Option<String> {
+    println!("What level is this?");
+    let mut input_level = String::new();
+    io::stdin().read_line(&mut input_level).unwrap();
+    Some(input_level.trim().to_string())
 }
 
 
