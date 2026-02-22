@@ -1,11 +1,15 @@
 use std::io::{self, Write};
 
-use crate::{core::Game, display::print_vials};
+use crate::{
+    Move,
+    core::Game,
+    display::{print_moves, print_vials},
+};
 
 /// Interactive play loop ported from the Python `playGame` helper.
 pub fn play_game(game: &Game) {
     let root_game = game;
-    let mut game = game.clone();
+    let mut game = game.clone().to_arc();
 
     println!("Play the game:");
     println!("  r         reset");
@@ -14,8 +18,14 @@ pub fn play_game(game: &Game) {
 
     loop {
         // Print minimal state for the user
-        println!("Moves: {}", game.num_moves());
+        println!();
+        print_moves(&game);
         print_vials(&game);
+
+        if game.is_finished() {
+            println!("Congratulations, you solved it!\n");
+            break;
+        }
 
         print!("Enter command: ");
         // ensure prompt is visible
@@ -35,7 +45,7 @@ pub fn play_game(game: &Game) {
             break;
         }
         if input == "r" {
-            game = root_game.clone();
+            game = root_game.clone().to_arc();
             continue;
         }
 
@@ -71,17 +81,7 @@ pub fn play_game(game: &Game) {
         }
 
         // Perform the move mutably
-        let applied = game.apply_move(start, end);
-        if !applied {
-            println!("Move failed (internal)");
-            continue;
-        }
-
-        if game.is_finished() {
-            print_vials(&game);
-            println!("Congratulations, you solved it!\n");
-            break;
-        }
+        game = game.spawn(Move::new(start, end));
     }
 
     println!("Goodbye.");

@@ -1,7 +1,7 @@
 /// Color handling and validation for the Water Sort Puzzle
 
 /// Represents a color in the game
-#[derive(Clone, Eq, PartialOrd, Ord)]
+#[derive(Clone, Eq, PartialOrd, Ord, Default)]
 pub struct Color {
     /// The canonical key/code for the color (e.g. "r", "m", "?")
     pub key: String,

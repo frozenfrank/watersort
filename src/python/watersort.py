@@ -69,7 +69,7 @@ class DeadEndSearchResults:
 
 class SolutionStep:
   game: "Game"
-  move: Move
+  move: Move|None
 
   # For special steps
   bigText: str|None
@@ -88,13 +88,13 @@ class SolutionStep:
   # Pre-compute stat values
   deadEndsSearch: DeadEndSearchResults|None = None
 
-  def __init__(self, game: "Game"=None, info: "Game.MoveInfo"=None, bigText: str = None):
+  def __init__(self, game: "Game"=None, bigText: str = None):
     self.bigText = bigText
 
     self.game = game
     self.move = game.move if game else None
 
-    if info is None and game is not None:
+    if game is not None:
       info = game.getMoveInfo()
 
     if info:
@@ -608,29 +608,25 @@ class Game:
     result = formatVialColor(step.colorMoved, f"{start+1}->{end+1}", ljust=8)
     result += self._getMoveInfoString(step.info)
     return result
-  def _getMoveInfoString(self, info: MoveInfo = None) -> str:
-    if not info:
-      info = self.getMoveInfo()
-
-    result: str
+  def _getMoveInfoString(self, info: MoveInfo) -> str:
     if info is None:
-      result = ""
-    else:
-      color, num, complete, vacated, startedVial = info
-      extraStr = ""
-      if complete:
-        extraStr = Game.COMPLETE_STR
-      elif vacated:
-        extraStr = Game.VACATED_STR
-      elif startedVial:
-        extraStr = Game.STARTED_STR
+      return ""
 
-      numStr = Style.BRIGHT + str(num) + Style.NORMAL if num > 1 else num
-      if extraStr: extraStr = " " + extraStr
-      result = f"({numStr} {color}{extraStr})"
+    color, num, complete, vacated, startedVial = info
+    extraStr = ""
+    if complete:
+      extraStr = Game.COMPLETE_STR
+    elif vacated:
+      extraStr = Game.VACATED_STR
+    elif startedVial:
+      extraStr = Game.STARTED_STR
+
+    numStr = Style.BRIGHT + str(num) + Style.NORMAL if num > 1 else num
+    if extraStr: extraStr = " " + extraStr
+    result = f"({numStr} {color}{extraStr})"
 
     return result.ljust(Game.TOTAL_MOVE_PRINT_WIDTH)
-  def getMoveInfo(self) -> MoveInfo:
+  def getMoveInfo(self) -> MoveInfo|None:
     if not self.move:
       return None
     start, end = self.move
@@ -1717,6 +1713,9 @@ def playGame(game: "Game"):
   while True:
     currentGame.printMoves()
     currentGame.printVials()
+    if currentGame.isFinished():
+      break
+
     read = input().strip()
     if not read:
       continue

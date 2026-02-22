@@ -1,9 +1,9 @@
-use crate::NUM_SPACES_PER_VIAL;
 use crate::core::color_code::{COLOR_CODE_EMPTY, COLOR_CODE_UNKNOWN};
 use crate::core::game_settings::GameSettings;
 use crate::core::{Color, ColorCode, ColorCodeAllocator, ColorCodeExt};
 use crate::types::{Completion, DepthSize, Move, SpaceIndex, Vial, VialIndex};
 use crate::utils::helpers::RangeIter;
+use crate::{MoveInfo, NUM_SPACES_PER_VIAL};
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::fmt::{self, Formatter};
@@ -35,8 +35,6 @@ pub struct Game<'a> {
     /// Order in which colors were completed (immutable)
     completion_order: Cow<'a, Vec<Completion>>,
 
-    // A reference to the root game, or None if this is the root game
-    root: Option<Arc<Game<'a>>>,
     pub settings: RefCell<GameSettings>,
 }
 
@@ -108,7 +106,6 @@ impl<'a> Game<'a> {
             prev: None,
             num_moves: 0,
             completion_order: Cow::Owned(Vec::new()),
-            root: None,
             settings,
         }
     }
@@ -136,13 +133,16 @@ impl<'a> Game<'a> {
             completion_order,
             prev: Some(self.clone()),
             spaces: self.spaces.clone(),
-            last_move: self.last_move.clone(),
+            last_move: Some(move_),
             num_moves: self.num_moves,
-            root: self.root.clone(),
             settings: self.settings.clone(),
         };
         new_game.apply_move(move_.from as usize, move_.to as usize);
         Arc::new(new_game)
+    }
+
+    pub fn to_arc(self: Game<'a>) -> Arc<Game<'a>> {
+        Arc::new(self)
     }
 
     // ============ Accessors ============
@@ -187,7 +187,7 @@ impl<'a> Game<'a> {
 
     /// Returns whether this is the root game
     pub fn is_root(&self) -> bool {
-        self.root.is_none()
+        self.num_moves == 0
     }
 
     /// Returns the level identifier
@@ -262,6 +262,45 @@ impl<'a> Game<'a> {
             }
         }
         COLOR_CODE_EMPTY
+    }
+
+    pub fn get_move_info(&self) -> Option<MoveInfo> {
+        if self.last_move.is_none() {
+            return None; // Also guarantees the presence of `prev`
+        }
+        let Move { from, to } = self.last_move.unwrap();
+        let start = from as usize;
+        let end = to as usize;
+
+        let settings = self.settings.borrow();
+        let drain_mode = settings.drain_mode;
+        let num_spaces_per_vial = NUM_SPACES_PER_VIAL as u8;
+
+        // Look up colors & quantities moved
+        let color_moved = self.get_top_vial_color(end, false); // The color is always the one on top, even in drain mode
+        let prev_game = self.prev.as_deref().unwrap();
+        let CountOnTopResult {
+            num_on_top: num_moved,
+            num_empty_spaces: start_empty_spaces,
+            ..
+        } = prev_game.count_on_top(color_moved, start, drain_mode);
+        let CountOnTopResult {
+            is_complete,
+            num_empty_spaces: end_empty_spaces,
+            ..
+        } = self.count_on_top(color_moved, end, drain_mode);
+
+        // Prepare and return
+        let color_moved = settings.allocator.interpret_code(color_moved);
+        let vacated_vial = num_moved + start_empty_spaces == num_spaces_per_vial;
+        let started_vial = num_spaces_per_vial - num_moved == end_empty_spaces;
+        Some(MoveInfo {
+            color_moved,
+            num_moved,
+            is_complete,
+            vacated_vial,
+            started_vial,
+        })
     }
 
     // ============ Game State Validation ============
@@ -509,7 +548,7 @@ impl<'a> Game<'a> {
 
 impl PartialEq for Game<'_> {
     fn eq(&self, other: &Self) -> bool {
-        self.spaces == other.spaces && self.root == other.root && self.settings == other.settings
+        self.spaces == other.spaces && self.settings == other.settings
     }
 }
 
@@ -543,7 +582,6 @@ impl std::fmt::Debug for Game<'_> {
                 &format_args!("{:p}", self.completion_order.as_ptr()),
             )
             .field("completion_order", &self.completion_order)
-            .field("root", &self.root)
             .field("settings", &"<settings>")
             .finish()
     }
