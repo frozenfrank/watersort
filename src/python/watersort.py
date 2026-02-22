@@ -2405,7 +2405,7 @@ def chooseInteraction():
         blindMode = True
         sys.argv.remove("blind")
 
-      mode = "p"
+      mode = "i"
       level = sys.argv[1]
 
       # Read solve method
