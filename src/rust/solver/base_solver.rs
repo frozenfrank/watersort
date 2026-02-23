@@ -72,8 +72,7 @@ impl<'a> BaseSolver<'a> {
         }
     }
 
-    pub fn add_game_states<C>(&mut self, mut games: Vec<Arc<Game<'a>>>)
-    {
+    pub fn add_game_states<C>(&mut self, mut games: Vec<Arc<Game<'a>>>) {
         if self.state.shuffle_next_moves {
             games.shuffle(&mut self.state.rng);
         }
@@ -102,7 +101,7 @@ impl<'a> BaseSolver<'a> {
 
 impl SolverState {
     pub fn new(solve_method: SolveMethod, mut num_solutions: usize) -> Self {
-        if !solve_method.accepts_multiple_attempts() {
+        if num_solutions < 1 || !solve_method.accepts_multiple_attempts() {
             num_solutions = 1;
         }
 

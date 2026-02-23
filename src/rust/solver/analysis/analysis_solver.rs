@@ -19,8 +19,27 @@ pub struct AnalysisSummaryData {
     // pub is_unique_list: bool,
 }
 
-impl<'a> Solver for AnalysisSolver<'a> {
+impl<'a> Solver<'a> for AnalysisSolver<'a> {
+    fn new(
+        game: std::sync::Arc<crate::Game<'a>>,
+        solve_method: crate::solver::SolveMethod,
+    ) -> Self {
+        todo!()
+    }
+
     fn solve_game(&mut self) {
-        unimplemented!("AnalysisSolver: solve_game");
+        todo!()
+    }
+
+    fn get_results(&self) -> &crate::solver::base_solver::BestSolution {
+        todo!()
+    }
+
+    fn get_stats(&self) -> &crate::solver::base_solver::SolutionStats {
+        todo!()
+    }
+
+    fn get_timing(&self) -> &crate::solver::base_solver::SolutionTiming {
+        todo!()
     }
 }

@@ -1,6 +1,18 @@
-// Defines the Solver trait: shared interface for all solvers
+use std::sync::Arc;
 
-pub trait Solver {
+use crate::{
+    Game,
+    solver::{
+        SolveMethod,
+        base_solver::{BestSolution, SolutionStats, SolutionTiming},
+        solve_method,
+    },
+};
+
+pub trait Solver<'a> {
+    fn new(game: Arc<Game<'a>>, solve_method: SolveMethod) -> Self;
     fn solve_game(&mut self);
-    // Add more methods as needed for interchangeability
+    fn get_results(&self) -> &BestSolution;
+    fn get_stats(&self) -> &SolutionStats;
+    fn get_timing(&self) -> &SolutionTiming;
 }
