@@ -3,11 +3,11 @@
 use super::base_solver::BaseSolver;
 use super::solver_trait::Solver;
 
-pub struct SolutionSolver {
-    pub base: BaseSolver,
+pub struct SolutionSolver<'a> {
+    pub base: BaseSolver<'a>,
 }
 
-impl Solver for SolutionSolver {
+impl<'a> Solver for SolutionSolver<'a> {
     fn solve_game(&mut self) {
         // To be implemented
     }

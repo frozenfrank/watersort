@@ -1755,7 +1755,7 @@ class BaseSolver:
   minSolutionUpdates: int
   numSolutionsAbandoned: int
 
-  # Solution Solution status
+  # Solution status
   numIterations: int
   numDeadEnds: int
   numPartialSolutionsGenerated: int
