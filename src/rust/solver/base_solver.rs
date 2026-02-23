@@ -1,3 +1,4 @@
+use rand::{rngs::ThreadRng, seq::SliceRandom};
 use std::{collections::VecDeque, sync::Arc, time::Instant};
 
 use crate::{Game, INITIAL_SOLVER_QUEUE_CAP, solver::SolveMethod};
@@ -51,6 +52,8 @@ pub struct SolverState {
     pub search_bfs: bool,
     pub shuffle_next_moves: bool,
 
+    pub rng: ThreadRng,
+
     pub find_solutions_count: usize,
     pub find_solutions_remaining: usize,
 }
@@ -69,15 +72,12 @@ impl<'a> BaseSolver<'a> {
         }
     }
 
-    pub fn add_game_states<C>(&mut self, games: C)
-    where
-        C: IntoIterator<Item = Arc<Game<'a>>>,
+    pub fn add_game_states<C>(&mut self, mut games: Vec<Arc<Game<'a>>>)
     {
         if self.state.shuffle_next_moves {
-            unimplemented!("Add game states shuffled");
-        } else {
-            self.q.extend(games);
+            games.shuffle(&mut self.state.rng);
         }
+        self.q.extend(games);
     }
 
     pub fn next_solution(&mut self) -> bool {
@@ -110,6 +110,7 @@ impl SolverState {
             solve_method,
             search_bfs: solve_method.searches_bfs(),
             shuffle_next_moves: solve_method.shuffles_moves(),
+            rng: Default::default(),
 
             find_solutions_count: num_solutions,
             find_solutions_remaining: num_solutions,
