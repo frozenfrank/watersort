@@ -1,10 +1,13 @@
 use std::{collections::VecDeque, sync::Arc, time::Instant};
 
-use crate::{Game, INITIAL_SOLVER_QUEUE_CAP};
+use crate::{Game, INITIAL_SOLVER_QUEUE_CAP, solver::SolveMethod};
+
+// ### Structs ###
 
 pub struct BaseSolver<'a> {
     pub seed_game: Arc<Game<'a>>,
-    pub state: SolverState<'a>,
+    q: VecDeque<Arc<Game<'a>>>,
+    pub state: SolverState,
 
     pub solution_timing: SolutionTiming,
     pub solution_min: BestSolution<'a>,
@@ -43,50 +46,73 @@ pub struct SolutionStats {
     pub max_queue_length: usize,
 }
 
-pub struct SolverState<'a> {
+pub struct SolverState {
+    pub solve_method: SolveMethod,
     pub search_bfs: bool,
-    pub q: VecDeque<Arc<Game<'a>>>,
+    pub shuffle_next_moves: bool,
+
     pub find_solutions_count: usize,
     pub find_solutions_remaining: usize,
 }
 
+// ### Implementations ###
+
 impl<'a> BaseSolver<'a> {
-    pub fn new(seed_game: Arc<Game<'a>>, num_solutions: usize, search_bfs: bool) -> Self {
+    pub fn new(seed_game: Arc<Game<'a>>, solve_method: SolveMethod, num_solutions: usize) -> Self {
         BaseSolver {
             seed_game,
-            state: SolverState::new(num_solutions, search_bfs),
+            q: VecDeque::with_capacity(INITIAL_SOLVER_QUEUE_CAP),
+            state: SolverState::new(solve_method, num_solutions),
             solution_timing: Default::default(),
             solution_min: Default::default(),
             recent_solution_stats: Default::default(),
         }
     }
-}
 
-impl<'a> SolverState<'a> {
-    pub fn new(num_solutions: usize, search_bfs: bool) -> Self {
-        Self {
-            search_bfs,
-            q: VecDeque::with_capacity(INITIAL_SOLVER_QUEUE_CAP),
-            find_solutions_count: num_solutions,
-            find_solutions_remaining: num_solutions,
+    pub fn add_game_states<C>(&mut self, games: C)
+    where
+        C: IntoIterator<Item = Arc<Game<'a>>>,
+    {
+        if self.state.shuffle_next_moves {
+            unimplemented!("Add game states shuffled");
+        } else {
+            self.q.extend(games);
         }
     }
 
     pub fn next_solution(&mut self) -> bool {
         self.q.clear();
-        if self.find_solutions_remaining > 0 {
-            self.find_solutions_remaining -= 1;
+
+        if self.state.find_solutions_remaining > 0 {
+            self.state.find_solutions_remaining -= 1;
             return true;
         } else {
             return false;
         }
     }
 
-    pub fn next_state(&mut self) -> Option<Arc<Game<'a>>> {
-        if self.search_bfs {
+    pub fn next_game_state(&mut self) -> Option<Arc<Game<'a>>> {
+        if self.state.search_bfs {
             self.q.pop_front()
         } else {
             self.q.pop_back()
+        }
+    }
+}
+
+impl SolverState {
+    pub fn new(solve_method: SolveMethod, mut num_solutions: usize) -> Self {
+        if !solve_method.accepts_multiple_attempts() {
+            num_solutions = 1;
+        }
+
+        Self {
+            solve_method,
+            search_bfs: solve_method.searches_bfs(),
+            shuffle_next_moves: solve_method.shuffles_moves(),
+
+            find_solutions_count: num_solutions,
+            find_solutions_remaining: num_solutions,
         }
     }
 }
