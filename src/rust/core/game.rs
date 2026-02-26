@@ -4,6 +4,7 @@ use crate::core::{Color, ColorCode, ColorCodeAllocator, ColorCodeExt};
 use crate::types::{Completion, DepthSize, Move, SpaceIndex, Vial, VialIndex};
 use crate::utils::helpers::RangeIter;
 use crate::{MoveInfo, NUM_SPACES_PER_VIAL};
+use itertools::Itertools;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::fmt::{self, Formatter};
@@ -139,6 +140,69 @@ impl<'a> Game<'a> {
         };
         new_game.apply_move(move_.from as usize, move_.to as usize);
         Arc::new(new_game)
+    }
+
+    pub fn generate_next_games(self: &Arc<Game<'a>>) -> Vec<Arc<Game<'a>>> {
+        self.generate_next_moves()
+            .into_iter()
+            .map(|m| self.spawn(m))
+            .collect()
+    }
+    pub fn generate_next_moves(&self) -> Vec<Move> {
+        // CONSIDER using a static MAX_NUM_VIALS and allocating on the stack instead of the heap.
+        let num_vials = self.num_vials();
+        let mut moves = Vec::with_capacity(num_vials);
+
+        struct Vial {
+            empty_valid: bool,
+            move_valid: bool,
+        }
+
+        impl Default for Vial {
+            fn default() -> Self {
+                Self {
+                    empty_valid: true,
+                    move_valid: true,
+                }
+            }
+        }
+
+        let mut vials = Vec::<Vial>::with_capacity(num_vials);
+
+        for (start, end) in (0..num_vials).cartesian_product(0..num_vials) {
+            if !vials[start].move_valid {
+                continue;
+            }
+
+            let MoveValidityResult {
+                valid,
+                end_color,
+                will_complete,
+                ..
+            } = self.prepare_move(start, end);
+            if !valid {
+                continue;
+            }
+
+            // Only allow the first move into an empty vial from a given start vial
+            if end_color.is_empty() {
+                if vials[start].empty_valid {
+                    vials[start].empty_valid = false;
+                } else {
+                    continue;
+                }
+            } else if will_complete {
+                // If there is a move that will complete a color in a vial, then moving from that vial
+                // is never valid. Either, it would attempt to complete the other direction OR  it would
+                // only move into an empty vial. Obviously, there are no other colors for it to land on.
+                vials[end].move_valid = false;
+            }
+
+            // Fine, it's valid
+            moves.push(Move::new(start, end));
+        }
+
+        moves
     }
 
     pub fn to_arc(self: Game<'a>) -> Arc<Game<'a>> {
