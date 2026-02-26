@@ -13,4 +13,5 @@ path = "src/rust/main.rs"
 
 [dependencies]
 chrono = "0.4.43"
+itertools = "0.14.0"
 rand = "0.10.0"
