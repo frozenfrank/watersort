@@ -19,7 +19,7 @@ use std::sync::Arc;
 /// - Uses Vec<Vial> for vial storage
 /// - Caches num_moves and completion_order for O(1) access
 /// - Stores shared settings in GameSettings to avoid duplication in game tree
-#[derive(Clone)]
+#[derive(Clone, Eq)]
 pub struct Game<'a> {
     // Core game state
     spaces: Vec<ColorCode>,
@@ -612,7 +612,13 @@ impl<'a> Game<'a> {
 
 impl PartialEq for Game<'_> {
     fn eq(&self, other: &Self) -> bool {
-        self.spaces == other.spaces && self.settings == other.settings
+        self.spaces == other.spaces && RefCell::eq(&self.settings, &other.settings)
+    }
+}
+
+impl std::hash::Hash for Game<'_> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.spaces.hash(state);
     }
 }
 
