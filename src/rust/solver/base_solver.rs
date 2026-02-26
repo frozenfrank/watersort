@@ -1,14 +1,15 @@
 use rand::{rngs::ThreadRng, seq::SliceRandom};
-use std::{collections::VecDeque, sync::Arc, time::Instant};
+use std::{collections::{HashSet, VecDeque}, sync::Arc, time::Instant};
 
-use crate::{Game, INITIAL_SOLVER_QUEUE_CAP, solver::SolveMethod};
+use crate::{Game, INITIAL_SOLVER_QUEUE_CAP, solver::{SolveMethod, strategy::SolverStrategy}};
 
 // ### Structs ###
 
-pub struct BaseSolver<'a> {
+pub struct BaseSolver<'a, S: SolverStrategy> {
     pub seed_game: Arc<Game<'a>>,
     q: VecDeque<Arc<Game<'a>>>,
     pub state: SolverState,
+    pub strategy: S,
 
     pub solution_timing: SolutionTiming,
     pub solution_min: BestSolution<'a>,
@@ -48,6 +49,8 @@ pub struct SolutionStats {
 }
 
 pub struct SolverState {
+    pub reset: bool,
+    pub quit: bool,
     pub solve_method: SolveMethod,
     pub search_bfs: bool,
     pub shuffle_next_moves: bool,
@@ -60,10 +63,11 @@ pub struct SolverState {
 
 // ### Implementations ###
 
-impl<'a> BaseSolver<'a> {
-    pub fn new(seed_game: Arc<Game<'a>>, solve_method: SolveMethod, num_solutions: usize) -> Self {
+impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
+    pub fn new(strategy: S, seed_game: Arc<Game<'a>>, solve_method: SolveMethod, num_solutions: usize) -> Self {
         BaseSolver {
             seed_game,
+            strategy,
             q: VecDeque::with_capacity(INITIAL_SOLVER_QUEUE_CAP),
             state: SolverState::new(solve_method, num_solutions),
             solution_timing: Default::default(),
@@ -72,17 +76,102 @@ impl<'a> BaseSolver<'a> {
         }
     }
 
-    pub fn add_game_states<C>(&mut self, mut games: Vec<Arc<Game<'a>>>) {
+    /// Intelligent search through all the possible game states until we find a solution.
+    /// This rust implementation does not support discovering new values.
+    fn find_solutions(&mut self) {
+        self.solution_timing.solution_set_start = Some(Instant::now());
+
+        // Time check setup
+        let mut time_check: Instant;
+
+        while self.state.reset || self.solution_min.result.is_none() || self.state.find_solutions_remaining > 0 {
+            self.state.reset = false;
+            if !self.strategy.on_init_solution_attempt(false) {
+                break;
+            }
+
+            let _ = self.next_solution();
+
+            self.solution_timing.solution_start = Some(Instant::now());
+
+            // Setup our search
+            let mut expect_solution = true;
+            let mut solution: Option<Arc<Game<'a>>> = None;
+            let mut computed = HashSet::<Arc<Game>>::with_capacity(1000);
+
+            self.q.push_back(self.seed_game.clone());
+            self.state.search_bfs = self.state.solve_method.searches_bfs();
+
+            self.recent_solution_stats = Default::default();
+            self.recent_solution_stats.max_queue_length = 1;
+
+            // Perform the search
+            loop {
+                if solution.is_some() {
+                    break;
+                }
+                if self.state.reset || self.state.quit {
+                    expect_solution = false;
+                    break;
+                }
+
+                let current = match self.next_game_state() {
+                    Some(game) => game,
+                    None => break,
+                };
+
+                // Launch on_iteration_report hook
+                self.recent_solution_stats.num_iterations += 1;
+                if self.recent_solution_stats.num_iterations % 1000 == 0 {
+                    let continue_searching = self.strategy.on_iteration_report(current);
+                    if !continue_searching {
+                        expect_solution = false;
+                        self.state.quit = true;
+                    }
+                }
+
+                // Prune if we've found a cheaper solution
+                if !self.state.search_bfs && let Some(min) = self.solution_min.result && min.num_moves() <= current.num_moves() {
+                    self.solution_min.num_abandoned += 1;
+                    break;
+                }
+
+                // Check all next moves
+                let mut has_net_new_next_game = false;
+                let mut next_games = current.generate_next_games();
+                if self.state.reset || self.state.quit {
+                    // Break out after user input
+                    expect_solution = false;
+                    break;
+                }
+
+                if self.state.shuffle_next_moves {
+                    next_games.shuffle(&mut self.state.rng);
+                }
+                for next_game in next_games {
+                    self.recent_solution_stats.num_partial_solutions_generated += 1;
+
+                    let newly_inserted = computed.insert(next_game.clone());
+                    if !newly_inserted {
+                        self.recent_solution_stats.num_duplicate_games += 1;
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+
+    fn add_game_states<C>(&mut self, mut games: Vec<Arc<Game<'a>>>) {
         if self.state.shuffle_next_moves {
             games.shuffle(&mut self.state.rng);
         }
         self.q.extend(games);
     }
 
-    pub fn next_solution(&mut self) -> bool {
-        self.q.clear();
-
+    fn next_solution(&mut self) -> bool {
         if self.state.find_solutions_remaining > 0 {
+            self.q.clear();
+            self.solution_min.num_attempted += 1;
             self.state.find_solutions_remaining -= 1;
             return true;
         } else {
@@ -90,7 +179,7 @@ impl<'a> BaseSolver<'a> {
         }
     }
 
-    pub fn next_game_state(&mut self) -> Option<Arc<Game<'a>>> {
+    fn next_game_state(&mut self) -> Option<Arc<Game<'a>>> {
         if self.state.search_bfs {
             self.q.pop_front()
         } else {
@@ -106,6 +195,9 @@ impl SolverState {
         }
 
         Self {
+            reset: false,
+            quit: false,
+
             solve_method,
             search_bfs: solve_method.searches_bfs(),
             shuffle_next_moves: solve_method.shuffles_moves(),
