@@ -7,7 +7,10 @@ use crate::{
 };
 
 pub fn solve_game(game: Arc<Game<'_>>) {
+    println!("{:?}", game.settings.borrow().allocator);
+
     let mut solver = SolutionSolver::new(game, crate::solver::SolveMethod::MIX);
+
     solver.solve_game();
 
     println!("Timing: {:#?}", solver.get_timing());

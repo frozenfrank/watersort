@@ -7,7 +7,7 @@ use crate::{MoveInfo, NUM_SPACES_PER_VIAL};
 use itertools::Itertools;
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::fmt::{self, Formatter};
+use std::fmt::{self, Debug, Formatter};
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -646,12 +646,7 @@ impl std::fmt::Debug for Game<'_> {
         f.debug_struct("Game")
             .field("spaces", &self.spaces)
             .field("last_move", &self.last_move)
-            .field("prev", &self.prev)
             .field("num_moves", &self.num_moves)
-            .field(
-                "completion_order",
-                &format_args!("{:p}", self.completion_order.as_ptr()),
-            )
             .field("completion_order", &self.completion_order)
             .field("settings", &"<settings>")
             .finish()
