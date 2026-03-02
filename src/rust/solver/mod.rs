@@ -9,3 +9,4 @@ mod generic_solver;
 
 pub use solve_method::SolveMethod;
 pub use solver_trait::Solver;
+pub use solution::entry::solve_game;

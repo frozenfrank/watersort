@@ -1,5 +1,6 @@
 use crate::solver::strategy::SolverStrategy;
 
+#[derive(Default)]
 pub struct SolutionStrategy {
 
 }

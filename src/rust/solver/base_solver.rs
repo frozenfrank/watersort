@@ -25,7 +25,7 @@ pub struct BaseSolver<'a, S: SolverStrategy> {
     pub recent_solution_stats: SolutionStats,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct SolutionTiming {
     pub solution_set_start: Option<Instant>,
     pub solution_set_end: Option<Instant>,
@@ -33,7 +33,7 @@ pub struct SolutionTiming {
     pub solution_end: Option<Instant>,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct BestSolution<'a> {
     /// The best solution found so far
     pub result: Option<Arc<Game<'a>>>,
@@ -45,7 +45,7 @@ pub struct BestSolution<'a> {
     pub num_abandoned: usize,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct SolutionStats {
     pub num_iterations: usize,
     pub num_dead_ends: usize,
