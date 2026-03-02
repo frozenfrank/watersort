@@ -1908,8 +1908,6 @@ class BaseSolver:
 
           hasNetNewNextGame = True
           if nextGame.isFinished():
-            timeCheck = time()
-            self.solutionEnd = timeCheck
             if self._onSolutionFound(nextGame):
               break # Finish searching
           else:
