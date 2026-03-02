@@ -139,7 +139,7 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                 // Launch on_iteration_report hook
                 self.recent_solution_stats.num_iterations += 1;
                 if self.recent_solution_stats.num_iterations % 1000 == 0 {
-                    let continue_searching = self.strategy.on_iteration_report(current);
+                    let continue_searching = self.strategy.on_iteration_report(current.as_ref());
                     if !continue_searching {
                         expect_solution = false;
                         self.state.quit = true;
@@ -148,7 +148,7 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
 
                 // Prune if we've found a cheaper solution
                 if !self.state.search_bfs
-                    && let Some(min) = self.solution_min.result
+                    && let Some(min) = self.solution_min.result.as_ref()
                     && min.num_moves() <= current.num_moves()
                 {
                     self.solution_min.num_abandoned += 1;
@@ -178,7 +178,7 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
 
                     has_net_new_next_game = true;
                     if next_game.is_finished() {
-                        if self.strategy.on_solution_found(&next_game) {
+                        if self.strategy.on_solution_found(next_game.as_ref()) {
                             break; // Finish searching
                         }
                     } else {
@@ -191,7 +191,7 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                     max(self.recent_solution_stats.max_queue_length, self.q.len());
                 if next_games.is_empty() {
                     self.recent_solution_stats.num_dead_ends += 1;
-                    self.strategy.on_dead_end_found(&current);
+                    self.strategy.on_dead_end_found(current.as_ref());
                 } else if !has_net_new_next_game {
                     self.recent_solution_stats.num_swallowed_games_found += 1;
                 }

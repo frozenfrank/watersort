@@ -7,16 +7,17 @@ use crate::{DEFAULT_DFR_SEARCH_ATTEMPTS, Game};
 
 use super::base_solver::BaseSolver;
 use super::solver_trait::Solver;
+use super::strategy::SolverStrategy;
 
-pub struct SolutionSolver<'a> {
-    base: BaseSolver<'a>,
+pub struct SolutionSolver<'a, S: SolverStrategy> {
+    base: BaseSolver<'a, S>,
 }
 
-impl<'a> Solver<'a> for SolutionSolver<'a> {
-    fn new(game: Arc<Game<'a>>, solve_method: SolveMethod) -> Self {
+impl<'a, S: SolverStrategy> Solver<'a> for SolutionSolver<'a, S> {
+    fn new(strategy: S, game: Arc<Game<'a>>, solve_method: SolveMethod) -> Self {
         let num_solutions = DEFAULT_DFR_SEARCH_ATTEMPTS;
         Self {
-            base: BaseSolver::new(game, solve_method, num_solutions),
+            base: BaseSolver::new(strategy, game, solve_method, num_solutions),
         }
     }
 

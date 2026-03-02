@@ -2,8 +2,10 @@
 
 use crate::solver::{Solver, analysis::MoveDepthCounter, base_solver::BaseSolver};
 
-pub struct AnalysisSolver<'a> {
-    pub base: BaseSolver<'a>,
+use crate::solver::strategy::SolverStrategy;
+
+pub struct AnalysisSolver<'a, S: SolverStrategy> {
+    pub base: BaseSolver<'a, S>,
 }
 
 pub struct AnalysisSummaryData {
@@ -19,11 +21,8 @@ pub struct AnalysisSummaryData {
     // pub is_unique_list: bool,
 }
 
-impl<'a> Solver<'a> for AnalysisSolver<'a> {
-    fn new(
-        game: std::sync::Arc<crate::Game<'a>>,
-        solve_method: crate::solver::SolveMethod,
-    ) -> Self {
+impl<'a, S: SolverStrategy> Solver<'a> for AnalysisSolver<'a, S> {
+    fn new(_strategy: S, _game: std::sync::Arc<crate::Game<'a>>, _solve_method: crate::solver::SolveMethod) -> Self {
         todo!()
     }
 
@@ -31,7 +30,7 @@ impl<'a> Solver<'a> for AnalysisSolver<'a> {
         todo!()
     }
 
-    fn get_results(&self) -> &crate::solver::base_solver::BestSolution {
+    fn get_results(&self) -> &crate::solver::base_solver::BestSolution<'a> {
         todo!()
     }
 
