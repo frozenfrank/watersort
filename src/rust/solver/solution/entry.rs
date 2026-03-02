@@ -1,6 +1,10 @@
 use std::sync::Arc;
 
-use crate::{Game, display::{print_moves, print_vials}, solver::{Solver, solution::solution_solver::SolutionSolver}};
+use crate::{
+    Game,
+    display::{print_moves, print_vials},
+    solver::{Solver, solution::solution_solver::SolutionSolver},
+};
 
 pub fn solve_game(game: Arc<Game<'_>>) {
     let mut solver = SolutionSolver::new(game, crate::solver::SolveMethod::MIX);

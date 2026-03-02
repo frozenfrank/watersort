@@ -1,6 +1,10 @@
 use rand::{rngs::ThreadRng, seq::SliceRandom};
 use std::{
-    cmp::max, collections::{HashSet, VecDeque}, fmt::Debug, sync::Arc, time::Instant
+    cmp::max,
+    collections::{HashSet, VecDeque},
+    fmt::Debug,
+    sync::Arc,
+    time::Instant,
 };
 
 use crate::{
@@ -254,18 +258,30 @@ impl SolverState {
 }
 
 fn format_duration<'a>(start: &Option<Instant>, end: &Option<Instant>) -> String {
-    if let Some(start) = start && let Some(end) = end {
+    if let Some(start) = start
+        && let Some(end) = end
+    {
         format!("{:?}", &end.duration_since(*start))
     } else {
-        format!("Incomplete information. Has start: {}, Has end: {}", start.is_some(), end.is_some())
+        format!(
+            "Incomplete information. Has start: {}, Has end: {}",
+            start.is_some(),
+            end.is_some()
+        )
     }
 }
 
 impl Debug for SolutionTiming {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SolutionTiming")
-            .field("solution", &format_duration(&self.solution_start, &self.solution_end))
-            .field("solution_set", &format_duration(&self.solution_set_start, &self.solution_set_end))
+            .field(
+                "solution",
+                &format_duration(&self.solution_start, &self.solution_end),
+            )
+            .field(
+                "solution_set",
+                &format_duration(&self.solution_set_start, &self.solution_set_end),
+            )
             .finish()
     }
 }

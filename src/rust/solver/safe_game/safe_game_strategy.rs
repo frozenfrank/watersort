@@ -1,9 +1,5 @@
 use crate::solver::strategy::SolverStrategy;
 
-pub struct SafeGameStrategy {
+pub struct SafeGameStrategy {}
 
-}
-
-impl SolverStrategy for SafeGameStrategy {
-
-}
+impl SolverStrategy for SafeGameStrategy {}

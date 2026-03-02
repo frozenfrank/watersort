@@ -2,11 +2,10 @@
 
 use std::sync::Arc;
 
+use crate::Game;
+use crate::solver::base_solver::{BaseSolver, BestSolution, SolutionStats, SolutionTiming};
 use crate::solver::strategy::SolverStrategy;
 use crate::solver::{SolveMethod, Solver};
-use crate::solver::base_solver::{BaseSolver, BestSolution, SolutionStats, SolutionTiming};
-use crate::{Game};
-
 
 pub struct GenericSolver<'a, S: SolverStrategy + Default> {
     base: BaseSolver<'a, S>,

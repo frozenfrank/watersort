@@ -1,8 +1,6 @@
 use crate::solver::{analysis::MoveDepthCounter, strategy::SolverStrategy};
 
-pub struct AnalysisStrategy {
-
-}
+pub struct AnalysisStrategy {}
 
 pub struct AnalysisSummaryData {
     pub partial_depth: MoveDepthCounter,
@@ -17,6 +15,4 @@ pub struct AnalysisSummaryData {
     // pub is_unique_list: bool,
 }
 
-impl SolverStrategy for AnalysisStrategy {
-
-}
+impl SolverStrategy for AnalysisStrategy {}

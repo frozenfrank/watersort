@@ -1,10 +1,6 @@
 use crate::solver::strategy::SolverStrategy;
 
 #[derive(Default)]
-pub struct SolutionStrategy {
+pub struct SolutionStrategy {}
 
-}
-
-impl SolverStrategy for SolutionStrategy {
-
-}
+impl SolverStrategy for SolutionStrategy {}
