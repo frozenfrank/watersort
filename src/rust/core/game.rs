@@ -153,6 +153,7 @@ impl<'a> Game<'a> {
         let num_vials = self.num_vials();
         let mut moves = Vec::with_capacity(num_vials);
 
+        #[derive(Clone, Copy)]
         struct Vial {
             empty_valid: bool,
             move_valid: bool,
@@ -167,7 +168,7 @@ impl<'a> Game<'a> {
             }
         }
 
-        let mut vials = Vec::<Vial>::with_capacity(num_vials);
+        let mut vials = vec![Vial::default(); num_vials];
 
         for (start, end) in (0..num_vials).cartesian_product(0..num_vials) {
             if !vials[start].move_valid {
