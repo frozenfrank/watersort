@@ -1822,8 +1822,7 @@ class BaseSolver:
     self.QUEUE_CHECK_FREQ = self.REPORT_ITERATION_FREQ * 10
     self.REPORT_SEC_FREQ = 15
 
-    # Time check setup
-    timeCheck: float
+
     computed: set["Game"]|None = None
 
 
