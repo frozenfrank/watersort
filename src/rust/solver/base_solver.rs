@@ -253,31 +253,19 @@ impl SolverState {
     }
 }
 
-fn has_field<T>(value: &Option<T>) -> &&str {
-    if value.is_some() {
-        &&"present"
-    } else {
-        &&"absent"
-    }
-}
-
 fn format_duration<'a>(start: &Option<Instant>, end: &Option<Instant>) -> String {
     if let Some(start) = start && let Some(end) = end {
         format!("{:?}", &end.duration_since(*start))
     } else {
-        String::from("<none>")
+        format!("Incomplete information. Has start: {}, Has end: {}", start.is_some(), end.is_some())
     }
 }
 
 impl Debug for SolutionTiming {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SolutionTiming")
-            .field("solution_set", &format_duration(&self.solution_set_start, &self.solution_set_end))
-            .field("solution_set_start", has_field(&self.solution_set_start))
-            .field("solution_set_end", has_field(&self.solution_set_end))
             .field("solution", &format_duration(&self.solution_start, &self.solution_end))
-            .field("solution_start", has_field(&self.solution_start))
-            .field("solution_end", has_field(&self.solution_end))
+            .field("solution_set", &format_duration(&self.solution_set_start, &self.solution_set_end))
             .finish()
     }
 }
