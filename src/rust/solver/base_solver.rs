@@ -1,7 +1,15 @@
 use rand::{rngs::ThreadRng, seq::SliceRandom};
-use std::{collections::{HashSet, VecDeque}, sync::Arc, time::Instant};
+use std::{
+    cmp::max,
+    collections::{HashSet, VecDeque},
+    sync::Arc,
+    time::Instant,
+};
 
-use crate::{Game, INITIAL_SOLVER_QUEUE_CAP, solver::{SolveMethod, strategy::SolverStrategy}};
+use crate::{
+    Game, INITIAL_SOLVER_QUEUE_CAP,
+    solver::{SolveMethod, strategy::SolverStrategy},
+};
 
 // ### Structs ###
 
@@ -64,7 +72,12 @@ pub struct SolverState {
 // ### Implementations ###
 
 impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
-    pub fn new(strategy: S, seed_game: Arc<Game<'a>>, solve_method: SolveMethod, num_solutions: usize) -> Self {
+    pub fn new(
+        strategy: S,
+        seed_game: Arc<Game<'a>>,
+        solve_method: SolveMethod,
+        num_solutions: usize,
+    ) -> Self {
         BaseSolver {
             seed_game,
             strategy,
@@ -84,7 +97,10 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
         // Time check setup
         let mut time_check: Instant;
 
-        while self.state.reset || self.solution_min.result.is_none() || self.state.find_solutions_remaining > 0 {
+        while self.state.reset
+            || self.solution_min.result.is_none()
+            || self.state.find_solutions_remaining > 0
+        {
             self.state.reset = false;
             if !self.strategy.on_init_solution_attempt(false) {
                 break;
@@ -131,7 +147,10 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                 }
 
                 // Prune if we've found a cheaper solution
-                if !self.state.search_bfs && let Some(min) = self.solution_min.result && min.num_moves() <= current.num_moves() {
+                if !self.state.search_bfs
+                    && let Some(min) = self.solution_min.result
+                    && min.num_moves() <= current.num_moves()
+                {
                     self.solution_min.num_abandoned += 1;
                     break;
                 }
@@ -156,9 +175,39 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                         self.recent_solution_stats.num_duplicate_games += 1;
                         continue;
                     }
+
+                    has_net_new_next_game = true;
+                    if next_game.is_finished() {
+                        if self.strategy.on_solution_found(&next_game) {
+                            break; // Finish searching
+                        }
+                    } else {
+                        self.q.push_back(next_game);
+                    }
+                }
+
+                // Maintain stats
+                self.recent_solution_stats.max_queue_length =
+                    max(self.recent_solution_stats.max_queue_length, self.q.len());
+                if next_games.is_empty() {
+                    self.recent_solution_stats.num_dead_ends += 1;
+                    self.strategy.on_dead_end_found(&current);
+                } else if !has_net_new_next_game {
+                    self.recent_solution_stats.num_swallowed_games_found += 1;
+                }
+            }
+
+            self.solution_timing.solution_end = Some(Instant::now());
+            self.recent_solution_stats.num_unique_states_computed = computed.len();
+            if expect_solution && self.solution_min.result.is_none() {
+                let try_again = self.strategy.on_impossible_game();
+                if !try_again {
+                    break; // There are no solutions
                 }
             }
         }
+
+        self.solution_timing.solution_set_end = Some(Instant::now());
     }
 
     fn add_game_states<C>(&mut self, mut games: Vec<Arc<Game<'a>>>) {
