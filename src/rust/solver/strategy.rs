@@ -1,6 +1,10 @@
 use crate::Game;
 
 pub trait SolverStrategy {
+    fn default_num_solutions(&self) -> usize {
+        1
+    }
+
     /// Called before attempting a new solution. Return True to proceed with the solution.
     fn on_init_solution_attempt(&mut self, bypass_error_correction: bool) -> bool {
         // First correct any errors in the game

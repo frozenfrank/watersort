@@ -91,7 +91,7 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
 
     /// Intelligent search through all the possible game states until we find a solution.
     /// This rust implementation does not support discovering new values.
-    fn find_solutions(&mut self) {
+    pub fn find_solutions(&mut self) {
         self.solution_timing.solution_set_start = Some(Instant::now());
 
         while self.state.reset

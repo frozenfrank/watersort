@@ -5,6 +5,7 @@ mod solution;
 mod solve_method;
 mod solver_trait;
 mod strategy;
+mod generic_solver;
 
 pub use solve_method::SolveMethod;
 pub use solver_trait::Solver;
