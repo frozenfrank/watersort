@@ -112,7 +112,6 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
 
             // Setup our search
             let mut expect_solution = true;
-            let solution: Option<Arc<Game<'a>>> = None;
             let mut computed = HashSet::<Arc<Game>>::with_capacity(1000);
 
             self.q.push_back(self.seed_game.clone());
@@ -123,7 +122,7 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
 
             // Perform the search
             loop {
-                if solution.is_some() {
+                if self.solution_min.result.is_some() {
                     break;
                 }
                 if self.state.reset || self.state.quit {
