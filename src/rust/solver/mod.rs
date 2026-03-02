@@ -1,7 +1,7 @@
 mod analysis;
 mod base_solver;
-mod safe_game_solver;
-mod solution_solver;
+mod safe_game;
+mod solution;
 mod solve_method;
 mod solver_trait;
 mod strategy;

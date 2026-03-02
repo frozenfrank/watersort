@@ -1,11 +1,10 @@
 // AnalysisSolver struct: wraps BaseSolver, implements Solver trait
 
+use crate::solver::analysis::analysis_strategy::AnalysisStrategy;
 use crate::solver::{Solver, analysis::MoveDepthCounter, base_solver::BaseSolver};
 
-use crate::solver::strategy::SolverStrategy;
-
-pub struct AnalysisSolver<'a, S: SolverStrategy> {
-    pub base: BaseSolver<'a, S>,
+pub struct AnalysisSolver<'a> {
+    pub base: BaseSolver<'a, AnalysisStrategy>,
 }
 
 pub struct AnalysisSummaryData {
@@ -21,8 +20,11 @@ pub struct AnalysisSummaryData {
     // pub is_unique_list: bool,
 }
 
-impl<'a, S: SolverStrategy> Solver<'a> for AnalysisSolver<'a, S> {
-    fn new(_strategy: S, _game: std::sync::Arc<crate::Game<'a>>, _solve_method: crate::solver::SolveMethod) -> Self {
+impl<'a> Solver<'a> for AnalysisSolver<'a> {
+    fn new(
+        game: std::sync::Arc<crate::Game<'a>>,
+        solve_method: crate::solver::SolveMethod,
+    ) -> Self {
         todo!()
     }
 
