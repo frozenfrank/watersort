@@ -187,7 +187,7 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
 
                     has_net_new_next_game = true;
                     if next_game.is_finished() {
-                        if self.strategy.on_solution_found(next_game.as_ref()) {
+                        if self.strategy.on_solution_found(next_game, &mut self.solution_min) {
                             break; // Finish searching
                         }
                     } else {

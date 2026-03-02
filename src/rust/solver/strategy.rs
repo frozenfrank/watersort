@@ -1,4 +1,6 @@
-use crate::Game;
+use std::sync::Arc;
+
+use crate::{Game, solver::base_solver::BestSolution};
 
 pub trait SolverStrategy {
     fn default_num_solutions(&self) -> usize {
@@ -21,14 +23,17 @@ pub trait SolverStrategy {
     }
 
     /// Called when a new solution is found. Return True to stop this attempt with the discovered solution
-    fn on_solution_found(&mut self, solution: &Game) -> bool {
-        // if not self.minSolution or solution._numMoves < self.minSolution._numMoves:
-        //     self.minSolution = solution
-        //     self.minSolutionUpdates += 1
-        // self.solutionDepth[solution._numMoves] += 1
-        // self.solFindSeconds[int((self.solutionEnd - self.solutionStart + 0.9) // 1)] += 1
-        // ... hash and uniqueness logic ...
-        // NOTE: This is a stub. Implement solution tracking logic in concrete types.
+    fn on_solution_found<'a>(&mut self, solution: Arc<Game<'a>>, best_solution: &mut BestSolution<'a>) -> bool {
+        println!("### Found solution ###\n{:?}\n{:?}", solution, best_solution);
+        let update_solution = match &best_solution.result {
+            Some(best) => solution.num_moves() < best.num_moves(),
+            _ => true,
+        };
+        if update_solution {
+            best_solution.result = Some(solution);
+            best_solution.num_updates += 1;
+        }
+
         true
     }
 
