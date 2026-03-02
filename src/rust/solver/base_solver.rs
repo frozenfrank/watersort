@@ -94,9 +94,6 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
     fn find_solutions(&mut self) {
         self.solution_timing.solution_set_start = Some(Instant::now());
 
-        // Time check setup
-        let mut time_check: Instant;
-
         while self.state.reset
             || self.solution_min.result.is_none()
             || self.state.find_solutions_remaining > 0
@@ -112,7 +109,7 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
 
             // Setup our search
             let mut expect_solution = true;
-            let mut solution: Option<Arc<Game<'a>>> = None;
+            let solution: Option<Arc<Game<'a>>> = None;
             let mut computed = HashSet::<Arc<Game>>::with_capacity(1000);
 
             self.q.push_back(self.seed_game.clone());
@@ -158,6 +155,7 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                 // Check all next moves
                 let mut has_net_new_next_game = false;
                 let mut next_games = current.generate_next_games();
+                let has_no_next_games = next_games.is_empty();
                 if self.state.reset || self.state.quit {
                     // Break out after user input
                     expect_solution = false;
@@ -189,7 +187,7 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                 // Maintain stats
                 self.recent_solution_stats.max_queue_length =
                     max(self.recent_solution_stats.max_queue_length, self.q.len());
-                if next_games.is_empty() {
+                if has_no_next_games {
                     self.recent_solution_stats.num_dead_ends += 1;
                     self.strategy.on_dead_end_found(current.as_ref());
                 } else if !has_net_new_next_game {
