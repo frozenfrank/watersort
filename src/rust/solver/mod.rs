@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 mod analysis;
 mod base_solver;
 mod safe_game;
