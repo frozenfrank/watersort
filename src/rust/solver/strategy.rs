@@ -30,8 +30,15 @@ pub trait SolverStrategy {
     }
 
     /// Called when a new solution is found. Return True to stop this attempt with the discovered solution
-    fn on_solution_found<'a>(&mut self, solution: Arc<Game<'a>>, best_solution: &mut BestSolution<'a>) -> bool {
-        println!("### Found solution ###\n{:?}\n{:?}", solution, best_solution);
+    fn on_solution_found<'a>(
+        &mut self,
+        solution: Arc<Game<'a>>,
+        best_solution: &mut BestSolution<'a>,
+    ) -> bool {
+        println!(
+            "### Found solution ###\n{:?}\n{:?}",
+            solution, best_solution
+        );
         let update_solution = match &best_solution.result {
             Some(best) => solution.num_moves() < best.num_moves(),
             _ => true,

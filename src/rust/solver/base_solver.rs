@@ -199,7 +199,10 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                     has_net_new_next_game = true;
                     if next_game.is_finished() {
                         self.solution_timing.solution_end = Some(Instant::now());
-                        if self.strategy.on_solution_found(next_game, &mut self.solution_min) {
+                        if self
+                            .strategy
+                            .on_solution_found(next_game, &mut self.solution_min)
+                        {
                             break; // Finish searching
                         }
                     } else {
