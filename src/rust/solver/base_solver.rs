@@ -109,6 +109,7 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
             let _ = self.next_solution();
 
             self.solution_timing.solution_start = Some(Instant::now());
+            self.solution_timing.solution_end = None;
 
             // Setup our search
             let mut expect_solution = true;
@@ -186,6 +187,7 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
 
                     has_net_new_next_game = true;
                     if next_game.is_finished() {
+                        self.solution_timing.solution_end = Some(Instant::now());
                         if self.strategy.on_solution_found(next_game, &mut self.solution_min) {
                             break; // Finish searching
                         }
@@ -205,7 +207,9 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                 }
             }
 
-            self.solution_timing.solution_end = Some(Instant::now());
+            if self.solution_timing.solution_end.is_none() {
+                self.solution_timing.solution_end = Some(Instant::now());
+            }
             self.recent_solution_stats.num_unique_states_computed = computed.len();
             if expect_solution && self.solution_min.result.is_none() {
                 let try_again = self.strategy.on_impossible_game();
