@@ -59,6 +59,7 @@ pub struct SolutionStats {
     pub max_queue_length: usize,
 }
 
+#[derive(Debug)]
 pub struct SolverState {
     pub reset: bool,
     pub quit: bool,
@@ -70,6 +71,15 @@ pub struct SolverState {
 
     pub find_solutions_count: usize,
     pub find_solutions_remaining: usize,
+}
+
+#[derive(Debug)]
+pub struct QueueCheckData<'a> {
+    pub state: &'a SolverState,
+    pub stats: &'a SolutionStats,
+    pub solution: &'a BestSolution<'a>,
+    pub current_game: &'a Game<'a>,
+    pub q_len: usize,
 }
 
 // ### Implementations ###
@@ -142,7 +152,8 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                 // Launch on_iteration_report hook
                 self.recent_solution_stats.num_iterations += 1;
                 if self.recent_solution_stats.num_iterations % 1000 == 0 {
-                    let continue_searching = self.strategy.on_iteration_report(current.as_ref());
+                    let queue_check = self.produce_queue_check_data(current.as_ref());
+                    let continue_searching = self.strategy.on_iteration_report(&queue_check);
                     if !continue_searching {
                         expect_solution = false;
                         self.state.quit = true;
@@ -245,6 +256,16 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
             self.q.pop_front()
         } else {
             self.q.pop_back()
+        }
+    }
+
+    fn produce_queue_check_data(&'a self, current_game: &'a Game<'a>) -> QueueCheckData<'a> {
+        QueueCheckData {
+            state: &self.state,
+            stats: &self.recent_solution_stats,
+            solution: &self.solution_min,
+            q_len: self.q.len(),
+            current_game,
         }
     }
 }

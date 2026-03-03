@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use crate::{Game, solver::base_solver::BestSolution};
+use crate::{
+    Game,
+    solver::base_solver::{BestSolution, QueueCheckData},
+};
 
 pub trait SolverStrategy {
     fn default_num_solutions(&self) -> usize {
@@ -16,7 +19,11 @@ pub trait SolverStrategy {
     }
 
     /// Called when the iteration search count exceeds REPORT_ITERATION_FREQ. Return True to continue searching.
-    fn on_iteration_report(&mut self, current: &Game) -> bool {
+    fn on_iteration_report(&self, queue_check: &QueueCheckData) -> bool {
+        println!(
+            "Queue Check. Current moves: {}",
+            queue_check.current_game.num_moves()
+        );
         // If not self._searchBFS { println!("Checked {} iterations.", self.numIterations); }
         // NOTE: This is a stub. Implement reporting logic in concrete types.
         true
