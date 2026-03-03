@@ -153,7 +153,7 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
 
                 // Launch on_iteration_report hook
                 self.recent_solution_stats.num_iterations += 1;
-                if self.recent_solution_stats.num_iterations % 1000 == 0 {
+                if self.recent_solution_stats.num_iterations % 10000 == 0 {
                     let queue_check = self.produce_queue_check_data(current.as_ref());
                     let continue_searching = self.strategy.on_iteration_report(&queue_check);
                     if !continue_searching {
