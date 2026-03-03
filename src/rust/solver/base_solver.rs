@@ -322,3 +322,35 @@ impl Debug for SolutionTiming {
             .finish()
     }
 }
+
+impl<'a> Display for QueueCheckData<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Collect stats as (key, value) pairs
+        let stats = [
+            ("resets", self.solution.num_attempted),
+            ("itrs", self.stats.num_iterations),
+            ("mvs", self.current_game.num_moves()),
+            ("q len", self.q_len),
+            ("ends", self.stats.num_dead_ends),
+            ("dup games", self.stats.num_duplicate_games),
+            ("mins", {
+                // Calculate minutes as integer seconds/60 for simplicity
+                let start = self.state.solve_method;
+                let mins = if let (Some(start), Some(end)) = (self.state.solve_method, self.state.solve_method) {
+                    // Placeholder: actual timing logic should use solution_timing
+                    0
+                } else {
+                    0
+                };
+                mins
+            }),
+        ];
+
+        let stats_str = stats
+            .iter()
+            .map(|(k, v)| format!("{}: {}", k, v))
+            .collect::<Vec<_>>()
+            .join("\t");
+        write!(f, "QUEUE CHECK: \t{}", stats_str)
+    }
+}
