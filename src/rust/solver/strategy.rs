@@ -20,10 +20,7 @@ pub trait SolverStrategy {
 
     /// Called when the iteration search count exceeds REPORT_ITERATION_FREQ. Return True to continue searching.
     fn on_iteration_report(&self, queue_check: &QueueCheckData) -> bool {
-        println!(
-            "Queue Check. Current moves: {}",
-            queue_check.current_game.num_moves()
-        );
+        println!("{}", queue_check);
         // If not self._searchBFS { println!("Checked {} iterations.", self.numIterations); }
         // NOTE: This is a stub. Implement reporting logic in concrete types.
         true

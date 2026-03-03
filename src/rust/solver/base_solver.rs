@@ -78,6 +78,8 @@ pub struct QueueCheckData<'a> {
     pub state: &'a SolverState,
     pub stats: &'a SolutionStats,
     pub solution: &'a BestSolution<'a>,
+    pub timing: &'a SolutionTiming,
+
     pub current_game: &'a Game<'a>,
     pub q_len: usize,
 }
@@ -267,6 +269,8 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
             state: &self.state,
             stats: &self.recent_solution_stats,
             solution: &self.solution_min,
+            timing: &self.solution_timing,
+
             q_len: self.q.len(),
             current_game,
         }
@@ -325,7 +329,9 @@ impl Debug for SolutionTiming {
 
 impl<'a> Display for QueueCheckData<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // Collect stats as (key, value) pairs
+        let now = Instant::now();
+
+        // Standard stats (all usize)
         let stats = [
             ("resets", self.solution.num_attempted),
             ("itrs", self.stats.num_iterations),
@@ -333,24 +339,21 @@ impl<'a> Display for QueueCheckData<'a> {
             ("q len", self.q_len),
             ("ends", self.stats.num_dead_ends),
             ("dup games", self.stats.num_duplicate_games),
-            ("mins", {
-                // Calculate minutes as integer seconds/60 for simplicity
-                let start = self.state.solve_method;
-                let mins = if let (Some(start), Some(end)) = (self.state.solve_method, self.state.solve_method) {
-                    // Placeholder: actual timing logic should use solution_timing
-                    0
-                } else {
-                    0
-                };
-                mins
-            }),
+            ("mins", 0), // Placeholder for minutes
         ];
+        write!(f, "QUEUE CHECK: ")?;
+        for (key, value) in stats {
+            write!(f, "\t{}: {}", key, value)?;
+        }
 
-        let stats_str = stats
-            .iter()
-            .map(|(k, v)| format!("{}: {}", k, v))
-            .collect::<Vec<_>>()
-            .join("\t");
-        write!(f, "QUEUE CHECK: \t{}", stats_str)
+        // Special stats
+        if let Some(start) = self.timing.solution_start {
+            write!(f, "\tsol: {:.1?}", now.duration_since(start));
+        }
+        if let Some(set_start) = self.timing.solution_set_start {
+            write!(f, "\tset: {:.1?}", now.duration_since(set_start));
+        }
+
+        Ok(())
     }
 }

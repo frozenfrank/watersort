@@ -15,7 +15,7 @@ pub fn solve_game(game: Arc<Game<'_>>) {
 
     println!("Timing: {:#?}", solver.get_timing());
     println!("Stats: {:#?}", solver.get_stats());
-    println!("Results: {:#?}", solver.get_results());
+    // println!("Results: {:#?}", solver.get_results());
 
     if let Some(min_solution) = &solver.get_results().result {
         print_vials(min_solution);
