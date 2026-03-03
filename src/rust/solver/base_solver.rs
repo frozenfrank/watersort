@@ -136,8 +136,8 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                     None => break,
                 };
 
-                println!("\nAnalyzing game: \n{:?}", current);
-                print_vials(&current);
+                // println!("\nAnalyzing game: \n{:?}", current);
+                // print_vials(&current);
 
                 // Launch on_iteration_report hook
                 self.recent_solution_stats.num_iterations += 1;
@@ -168,10 +168,10 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                     break;
                 }
 
-                println!("Found {} valid moves:", next_games.len());
-                for next_game in &next_games {
-                    println!("  {}", next_game.last_move().unwrap());
-                }
+                // println!("Found {} valid moves:", next_games.len());
+                // for next_game in &next_games {
+                //     println!("  {}", next_game.last_move().unwrap());
+                // }
 
                 if self.state.shuffle_next_moves {
                     next_games.shuffle(&mut self.state.rng);
