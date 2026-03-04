@@ -1,0 +1,8 @@
+i
+2
+5
+r   gn  b   b
+b   b   r  r
+gn   r   gn  gn
+-   -   -   -
+-   -   -   -
