@@ -7,7 +7,7 @@ use crate::{MoveInfo, NUM_SPACES_PER_VIAL};
 use itertools::Itertools;
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::fmt::{self, Debug, Formatter};
+use std::fmt::{self, Formatter};
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
