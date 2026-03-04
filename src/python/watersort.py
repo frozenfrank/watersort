@@ -2205,7 +2205,10 @@ class SafeGameSolver(BaseSolver):
 
 def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDFRSamples = 0):
   solver = AnalysisSolver(game) if analyzeSampleCount > 0 else SolutionSolver(game)
-  solver.solveGame(solveMethod, numSolutions=analyzeSampleCount or probeDFRSamples)
+  numSolutions = analyzeSampleCount or probeDFRSamples
+  if solveMethod == "DFS" or solveMethod == "BFS":
+    numSolutions = 1
+  solver.solveGame(solveMethod, numSolutions=numSolutions)
   pass
 
 def testSolutionPrints(solution: "Game"):
