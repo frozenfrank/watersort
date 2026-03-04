@@ -5,6 +5,7 @@ use std::{
 };
 
 use crate::MoveInfo;
+use crate::core::ColorCodeAllocator;
 use crate::display::colorama_ansi::STYLE;
 use crate::display::print_moves_consts::*;
 use crate::display::text_formatted::TextFormatted;
@@ -15,6 +16,9 @@ use crate::{
     display::solution_step_preparer::{GameInputType, SolutionStepPreparer},
     types::StdResult,
 };
+
+pub const CHARS_PER_LINE: usize = 100; // Estimates with the python version show 80-90 per line. A little extra won't hurt.
+
 
 const INDENT: &str = "  ";
 const SEPARATOR: &str = "\t ";
@@ -40,8 +44,7 @@ fn do_print_moves(game: GameInputType, from_game: Option<&Game>) -> StdResult {
 
     let steps = preparer.do_prepare_solution_steps(game, from_game);
 
-    let chars_per_line = 100; // Estimates with the python version show 80-90 per line. A little extra won't hurt.
-    let mut output = String::with_capacity(chars_per_line * steps.len());
+    let mut output = String::with_capacity(CHARS_PER_LINE * steps.len());
 
     writeln!(
         &mut output,
@@ -56,11 +59,7 @@ fn do_print_moves(game: GameInputType, from_game: Option<&Game>) -> StdResult {
     if steps.len() == 0 {
         writeln!(&mut output, "{INDENT}None")?;
     } else {
-        let cache = PrintMovesCache {
-            max_color_name_len: settings.allocator.max_color_name_len(),
-            consts: PRINT_MOVES_CONSTS.deref(),
-            print_full_color_name: true,
-        };
+        let cache = PrintMovesCache::new(&settings.allocator);
         for step in steps {
             write!(&mut output, "{INDENT}")?;
             write_move_str(&mut output, &step, &cache);
@@ -81,7 +80,7 @@ fn do_print_moves(game: GameInputType, from_game: Option<&Game>) -> StdResult {
 }
 
 /// Writes a string with a fixed justification, including escape character for formatting, that describes the move.
-fn write_move_str(s: &mut String, step: &SolutionStep, cache: &PrintMovesCache) {
+pub fn write_move_str(s: &mut String, step: &SolutionStep, cache: &PrintMovesCache) {
     let move_data = match &step.data {
         Some(data) => data,
         None => return,
@@ -139,8 +138,18 @@ fn write_move_info_str(s: &mut String, info: &MoveInfo, cache: &PrintMovesCache)
         .expect("Output is able to write into the String buffer");
 }
 
-struct PrintMovesCache<'a> {
+pub struct PrintMovesCache<'a> {
     max_color_name_len: usize,
     print_full_color_name: bool,
     consts: &'a PrintMovesConsts,
+}
+
+impl<'a> PrintMovesCache<'a> {
+    pub fn new(allocator: &ColorCodeAllocator) -> Self {
+        Self {
+            max_color_name_len: allocator.max_color_name_len(),
+            consts: PRINT_MOVES_CONSTS.deref(),
+            print_full_color_name: true,
+        }
+    }
 }
