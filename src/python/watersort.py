@@ -18,6 +18,9 @@ USE_READCHAR = True
 if USE_READCHAR:
   from readchar import readkey, key
 
+
+USE_BIG_MOVES = True
+
 INSTALLED_BASE_PATH = ""
 WRITE_FILES_TO_ABSOLUTE_PATH = False
 
@@ -132,7 +135,7 @@ class Game:
   preferBigMoves: bool = True
 
   # Flags set on the root game
-  level: str
+  level: str = None
   modified: bool # Indicates it's changed from the last read in state
   _colorError: bool
   _hasUnknowns: bool
@@ -2137,9 +2140,11 @@ class SolutionSolver(BaseSolver):
           """)
 
     if self.minSolution:
-      BigSolutionDisplay(self.minSolution).start()
-      # print(f"Found solution{' to level ' + game.level if game.level else ''}!")
-      # self.minSolution.printMoves()
+      if USE_BIG_MOVES:
+        BigSolutionDisplay(self.minSolution).start()
+      else:
+        print(f"Found solution{' to level ' + self.minSolution.level if self.minSolution.level else ''}!")
+        self.minSolution.printMoves()
     else:
       print(formatVialColor("er", "Cannot find solution."))
 
