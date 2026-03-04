@@ -16,7 +16,7 @@ pub const ANALYZER_VERSION: u32 = 6;
 
 pub const DEFAULT_ANALYZE_ATTEMPTS: usize = 100;
 pub const DEFAULT_DFR_SEARCH_ATTEMPTS: usize = 100;
-pub const FORCE_SOLVE_LEVEL: Option<&str> = Some(&"100");
+pub const FORCE_SOLVE_LEVEL: Option<&str> = Some(&"2");
 pub const FORCE_INTERACTION_MODE: Option<Mode> = None;
-pub const DEFAULT_SOLVE_METHOD: SolveMethod = SolveMethod::DFR;
+pub const DEFAULT_SOLVE_METHOD: SolveMethod = SolveMethod::DFS;
 pub const INITIAL_SOLVER_QUEUE_CAP: usize = 200;

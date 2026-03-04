@@ -19,7 +19,7 @@ if USE_READCHAR:
   from readchar import readkey, key
 
 
-USE_BIG_MOVES = True
+USE_BIG_MOVES = False
 
 INSTALLED_BASE_PATH = ""
 WRITE_FILES_TO_ABSOLUTE_PATH = False
@@ -2144,6 +2144,7 @@ class SolutionSolver(BaseSolver):
         BigSolutionDisplay(self.minSolution).start()
       else:
         print(f"Found solution{' to level ' + self.minSolution.level if self.minSolution.level else ''}!")
+        self.minSolution.printVials()
         self.minSolution.printMoves()
     else:
       print(formatVialColor("er", "Cannot find solution."))
