@@ -62,7 +62,7 @@ fn do_print_moves(game: GameInputType, from_game: Option<&Game>) -> StdResult {
         let cache = PrintMovesCache::new(&settings.allocator);
         for step in steps {
             write!(&mut output, "{INDENT}")?;
-            write_move_str(&mut output, &step, &cache);
+            write_move_str(&mut output, &step, &cache)?;
             if let Some(is_same_as_prev) = step.is_same_as_previous {
                 let word = if is_same_as_prev {
                     &"(same)"
@@ -80,19 +80,21 @@ fn do_print_moves(game: GameInputType, from_game: Option<&Game>) -> StdResult {
 }
 
 /// Writes a string with a fixed justification, including escape character for formatting, that describes the move.
-pub fn write_move_str(s: &mut String, step: &SolutionStep, cache: &PrintMovesCache) {
+pub fn write_move_str(s: &mut impl Write, step: &SolutionStep, cache: &PrintMovesCache) -> StdResult {
     let move_data = match &step.data {
         Some(data) => data,
-        None => return,
+        None => return Ok(()),
     };
 
     let move_text = format!("{}", move_data.move_);
-    write_vial_color_text(s, &move_data.move_info.color_moved, &move_text, 8, false);
-    write_move_info_str(s, &move_data.move_info, cache);
+    write_vial_color_text(s, &move_data.move_info.color_moved, &move_text, 8, false)?;
+    write_move_info_str(s, &move_data.move_info, cache)?;
+
+    Ok(())
 }
 
 /// Writes a string with fixed justification, including escape sequences for formatting, that describes MoveInfo.
-fn write_move_info_str(s: &mut String, info: &MoveInfo, cache: &PrintMovesCache) {
+fn write_move_info_str(s: &mut impl Write, info: &MoveInfo, cache: &PrintMovesCache) -> StdResult {
     // "({num_moved} {color}{extra_str})      " Justified to a standard width
     let mut output = TextFormatted::default();
     let const_width: usize = 5;
@@ -134,8 +136,9 @@ fn write_move_info_str(s: &mut String, info: &MoveInfo, cache: &PrintMovesCache)
     output.push_text(&")"); // 1 char
 
     output.left_justify(const_width + color_width + extra_width);
-    s.write_str(output.as_str())
-        .expect("Output is able to write into the String buffer");
+    s.write_str(output.as_str())?;
+
+    Ok(())
 }
 
 pub struct PrintMovesCache<'a> {

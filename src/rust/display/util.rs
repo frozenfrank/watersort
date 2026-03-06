@@ -1,4 +1,6 @@
-use crate::{core::Color, display::colorama_ansi::STYLE};
+use std::fmt::Write;
+
+use crate::{core::Color, display::colorama_ansi::STYLE, types::StdResult};
 
 pub fn print_lines(lines: Vec<String>) {
     // Write the results to stdout using different traits than the rest of this file.
@@ -10,32 +12,36 @@ pub fn print_lines(lines: Vec<String>) {
         .for_each(|line| writeln!(lock, "{}", line).unwrap());
 }
 
-pub fn write_vial_color(s: &mut String, color: &Color, foreground_only: bool) {
+pub fn write_vial_color(s: &mut impl Write, color: &Color, foreground_only: bool) -> StdResult {
     if let Some(style) = if foreground_only {
         &color.style_secondary
     } else {
         &color.style_primary
     } {
-        s.push_str(&style);
+        s.write_str(&style)?;
     }
+
+    Ok(())
 }
 
 pub fn write_vial_color_text(
-    s: &mut String,
+    s: &mut impl Write,
     color: &Color,
     text: &str,
     ljust: usize,
     foreground_only: bool,
-) {
-    write_vial_color(s, color, foreground_only);
+) -> StdResult {
+    write_vial_color(s, color, foreground_only)?;
 
-    s.push_str(text);
-    s.push_str(&STYLE["RESET_ALL"]);
+    s.write_str(text)?;
+    s.write_str(&STYLE["RESET_ALL"])?;
 
     if ljust <= text.len() {
-        return;
+        return Ok(());
     }
+
     for _ in 0..(ljust - text.len()) {
-        s.push(' ');
+        s.write_char(' ')?;
     }
+    Ok(())
 }

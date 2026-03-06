@@ -38,12 +38,12 @@ fn do_debug_games_ary<'a>(output: &mut String, description: &str, games: &[Arc<G
     Ok(())
 }
 
-fn debug_game_range<'a>(output: &mut String, print_moves_cache: &PrintMovesCache, games: impl Iterator<Item = (usize, &'a Arc<Game<'a>>)>) -> StdResult {
+fn debug_game_range<'a>(output: &mut impl Write, print_moves_cache: &PrintMovesCache, games: impl Iterator<Item = (usize, &'a Arc<Game<'a>>)>) -> StdResult {
     for (idx, game) in games {
         write!(output, "  {}\t {}\t", idx, game.num_moves())?;
 
         let step = &SolutionStep::new(game);
-        write_move_str(output, step, print_moves_cache);
+        write_move_str(output, step, print_moves_cache)?;
         writeln!(output, "")?;
     }
     Ok(())
