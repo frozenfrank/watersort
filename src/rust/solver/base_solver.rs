@@ -338,7 +338,7 @@ impl<'a> Display for QueueCheckData<'a> {
             ("mvs", self.current_game.num_moves()),
             ("q len", self.q_len),
             ("ends", self.stats.num_dead_ends),
-            ("dup games", self.stats.num_duplicate_games),
+            ("dups", self.stats.num_duplicate_games),
             ("mins", 0), // Placeholder for minutes
         ];
         write!(f, "QUEUE CHECK: ")?;
@@ -350,7 +350,7 @@ impl<'a> Display for QueueCheckData<'a> {
         if let Some(start) = self.timing.solution_start {
             write!(f, "\tsol: {:.1?}", now.duration_since(start));
         }
-        if let Some(set_start) = self.timing.solution_set_start {
+        if self.solution.num_attempted > 0 && let Some(set_start) = self.timing.solution_set_start {
             write!(f, "\tset: {:.1?}", now.duration_since(set_start));
         }
 
