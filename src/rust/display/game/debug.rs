@@ -71,7 +71,7 @@ type GameIndexed<'a> = (usize, &'a Arc<Game<'a>>);
 
 fn debug_game_range<'a>(output: &mut impl Write, print_moves_cache: &PrintMovesCache, games: impl Iterator<Item = GameIndexed<'a>>) -> StdResult {
     for (idx, game) in games {
-        write!(output, "  {}:\t {}\t", idx, game.num_moves())?;
+        write!(output, "  {}:\t {}\t ", idx, game.num_moves())?;
 
         let step = &SolutionStep::new(&game);
         write_move_str(output, step, print_moves_cache)?;
