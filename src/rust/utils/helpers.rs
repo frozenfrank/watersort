@@ -1,3 +1,5 @@
+use num::{Num, ToPrimitive};
+
 /// Enum that stores either a forward Range or a reverse Range iterator
 pub enum RangeIter<T> {
     Forward(T),
@@ -25,7 +27,9 @@ impl<T: DoubleEndedIterator> Iterator for RangeIter<T> {
 }
 
 /// Calculates a percentage as a formatted string
-pub fn percent_str(value: f64, total: f64) -> String {
+pub fn percent_str<T: Num + ToPrimitive, U: Num + ToPrimitive>(value: T, total: U) -> String {
+    let value = value.to_f64().unwrap_or(0.0);
+    let total = total.to_f64().unwrap_or(0.0);
     if total == 0.0 {
         "0%".to_string()
     } else {
