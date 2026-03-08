@@ -11,11 +11,15 @@ const WRITE_EXPECTATION: &str = "Vials print to std";
 
 
 pub fn print_vials(game: &Game) {
-    print_vials_numbered(game, false).expect(WRITE_EXPECTATION);
+    do_print_vials(game, false).expect(WRITE_EXPECTATION);
 }
 
 /// Prints the vials of a game, optionally numbering each output line for uniques in debuggers
-pub fn print_vials_numbered(game: &Game, number_spaces: bool) -> StdResult {
+pub fn print_vials_numbered(game: &Game) {
+    do_print_vials(game, true).expect(WRITE_EXPECTATION);
+}
+
+fn do_print_vials(game: &Game, number_spaces: bool) -> StdResult {
     let num_vials = game.num_vials();
     let reserve_chars_per_vial = 60; // Formatting can be 40 chars (fore + back styles)
     let mut lines: Vec<String> =
