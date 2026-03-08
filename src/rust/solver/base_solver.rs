@@ -9,6 +9,8 @@ use std::{
 };
 
 use crate::display::debug::debug_games;
+use crate::display::print_vials::print_vials_numbered;
+use crate::utils::helpers::percent_str;
 use crate::{
     Game, INITIAL_SOLVER_QUEUE_CAP,
     display::print_vials,
@@ -154,8 +156,8 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                     None => break,
                 };
 
-                // println!("Selected game: \n{:?}", current);
-                // print_vials(&current);
+                println!("Selected game: \n{:?}", current);
+                print_vials_numbered(&current);
 
                 // Launch on_iteration_report hook
                 self.recent_solution_stats.num_iterations += 1;
@@ -187,18 +189,22 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                     break;
                 }
 
-                // debug_games(&format!("Next games ({})", next_games.len()), &next_games);
+                debug_games(&format!("Next games ({})", next_games.len()), &next_games);
 
                 if self.state.shuffle_next_moves {
                     next_games.shuffle(&mut self.state.rng);
                     debug_games(&format!("Shuffled games ({})", next_games.len()), &next_games);
                 }
-                for next_game in next_games {
+
+                println!("Unique computed games {}/{} ({}).", computed.len(), self.recent_solution_stats.num_partial_solutions_generated, percent_str(computed.len(), self.recent_solution_stats.num_partial_solutions_generated));
+                println!("Processing next games...");
+                for (i, next_game) in next_games.into_iter().enumerate() {
                     self.recent_solution_stats.num_partial_solutions_generated += 1;
 
                     let newly_inserted = computed.insert(next_game.clone());
                     if !newly_inserted {
                         self.recent_solution_stats.num_duplicate_games += 1;
+                        println!(" {}: Duplicate game, skipping", i);
                         continue;
                     }
 
@@ -209,9 +215,11 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                             .strategy
                             .on_solution_found(&next_game, &mut self.solution_min)
                         {
+                            println!(" {}: Solution found, breaking search.", i);
                             break; // Finish searching
                         }
                     } else {
+                        println!(" {}: Adding new game to queue.", i);
                         self.q.push_back(next_game);
                     }
                 }
@@ -222,9 +230,13 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                 if has_no_next_games {
                     self.recent_solution_stats.num_dead_ends += 1;
                     self.strategy.on_dead_end_found(current.as_ref());
+                    println!(" --No next games, dead end found.--");
                 } else if !has_net_new_next_game {
                     self.recent_solution_stats.num_swallowed_games_found += 1;
+                    println!(" --No net new next games, swallowed game.--");
                 }
+
+                println!("\n  **End of iteration.**\n");
             }
 
             if self.solution_timing.solution_end.is_none() {
