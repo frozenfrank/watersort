@@ -8,6 +8,7 @@ use std::{
     time::Instant,
 };
 
+use crate::display::debug::debug_games;
 use crate::{
     Game, INITIAL_SOLVER_QUEUE_CAP,
     display::print_vials,
@@ -107,6 +108,10 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
     /// Intelligent search through all the possible game states until we find a solution.
     /// This rust implementation does not support discovering new values.
     pub fn find_solutions(&mut self) {
+        println!("============== Debugging find_solutions ==============");
+        println!("{:#?}", self.seed_game.settings.borrow());
+        println!("{:#?}", self.state);
+
         self.solution_timing.solution_set_start = Some(Instant::now());
 
         while self.state.reset
@@ -143,12 +148,13 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                     break;
                 }
 
+                debug_games("\nQueue State", &self.q);
                 let current = match self.next_game_state() {
                     Some(game) => game,
                     None => break,
                 };
 
-                // println!("\nAnalyzing game: \n{:?}", current);
+                // println!("Selected game: \n{:?}", current);
                 // print_vials(&current);
 
                 // Launch on_iteration_report hook
@@ -181,13 +187,11 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                     break;
                 }
 
-                // println!("Found {} valid moves:", next_games.len());
-                // for next_game in &next_games {
-                //     println!("  {}", next_game.last_move().unwrap());
-                // }
+                // debug_games(&format!("Next games ({})", next_games.len()), &next_games);
 
                 if self.state.shuffle_next_moves {
                     next_games.shuffle(&mut self.state.rng);
+                    debug_games(&format!("Shuffled games ({})", next_games.len()), &next_games);
                 }
                 for next_game in next_games {
                     self.recent_solution_stats.num_partial_solutions_generated += 1;
