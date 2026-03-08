@@ -1,6 +1,7 @@
-use crate::init::Mode;
+use crate::{init::Mode, solver::SolveMethod};
 
 /// Represents the User's choice of intended utility behavior
+#[derive(Debug)]
 pub struct InteractionResult {
     pub mode: Mode,
     /// A non-empty Level identifier
@@ -11,7 +12,7 @@ pub struct InteractionResult {
     pub known_blind_mode: Option<bool>,
     /// If the mode supports repeating actions, this is the number of times to repeat the action.
     pub num_iterations: usize,
-    pub solve_method: Option<String>,
+    pub solve_method: Option<SolveMethod>,
     /// Indicates if the user is entering Game information, compared to reading input from a file
     pub user_interacting: bool,
 }

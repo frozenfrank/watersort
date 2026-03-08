@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SolveMethod {
     /// Depth-First Search
     DFS,
@@ -11,6 +11,16 @@ pub enum SolveMethod {
 }
 
 impl SolveMethod {
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s.to_lowercase().as_str() {
+            "dfs" => Some(SolveMethod::DFS),
+            "dfr" => Some(SolveMethod::DFR),
+            "bfs" => Some(SolveMethod::BFS),
+            "mix" => Some(SolveMethod::MIX),
+            _ => None,
+        }
+    }
+
     pub fn shuffles_moves(self) -> bool {
         match self {
             SolveMethod::DFR => true,
