@@ -35,11 +35,11 @@ fn do_debug_games<'a>(output: &mut String, description: &str, games: impl Double
     let print_moves_cache = PrintMovesCache::new(&settings.allocator);
 
     writeln!(output, "  Idx:\t Depth\t Last Move")?;
-    let max_output_games = first_game.num_vials().clamp(7, MAX_GAME_OUTPUT);
-    if num_games < max_output_games {
+    let max_output_games = first_game.num_vials().clamp(10, MAX_GAME_OUTPUT);
+    if num_games <= max_output_games {
         debug_game_range(output, &print_moves_cache, games.enumerate())?;
     } else {
-        let half_output_games = max_output_games >> 2;
+        let half_output_games = max_output_games >> 1;
         let mut begin_buffer = ArrayVec::<GameIndexed<'a>, MAX_GAME_OUTPUT>::new();
         let mut end_buffer = ArrayVec::<GameIndexed<'a>, MAX_GAME_OUTPUT>::new();
 
