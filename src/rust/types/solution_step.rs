@@ -1,9 +1,9 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use crate::{Game, Move, MoveInfo};
 
 pub struct SolutionStep<'a> {
-    pub game: Arc<Game<'a>>,
+    pub game: Rc<Game<'a>>,
     pub data: Option<SolutionStepMove>,
     pub is_same_as_previous: Option<bool>,
 }
@@ -14,7 +14,7 @@ pub struct SolutionStepMove {
 }
 
 impl<'a> SolutionStep<'a> {
-    pub fn new(game: &Arc<Game<'a>>) -> Self {
+    pub fn new(game: &Rc<Game<'a>>) -> Self {
         let mut out = Self {
             game: game.clone(),
             data: None,

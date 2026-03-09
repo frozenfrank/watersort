@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, sync::Arc};
+use std::{collections::VecDeque, rc::Rc};
 
 use crate::{Game, Move, types::solution_step::SolutionStep};
 
@@ -8,7 +8,7 @@ pub struct SolutionStepPreparer {
     last_printed_moves: Option<VecDeque<Move>>,
 }
 
-pub type GameInputType<'a> = &'a Arc<Game<'a>>;
+pub type GameInputType<'a> = &'a Rc<Game<'a>>;
 pub type SolutionStepsResult<'a> = VecDeque<SolutionStep<'a>>;
 
 impl<'a> SolutionStepPreparer {

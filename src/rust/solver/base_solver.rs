@@ -4,7 +4,7 @@ use std::{
     cmp::max,
     collections::{HashSet, VecDeque},
     fmt::Debug,
-    sync::Arc,
+    rc::Rc,
     time::Instant,
 };
 
@@ -20,8 +20,8 @@ use crate::{
 // ### Structs ###
 
 pub struct BaseSolver<'a, S: SolverStrategy> {
-    pub seed_game: Arc<Game<'a>>,
-    q: VecDeque<Arc<Game<'a>>>,
+    pub seed_game: Rc<Game<'a>>,
+    q: VecDeque<Rc<Game<'a>>>,
     pub state: SolverState,
     pub strategy: S,
 
@@ -42,7 +42,7 @@ pub struct SolutionTiming {
 #[derive(Default, Debug)]
 pub struct BestSolution<'a> {
     /// The best solution found so far
-    pub result: Option<Arc<Game<'a>>>,
+    pub result: Option<Rc<Game<'a>>>,
     /// Number of times a new solution was attempted from scratch
     pub num_attempted: usize,
     /// Number of times we located an improved `min` solution
@@ -103,7 +103,7 @@ pub struct QueueCheckData<'a> {
 impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
     pub fn new(
         strategy: S,
-        seed_game: Arc<Game<'a>>,
+        seed_game: Rc<Game<'a>>,
         solve_method: SolveMethod,
         num_solutions: usize,
     ) -> Self {
@@ -145,7 +145,7 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
 
             // Setup our search
             let mut expect_solution = true;
-            let mut computed = HashSet::<Arc<Game>>::with_capacity(1000);
+            let mut computed = HashSet::<Rc<Game>>::with_capacity(1000);
 
             self.q.push_back(self.seed_game.clone());
             self.state.search_bfs = self.state.solve_method.searches_bfs();
@@ -289,7 +289,7 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
         self.solution_timing.solution_set_end = Some(Instant::now());
     }
 
-    fn add_game_states<C>(&mut self, mut games: Vec<Arc<Game<'a>>>) {
+    fn add_game_states<C>(&mut self, mut games: Vec<Rc<Game<'a>>>) {
         if self.state.shuffle_next_moves {
             games.shuffle(&mut self.state.rng);
         }
@@ -307,7 +307,7 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
         }
     }
 
-    fn next_game_state(&mut self) -> Option<Arc<Game<'a>>> {
+    fn next_game_state(&mut self) -> Option<Rc<Game<'a>>> {
         if self.state.search_bfs {
             self.q.pop_front()
         } else {

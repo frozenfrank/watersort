@@ -1,6 +1,6 @@
 // GenericSolver struct: wraps BaseSolver with a custom Strategy
 
-use std::sync::Arc;
+use std::rc::Rc;
 
 use crate::Game;
 use crate::solver::base_solver::{BaseSolver, BestSolution, SolutionStats, SolutionTiming};
@@ -12,7 +12,7 @@ pub struct GenericSolver<'a, S: SolverStrategy + Default> {
 }
 
 impl<'a, S: SolverStrategy + Default> Solver<'a> for GenericSolver<'a, S> {
-    fn new(game: Arc<Game<'a>>, solve_method: SolveMethod) -> Self {
+    fn new(game: Rc<Game<'a>>, solve_method: SolveMethod) -> Self {
         let strategy = S::default();
         let num_solutions = strategy.default_num_solutions();
         Self {

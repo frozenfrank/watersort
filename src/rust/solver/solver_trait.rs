@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use crate::{
     Game,
@@ -9,7 +9,7 @@ use crate::{
 };
 
 pub trait Solver<'a> {
-    fn new(game: Arc<Game<'a>>, solve_method: SolveMethod) -> Self;
+    fn new(game: Rc<Game<'a>>, solve_method: SolveMethod) -> Self;
     fn solve_game(&mut self);
     fn get_results(&self) -> &'_ BestSolution<'a>;
     fn get_stats(&self) -> &SolutionStats;

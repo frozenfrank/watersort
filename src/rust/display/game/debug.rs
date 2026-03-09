@@ -1,4 +1,4 @@
-use std::{fmt::Write, sync::Arc};
+use std::{fmt::Write, rc::Rc};
 
 use arrayvec::ArrayVec;
 
@@ -9,7 +9,7 @@ const WRITE_EXPECTATION: &str = "String buffer accepts debug data";
 
 pub fn debug_games<'a, T>(description: &str, games: T)
 where
-    T: IntoIterator<Item = &'a Arc<Game<'a>>>,
+    T: IntoIterator<Item = &'a Rc<Game<'a>>>,
     T::IntoIter: ExactSizeIterator + DoubleEndedIterator,
 {
     let games = games.into_iter();
@@ -19,7 +19,7 @@ where
     println!("{}", output);
 }
 
-fn do_debug_games<'a>(output: &mut String, description: &str, games: impl DoubleEndedIterator<Item = &'a Arc<Game<'a>>>, num_games: usize) -> StdResult {
+fn do_debug_games<'a>(output: &mut String, description: &str, games: impl DoubleEndedIterator<Item = &'a Rc<Game<'a>>>, num_games: usize) -> StdResult {
     let mut games = games.peekable();
 
     writeln!(output, "{}:", description)?;
@@ -67,7 +67,7 @@ fn do_debug_games<'a>(output: &mut String, description: &str, games: impl Double
     Ok(())
 }
 
-type GameIndexed<'a> = (usize, &'a Arc<Game<'a>>);
+type GameIndexed<'a> = (usize, &'a Rc<Game<'a>>);
 
 fn debug_game_range<'a>(output: &mut impl Write, print_moves_cache: &PrintMovesCache, games: impl Iterator<Item = GameIndexed<'a>>) -> StdResult {
     for (idx, game) in games {
