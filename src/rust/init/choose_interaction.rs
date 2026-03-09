@@ -94,6 +94,10 @@ fn interpret_command_args(result: &mut InteractionResult) {
             } else {
                 result.solve_method = SolveMethod::from_str(&args[2]);
             }
+
+            if result.solve_method.is_none() {
+                println!("Could not interpret solve method from args: {}", args[2]);
+            }
         }
 
         // Read DFR search attempts

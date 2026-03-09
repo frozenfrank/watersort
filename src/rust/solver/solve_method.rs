@@ -1,3 +1,5 @@
+use crate::DEFAULT_SOLVE_METHOD;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SolveMethod {
     /// Depth-First Search
@@ -42,5 +44,9 @@ impl SolveMethod {
             SolveMethod::BFS | SolveMethod::MIX => true,
             _ => false,
         }
+    }
+
+    pub fn get_definitely(method: &Option<SolveMethod>) -> Self {
+        method.unwrap_or(DEFAULT_SOLVE_METHOD)
     }
 }

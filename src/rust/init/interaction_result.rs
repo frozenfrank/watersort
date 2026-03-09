@@ -12,6 +12,7 @@ pub struct InteractionResult {
     pub known_blind_mode: Option<bool>,
     /// If the mode supports repeating actions, this is the number of times to repeat the action.
     pub num_iterations: usize,
+    /// Only required for some Modes
     pub solve_method: Option<SolveMethod>,
     /// Indicates if the user is entering Game information, compared to reading input from a file
     pub user_interacting: bool,
