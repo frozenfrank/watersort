@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::Game;
 use crate::solver::base_solver::{BaseSolver, BestSolution, SolutionStats, SolutionTiming};
 use crate::solver::strategy::SolverStrategy;
-use crate::solver::{SolveMethod, Solver};
+use crate::solver::{SolveMethod, Solver, SolverDebugLevel};
 
 pub struct GenericSolver<'a, S: SolverStrategy + Default> {
     base: BaseSolver<'a, S>,
@@ -34,5 +34,9 @@ impl<'a, S: SolverStrategy + Default> Solver<'a> for GenericSolver<'a, S> {
 
     fn get_timing(&self) -> &SolutionTiming {
         &self.base.solution_timing
+    }
+
+    fn set_debug(&mut self, level: SolverDebugLevel) {
+        self.base.set_debug(level);
     }
 }

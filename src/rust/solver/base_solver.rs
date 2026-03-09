@@ -66,6 +66,8 @@ pub struct SolutionStats {
 pub struct SolverState {
     pub reset: bool,
     pub quit: bool,
+    pub debug: SolverDebugLevel,
+
     pub solve_method: SolveMethod,
     pub search_bfs: bool,
     pub shuffle_next_moves: bool,
@@ -74,6 +76,15 @@ pub struct SolverState {
 
     pub find_solutions_count: usize,
     pub find_solutions_remaining: usize,
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub enum SolverDebugLevel {
+    #[default]
+    None,
+    Solution,
+    Iteration,
+    GameStates,
 }
 
 #[derive(Debug)]
@@ -110,9 +121,11 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
     /// Intelligent search through all the possible game states until we find a solution.
     /// This rust implementation does not support discovering new values.
     pub fn find_solutions(&mut self) {
-        println!("============== Debugging find_solutions ==============");
-        println!("{:#?}", self.seed_game.settings.borrow());
-        println!("{:#?}", self.state);
+        if self.state.debug >= SolverDebugLevel::Solution {
+            println!("============== Debugging find_solutions ==============");
+            println!("{:#?}", self.seed_game.settings.borrow());
+            println!("{:#?}", self.state);
+        }
 
         self.solution_timing.solution_set_start = Some(Instant::now());
 
@@ -150,14 +163,18 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                     break;
                 }
 
-                debug_games("\nQueue State", &self.q);
+                if self.debug(SolverDebugLevel::Iteration) {
+                    debug_games("\nQueue State", &self.q);
+                }
                 let current = match self.next_game_state() {
                     Some(game) => game,
                     None => break,
                 };
 
-                println!("Selected game: \n{:?}", current);
-                print_vials_numbered(&current);
+                if self.debug(SolverDebugLevel::GameStates) {
+                    println!("Selected game: \n{:?}", current);
+                    print_vials_numbered(&current);
+                }
 
                 // Launch on_iteration_report hook
                 self.recent_solution_stats.num_iterations += 1;
@@ -189,22 +206,30 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                     break;
                 }
 
-                debug_games(&format!("Next games ({})", next_games.len()), &next_games);
+                if self.debug(SolverDebugLevel::GameStates) {
+                    debug_games(&format!("Next games ({})", next_games.len()), &next_games);
+                }
 
                 if self.state.shuffle_next_moves {
                     next_games.shuffle(&mut self.state.rng);
-                    debug_games(&format!("Shuffled games ({})", next_games.len()), &next_games);
+                    if self.debug(SolverDebugLevel::GameStates) {
+                        debug_games(&format!("Shuffled games ({})", next_games.len()), &next_games);
+                    }
                 }
 
-                println!("Unique computed games {}/{} ({}).", computed.len(), self.recent_solution_stats.num_partial_solutions_generated, percent_str(computed.len(), self.recent_solution_stats.num_partial_solutions_generated));
-                println!("Processing next games...");
+                if self.debug(SolverDebugLevel::GameStates) {
+                    println!("Unique computed games {}/{} ({}).", computed.len(), self.recent_solution_stats.num_partial_solutions_generated, percent_str(computed.len(), self.recent_solution_stats.num_partial_solutions_generated));
+                    println!("Processing next games...");
+                }
                 for (i, next_game) in next_games.into_iter().enumerate() {
                     self.recent_solution_stats.num_partial_solutions_generated += 1;
 
                     let newly_inserted = computed.insert(next_game.clone());
                     if !newly_inserted {
                         self.recent_solution_stats.num_duplicate_games += 1;
-                        println!(" {}: Duplicate game, skipping", i);
+                        if self.debug(SolverDebugLevel::GameStates) {
+                            println!(" {}: Duplicate game, skipping", i);
+                        }
                         continue;
                     }
 
@@ -215,11 +240,15 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                             .strategy
                             .on_solution_found(&next_game, &mut self.solution_min)
                         {
-                            println!(" {}: Solution found, breaking search.", i);
+                            if self.debug(SolverDebugLevel::GameStates) {
+                                println!(" {}: Solution found, breaking search.", i);
+                            }
                             break; // Finish searching
                         }
                     } else {
-                        println!(" {}: Adding new game to queue.", i);
+                        if self.debug(SolverDebugLevel::GameStates) {
+                            println!(" {}: Adding new game to queue.", i);
+                        }
                         self.q.push_back(next_game);
                     }
                 }
@@ -230,13 +259,19 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
                 if has_no_next_games {
                     self.recent_solution_stats.num_dead_ends += 1;
                     self.strategy.on_dead_end_found(current.as_ref());
-                    println!(" --No next games, dead end found.--");
+                    if self.debug(SolverDebugLevel::Iteration) {
+                        println!(" --No next games, dead end found.--");
+                    }
                 } else if !has_net_new_next_game {
                     self.recent_solution_stats.num_swallowed_games_found += 1;
-                    println!(" --No net new next games, swallowed game.--");
+                    if self.debug(SolverDebugLevel::Iteration) {
+                        println!(" --No net new next games, swallowed game.--");
+                    }
                 }
 
-                println!("\n  **End of iteration.**\n");
+                if self.debug(SolverDebugLevel::Iteration) {
+                    println!("\n  **End of iteration.**\n");
+                }
             }
 
             if self.solution_timing.solution_end.is_none() {
@@ -291,6 +326,15 @@ impl<'a, S: SolverStrategy> BaseSolver<'a, S> {
             current_game,
         }
     }
+
+    pub fn set_debug(&mut self, debug: SolverDebugLevel) {
+        self.state.debug = debug;
+    }
+
+    /// Determine whether to print debug information at the given level
+    fn debug(&self, level: SolverDebugLevel) -> bool {
+        self.state.debug >= level
+    }
 }
 
 impl SolverState {
@@ -302,6 +346,7 @@ impl SolverState {
         Self {
             reset: false,
             quit: false,
+            debug: Default::default(),
 
             solve_method,
             search_bfs: solve_method.searches_bfs(),

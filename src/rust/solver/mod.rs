@@ -12,3 +12,4 @@ mod strategy;
 pub use solution::entry::solve_game;
 pub use solve_method::SolveMethod;
 pub use solver_trait::Solver;
+pub use base_solver::SolverDebugLevel;

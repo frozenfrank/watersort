@@ -1,4 +1,4 @@
-use crate::{init::Mode, solver::SolveMethod};
+use crate::{init::Mode, solver::{SolveMethod, SolverDebugLevel}};
 
 /// Game constants that define the structure of Water Sort Puzzle games
 
@@ -20,3 +20,4 @@ pub const FORCE_SOLVE_LEVEL: Option<&str> = None;
 pub const FORCE_INTERACTION_MODE: Option<Mode> = None;
 pub const DEFAULT_SOLVE_METHOD: SolveMethod = SolveMethod::MIX;
 pub const INITIAL_SOLVER_QUEUE_CAP: usize = 200;
+pub const SOLVER_DEBUG_LEVEL: SolverDebugLevel = SolverDebugLevel::None;

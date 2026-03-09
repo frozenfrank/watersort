@@ -14,4 +14,5 @@ pub trait Solver<'a> {
     fn get_results(&self) -> &'_ BestSolution<'a>;
     fn get_stats(&self) -> &SolutionStats;
     fn get_timing(&self) -> &SolutionTiming;
+    fn set_debug(&mut self, debug: crate::solver::SolverDebugLevel);
 }
