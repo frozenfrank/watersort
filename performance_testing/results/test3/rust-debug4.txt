@@ -1,0 +1,10 @@
+        1.35 real         1.08 user         0.01 sys
+        1.15 real         1.09 user         0.01 sys
+        1.08 real         1.07 user         0.01 sys
+        1.10 real         1.07 user         0.01 sys
+        1.06 real         1.05 user         0.01 sys
+        1.09 real         1.07 user         0.01 sys
+        1.24 real         1.10 user         0.01 sys
+        1.09 real         1.07 user         0.01 sys
+        1.09 real         1.07 user         0.01 sys
+        1.25 real         1.10 user         0.01 sys
