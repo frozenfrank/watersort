@@ -5,6 +5,7 @@ use std::{
 };
 
 use crate::MoveInfo;
+use crate::core::ColorCodeAllocator;
 use crate::display::colorama_ansi::STYLE;
 use crate::display::print_moves_consts::*;
 use crate::display::text_formatted::TextFormatted;
@@ -15,6 +16,9 @@ use crate::{
     display::solution_step_preparer::{GameInputType, SolutionStepPreparer},
     types::StdResult,
 };
+
+pub const CHARS_PER_LINE: usize = 100; // Estimates with the python version show 80-90 per line. A little extra won't hurt.
+
 
 const INDENT: &str = "  ";
 const SEPARATOR: &str = "\t ";
@@ -40,8 +44,7 @@ fn do_print_moves(game: GameInputType, from_game: Option<&Game>) -> StdResult {
 
     let steps = preparer.do_prepare_solution_steps(game, from_game);
 
-    let chars_per_line = 100; // Estimates with the python version show 80-90 per line. A little extra won't hurt.
-    let mut output = String::with_capacity(chars_per_line * steps.len());
+    let mut output = String::with_capacity(CHARS_PER_LINE * steps.len());
 
     writeln!(
         &mut output,
@@ -56,14 +59,10 @@ fn do_print_moves(game: GameInputType, from_game: Option<&Game>) -> StdResult {
     if steps.len() == 0 {
         writeln!(&mut output, "{INDENT}None")?;
     } else {
-        let cache = PrintMovesCache {
-            max_color_name_len: settings.allocator.max_color_name_len(),
-            consts: PRINT_MOVES_CONSTS.deref(),
-            print_full_color_name: true,
-        };
+        let cache = PrintMovesCache::new(&settings.allocator);
         for step in steps {
             write!(&mut output, "{INDENT}")?;
-            write_move_str(&mut output, &step, &cache);
+            write_move_str(&mut output, &step, &cache)?;
             if let Some(is_same_as_prev) = step.is_same_as_previous {
                 let word = if is_same_as_prev {
                     &"(same)"
@@ -81,19 +80,21 @@ fn do_print_moves(game: GameInputType, from_game: Option<&Game>) -> StdResult {
 }
 
 /// Writes a string with a fixed justification, including escape character for formatting, that describes the move.
-fn write_move_str(s: &mut String, step: &SolutionStep, cache: &PrintMovesCache) {
+pub fn write_move_str(s: &mut impl Write, step: &SolutionStep, cache: &PrintMovesCache) -> StdResult {
     let move_data = match &step.data {
         Some(data) => data,
-        None => return,
+        None => return Ok(()),
     };
 
     let move_text = format!("{}", move_data.move_);
-    write_vial_color_text(s, &move_data.move_info.color_moved, &move_text, 8, false);
-    write_move_info_str(s, &move_data.move_info, cache);
+    write_vial_color_text(s, &move_data.move_info.color_moved, &move_text, 8, false)?;
+    write_move_info_str(s, &move_data.move_info, cache)?;
+
+    Ok(())
 }
 
 /// Writes a string with fixed justification, including escape sequences for formatting, that describes MoveInfo.
-fn write_move_info_str(s: &mut String, info: &MoveInfo, cache: &PrintMovesCache) {
+fn write_move_info_str(s: &mut impl Write, info: &MoveInfo, cache: &PrintMovesCache) -> StdResult {
     // "({num_moved} {color}{extra_str})      " Justified to a standard width
     let mut output = TextFormatted::default();
     let const_width: usize = 5;
@@ -135,12 +136,23 @@ fn write_move_info_str(s: &mut String, info: &MoveInfo, cache: &PrintMovesCache)
     output.push_text(&")"); // 1 char
 
     output.left_justify(const_width + color_width + extra_width);
-    s.write_str(output.as_str())
-        .expect("Output is able to write into the String buffer");
+    s.write_str(output.as_str())?;
+
+    Ok(())
 }
 
-struct PrintMovesCache<'a> {
+pub struct PrintMovesCache<'a> {
     max_color_name_len: usize,
     print_full_color_name: bool,
     consts: &'a PrintMovesConsts,
+}
+
+impl<'a> PrintMovesCache<'a> {
+    pub fn new(allocator: &ColorCodeAllocator) -> Self {
+        Self {
+            max_color_name_len: allocator.max_color_name_len(),
+            consts: PRINT_MOVES_CONSTS.deref(),
+            print_full_color_name: true,
+        }
+    }
 }

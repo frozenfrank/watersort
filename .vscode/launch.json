@@ -28,5 +28,17 @@
       "program": "${file}",
       "console": "integratedTerminal"
     }
+    ,
+    {
+      "name": "Debug Rust: main.rs",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/target/debug/watersort",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "sourceLanguages": ["rust"],
+      "stopOnEntry": false,
+      "preLaunchTask": "rust: cargo build"
+    }
   ]
 }

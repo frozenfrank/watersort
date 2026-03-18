@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use crate::{
     Game,
@@ -29,7 +29,7 @@ pub trait SolverStrategy {
     /// Called when a new solution is found. Return True to stop this attempt with the discovered solution
     fn on_solution_found<'a>(
         &mut self,
-        solution: Arc<Game<'a>>,
+        solution: &Rc<Game<'a>>,
         best_solution: &mut BestSolution<'a>,
     ) -> bool {
         println!(
@@ -41,7 +41,7 @@ pub trait SolverStrategy {
             _ => true,
         };
         if update_solution {
-            best_solution.result = Some(solution);
+            best_solution.result = Some(solution.clone());
             best_solution.num_updates += 1;
         }
 

@@ -1,4 +1,6 @@
-#[derive(Clone, Copy, Debug)]
+use crate::DEFAULT_SOLVE_METHOD;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SolveMethod {
     /// Depth-First Search
     DFS,
@@ -11,6 +13,16 @@ pub enum SolveMethod {
 }
 
 impl SolveMethod {
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s.to_lowercase().as_str() {
+            "dfs" => Some(SolveMethod::DFS),
+            "dfr" => Some(SolveMethod::DFR),
+            "bfs" => Some(SolveMethod::BFS),
+            "mix" => Some(SolveMethod::MIX),
+            _ => None,
+        }
+    }
+
     pub fn shuffles_moves(self) -> bool {
         match self {
             SolveMethod::DFR => true,
@@ -32,5 +44,9 @@ impl SolveMethod {
             SolveMethod::BFS | SolveMethod::MIX => true,
             _ => false,
         }
+    }
+
+    pub fn get_definitely(method: &Option<SolveMethod>) -> Self {
+        method.unwrap_or(DEFAULT_SOLVE_METHOD)
     }
 }

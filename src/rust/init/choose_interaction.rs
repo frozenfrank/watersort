@@ -7,6 +7,7 @@ use std::io::{self, Write};
 
 use crate::init::Mode;
 use crate::init::interaction_result::InteractionResult;
+use crate::solver::SolveMethod;
 use crate::utils::helpers::vec_take;
 use crate::{
     DEFAULT_ANALYZE_ATTEMPTS, DEFAULT_DFR_SEARCH_ATTEMPTS, FORCE_INTERACTION_MODE,
@@ -91,12 +92,16 @@ fn interpret_command_args(result: &mut InteractionResult) {
                 let analyze_samples = args.get(3).map(|s| s.as_str());
                 result.set_analyze_mode(analyze_samples);
             } else {
-                result.solve_method = Some(args[2].to_string());
+                result.solve_method = SolveMethod::from_str(&args[2]);
+            }
+
+            if result.solve_method.is_none() {
+                println!("Could not interpret solve method from args: {}", args[2]);
             }
         }
 
         // Read DFR search attempts
-        if result.solve_method.as_deref() == Some("DFR") {
+        if result.solve_method == Some(SolveMethod::DFR) {
             result.num_iterations = DEFAULT_DFR_SEARCH_ATTEMPTS;
             if args.len() > 3
                 && let Ok(dfr_search_attempts) = args[3].parse()
@@ -143,7 +148,7 @@ fn prompt_for_mode(result: &mut InteractionResult) {
                 if words.len() < 2 {
                     println!("Cannot set the solve method without the method as well");
                 } else {
-                    result.solve_method = Some(words[1].to_string());
+                    result.solve_method = SolveMethod::from_str(words[1]);
                 }
             }
             "a" => {

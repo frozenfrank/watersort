@@ -12,6 +12,8 @@ name = "watersort"
 path = "src/rust/main.rs"
 
 [dependencies]
+arrayvec = "0.7.6"
 chrono = "0.4.43"
 itertools = "0.14.0"
+num = "0.4.3"
 rand = "0.10.0"

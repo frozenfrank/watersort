@@ -7,12 +7,19 @@ use crate::display::util::{print_lines, write_vial_color_text};
 use crate::types::StdResult;
 use std::fmt::Write;
 
+const WRITE_EXPECTATION: &str = "Vials print to std";
+
+
 pub fn print_vials(game: &Game) {
-    let _ = print_vials_numbered(game, false);
+    do_print_vials(game, false).expect(WRITE_EXPECTATION);
 }
 
 /// Prints the vials of a game, optionally numbering each output line for uniques in debuggers
-pub fn print_vials_numbered(game: &Game, number_spaces: bool) -> StdResult {
+pub fn print_vials_numbered(game: &Game) {
+    do_print_vials(game, true).expect(WRITE_EXPECTATION);
+}
+
+fn do_print_vials(game: &Game, number_spaces: bool) -> StdResult {
     let num_vials = game.num_vials();
     let reserve_chars_per_vial = 60; // Formatting can be 40 chars (fore + back styles)
     let mut lines: Vec<String> =
@@ -37,7 +44,7 @@ pub fn print_vials_numbered(game: &Game, number_spaces: bool) -> StdResult {
             let color = allocator.interpret_code_as_ref(all_spaces[cur_idx]);
             let s = &mut lines[space_index + 1];
             s.push('\t');
-            write_vial_color_text(s, color, &color.key, 0, false);
+            write_vial_color_text(s, color, &color.key, 0, false)?;
             cur_idx += 1;
         }
     }

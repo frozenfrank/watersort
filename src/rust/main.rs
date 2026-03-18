@@ -1,8 +1,6 @@
 /// Main entry point for the Water Sort Puzzle CLI
 use watersort::{
-    Game,
-    init::{Mode, choose_interaction},
-    io::parser,
+    Game, init::{Mode, choose_interaction}, io::parser, play::play_game, solver::{SolveMethod, solve_game}
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -26,14 +24,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // game.attempt_correct_errors()
 
     match interaction.mode {
-        Mode::Play => watersort::play::play_game(&mut game),
+        Mode::Play => play_game(&mut game),
         Mode::NewGame | Mode::Solve | Mode::Interact => {
-            watersort::solver::solve_game(game.to_arc())
+            solve_game(game.to_arc(), SolveMethod::get_definitely(&interaction.solve_method));
         }
         Mode::Analyze => unimplemented!("Analyze game functionality"),
         Mode::Quit => unreachable!("The program has already interpreted this option."),
         Mode::Unknown => {
-            unreachable!("After selecting an interaction, game mode should always be known.")
+            unreachable!("After selecting an interaction, game mode should always be known.");
         }
     }
 

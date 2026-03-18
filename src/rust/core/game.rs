@@ -10,12 +10,11 @@ use std::cell::RefCell;
 use std::fmt::{self, Formatter};
 use std::ops::Deref;
 use std::rc::Rc;
-use std::sync::Arc;
 
 /// Represents the state of a single game configuration
 ///
 /// Memory-efficient approach:
-/// - Uses Arc for shared references to parent games (immutable)
+/// - Uses Rc for shared references to parent games (immutable)
 /// - Uses Vec<Vial> for vial storage
 /// - Caches num_moves and completion_order for O(1) access
 /// - Stores shared settings in GameSettings to avoid duplication in game tree
@@ -28,7 +27,7 @@ pub struct Game<'a> {
     /// The move that led to this game from its parent
     last_move: Option<Move>,
     /// Reference to the parent game (None if this is root)
-    prev: Option<Arc<Game<'a>>>,
+    prev: Option<Rc<Game<'a>>>,
 
     // Game statistics (cached for efficiency)
     /// Number of moves taken to reach this state
@@ -111,17 +110,17 @@ impl<'a> Game<'a> {
         }
     }
 
-    pub fn new_root(vials: Vec<Vial>) -> Arc<Game<'static>> {
-        Arc::new(Game::create(vials))
+    pub fn new_root(vials: Vec<Vial>) -> Rc<Game<'static>> {
+        Rc::new(Game::create(vials))
     }
 
-    pub fn new_root_bare(vials: Vec<Vial>) -> Arc<Game<'static>> {
-        Arc::new(Game::create_bare(vials))
+    pub fn new_root_bare(vials: Vec<Vial>) -> Rc<Game<'static>> {
+        Rc::new(Game::create_bare(vials))
     }
 
     /// Creates a new game state by applying a move to the current game
-    pub fn spawn(self: &Arc<Game<'a>>, move_: Move) -> Arc<Game<'a>> {
-        // SAFETY: The parent game is kept alive by the Arc in `prev`, and the
+    pub fn spawn(self: &Rc<Game<'a>>, move_: Move) -> Rc<Game<'a>> {
+        // SAFETY: The parent game is kept alive by the Rc in `prev`, and the
         // parent game recursively references the Owned completion order, so the
         // borrowed reference will remain valid for the entire lifetime of this game.
         let completion_order = unsafe {
@@ -139,10 +138,10 @@ impl<'a> Game<'a> {
             settings: self.settings.clone(),
         };
         new_game.apply_move(move_.from as usize, move_.to as usize);
-        Arc::new(new_game)
+        Rc::new(new_game)
     }
 
-    pub fn generate_next_games(self: &Arc<Game<'a>>) -> Vec<Arc<Game<'a>>> {
+    pub fn generate_next_games(self: &Rc<Game<'a>>) -> Vec<Rc<Game<'a>>> {
         self.generate_next_moves()
             .into_iter()
             .map(|m| self.spawn(m))
@@ -206,8 +205,8 @@ impl<'a> Game<'a> {
         moves
     }
 
-    pub fn to_arc(self: Game<'a>) -> Arc<Game<'a>> {
-        Arc::new(self)
+    pub fn to_arc(self: Game<'a>) -> Rc<Game<'a>> {
+        Rc::new(self)
     }
 
     // ============ Accessors ============
@@ -246,7 +245,7 @@ impl<'a> Game<'a> {
     }
 
     /// Returns a reference to the parent game, if any
-    pub fn prev(&self) -> Option<&Arc<Game<'_>>> {
+    pub fn prev(&self) -> Option<&Rc<Game<'_>>> {
         self.prev.as_ref()
     }
 
@@ -748,14 +747,14 @@ mod tests {
             ['-', '-', '-', '-'],
         ].to_vec();
 
-        let game1 = Arc::new(new_root_from_chars(vials));
+        let game1 = Rc::new(new_root_from_chars(vials));
         println!("{}", game1);
 
         let game2 = game1.spawn(Move::vials(2, 3)); // Move blue
         println!("{}", game2);
         assert_ne!(
-            Arc::as_ptr(&game1),
-            Arc::as_ptr(&game2),
+            Rc::as_ptr(&game1),
+            Rc::as_ptr(&game2),
             "Game2 should allocation to a new location"
         );
         assert_eq!(
@@ -767,8 +766,8 @@ mod tests {
         let game3 = game2.spawn(Move::vials(1, 2)); // Complete red
         println!("{}", game3);
         assert_ne!(
-            Arc::as_ptr(&game2),
-            Arc::as_ptr(&game3),
+            Rc::as_ptr(&game2),
+            Rc::as_ptr(&game3),
             "Game3 should allocation to a new location"
         );
         assert_ne!(
@@ -780,8 +779,8 @@ mod tests {
         let game4 = game3.spawn(Move::vials(1, 3)); // Complete blue
         println!("{}", game4);
         assert_ne!(
-            Arc::as_ptr(&game3),
-            Arc::as_ptr(&game4),
+            Rc::as_ptr(&game3),
+            Rc::as_ptr(&game4),
             "Game4 should allocation to a new location"
         );
         assert_ne!(
