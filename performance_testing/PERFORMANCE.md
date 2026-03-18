@@ -234,6 +234,8 @@ This is likely due to a subtle difference in the searching algorithm, but does n
 | **Simple Avg** | 265 | 3.9015 | 1.10695 | 252.6% | 0.0948833 | **4081.0%** |
 | **Weighted Avg** | 265 | 3.88362 | 1.09604 | 254.3% | 0.0893585 | **4246.1%** |
 
+A summary graph showing the weighted average of the results for each program.
+
 ```mermaid
 ---
 config:
@@ -248,12 +250,31 @@ xychart
     x-axis [Python, "Rust Debug", Rust]
     y-axis "Seconds" -0.2 --> 4
     bar [3.884, 1.096, 0.089]
-    %% line [3.931, 1.12, 0.097]
-    %% line [3.8568, 1.0856, 0.0852]
-    %% line [3.8498, 1.0715, 0.0736]
-    %% line [3.929, 1.15, 0.109]
-    %% line [3.9385, 1.1, 0.104]
-    %% line [3.9039, 1.1146, 0.1005]
+```
+
+A detailed graph showing the weighted average of the results for each program overlaid with lines representing each of the independent executions.
+There are _6 independent executions_, but it may be hard to distinguish them from each other because there is low variability in results.
+
+```mermaid
+---
+config:
+    xyChart:
+        showDataLabel: true
+    themeVariables:
+        xyChart:
+            plotColorPalette: '#B9CE2C, #412CCE, #412CCE, #412CCE, #412CCE, #412CCE, #412CCE'
+---
+xychart
+    title "Python vs Rust - Performance Data - Test 3"
+    x-axis [Python, "Rust Debug", Rust]
+    y-axis "Seconds" 0 --> 4
+    bar [3.884, 1.096, 0.089]
+    line [3.931, 1.12, 0.097]
+    line [3.8568, 1.0856, 0.0852]
+    line [3.8498, 1.0715, 0.0736]
+    line [3.929, 1.15, 0.109]
+    line [3.9385, 1.1, 0.104]
+    line [3.9039, 1.1146, 0.1005]
 ```
 
 ## Appendix A: Shell Reference
