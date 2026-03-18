@@ -34,25 +34,7 @@ done
 ```
 
 ```shell
-read "test?Test number: "
-read "executions?Num executions: "
-echo "| Execution | Trials | Python Avg | Rust Debug Avg | % Faster | Rust Avg | % Faster |"
-echo "|-----------|--------|------------|----------------|----------|----------|----------|"
-for i in {1..$executions}; do
-  py_file="performance_testing/results/test$test/python${i}.txt"
-  rd_file="performance_testing/results/test$test/rust-debug${i}.txt"
-  rs_file="performance_testing/results/test$test/rust${i}.txt"
-
-  py_avg=$(awk '{s+=$(1);c++} END{if(c) print s/c}' "$py_file")
-  rd_avg=$(awk '{s+=$(1);c++} END{if(c) print s/c}' "$rd_file")
-  rs_avg=$(awk '{s+=$(1);c++} END{if(c) print s/c}' "$rs_file")
-
-  trials=$(cat "$py_file" | wc -l)
-  percent_d=$(awk -v p="$py_avg" -v r="$rd_avg" 'BEGIN{ printf "%.1f", (p/r - 1) * 100 }')
-  percent_r=$(awk -v p="$py_avg" -v r="$rs_avg" 'BEGIN{ printf "%.1f", (p/r - 1) * 100 }')
-
-  echo "| $i | $trials | $py_avg | $rd_avg | $percent_d% | $rs_avg | **$percent_r%** |"
-done
+./performance_testing/analyze-test-results.sh
 ```
 
 ### Independent
@@ -249,6 +231,8 @@ This is likely due to a subtle difference in the searching algorithm, but does n
 | 4 |       10 | 3.929 | 1.15 | 241.7% | 0.109 | **3504.6%** | Spaced out |
 | 5 |       20 | 3.9385 | 1.1 | 258.0% | 0.104 | **3687.0%** | Spaced out |
 | 6 |      100 | 3.9039 | 1.1146 | 250.3% | 0.1005 | **3784.5%** | Spaced out |
+| **Simple Avg** | 265 | 3.9015 | 1.10695 | 252.6% | 0.0948833 | **4081.0%** |
+| **Weighted Avg** | 265 | 3.88362 | 1.09604 | 254.3% | 0.0893585 | **4246.1%** |
 
 ```mermaid
 ---
@@ -263,7 +247,7 @@ xychart
     title "Python vs Rust - Performance Data - Test 3"
     x-axis [Python, "Rust Debug", Rust]
     y-axis "Seconds" -0.2 --> 4
-    bar [3.931, 1.12, 0.097]
+    bar [3.884, 1.096, 0.089]
     %% line [3.931, 1.12, 0.097]
     %% line [3.8568, 1.0856, 0.0852]
     %% line [3.8498, 1.0715, 0.0736]
