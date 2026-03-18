@@ -1,1 +1,10 @@
 **/__pycache__/*
+results.txt
+
+# Files generated in source directory
+src/**/wslevels
+src/**/wsanalysis
+
+# Added by cargo
+
+/target

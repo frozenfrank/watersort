@@ -1,0 +1,88 @@
+
+running 8 tests
+test core::color::tests::test_color_validation ... ok
+test core::game::tests::test_completion_order_address_stability_spawning ... ok
+test core::game::tests::test_finished_check ... ok
+test core::game::tests::test_completion_order_address_stability ... ok
+test utils::helpers::tests::test_percent_str ... ok
+test core::game::tests::test_game_creation ... ok
+test core::game::tests::test_move_correctness ... ok
+test core::game::tests::test_completion_order_unique_count ... FAILED
+
+failures:
+
+---- core::game::tests::test_completion_order_unique_count stdout ----
+D: 1 	Move: 7->13	Before: [o, g, l, g] -> [-, -, -, -] 	After: [-, g, l, g] -> [-, -, -, o] 
+D: 2 	Move: 5->14	Before: [k, b, i, p] -> [-, -, -, -] 	After: [-, b, i, p] -> [-, -, -, k] 
+find_solo_vial: candidate vial 13 for color 8 (k) (only_color=true, num_on_top=1) vial=["-", "-", "-", "k"]
+D: 3 	Move: 6->14	Before: [k, g, p, y] -> [-, -, -, k] 	After: [-, g, p, y] -> [-, -, k, k] 
+find_solo_vial: candidate vial 13 for color 8 (k) (only_color=true, num_on_top=2) vial=["-", "-", "k", "k"]
+D: 4 	Move: 3->14	Before: [k, n, m, p] -> [-, -, k, k] 	After: [-, n, m, p] -> [-, k, k, k] 
+D: 5 	Move: 11->7	Before: [g, m, y, o] -> [-, g, l, g] 	After: [-, m, y, o] -> [g, g, l, g] 
+D: 6 	Move: 1->11	Before: [m, g, o, y] -> [-, m, y, o] 	After: [-, g, o, y] -> [m, m, y, o] 
+D: 7 	Move: 1->6	Before: [-, g, o, y] -> [-, g, p, y] 	After: [-, -, o, y] -> [g, g, p, y] 
+find_solo_vial: candidate vial 12 for color 4 (o) (only_color=true, num_on_top=1) vial=["-", "-", "-", "o"]
+D: 8 	Move: 1->13	Before: [-, -, o, y] -> [-, -, -, o] 	After: [-, -, -, y] -> [-, -, o, o] 
+find_solo_vial: candidate vial 0 for color 5 (y) (only_color=true, num_on_top=1) vial=["-", "-", "-", "y"]
+D: 9 	Move: 4->1	Before: [y, n, r, i] -> [-, -, -, y] 	After: [-, n, r, i] -> [-, -, y, y] 
+D: 10 	Move: 4->3	Before: [-, n, r, i] -> [-, n, m, p] 	After: [-, -, r, i] -> [n, n, m, p] 
+D: 11 	Move: 12->4	Before: [r, i, g, b] -> [-, -, r, i] 	After: [-, i, g, b] -> [-, r, r, i] 
+D: 12 	Move: 8->4	Before: [r, g, l, n] -> [-, r, r, i] 	After: [-, g, l, n] -> [r, r, r, i] 
+D: 13 	Move: 10->8	Before: [g, i, n, o] -> [-, g, l, n] 	After: [-, i, n, o] -> [g, g, l, n] 
+D: 14 	Move: 10->12	Before: [-, i, n, o] -> [-, i, g, b] 	After: [-, -, n, o] -> [i, i, g, b] 
+D: 15 	Move: 3->10	Before: [n, n, m, p] -> [-, -, n, o] 	After: [-, -, m, p] -> [n, n, n, o] 
+D: 16 	Move: 11->3	Before: [m, m, y, o] -> [-, -, m, p] 	After: [-, -, y, o] -> [m, m, m, p] 
+D: 17 	Move: 1->11	Before: [-, -, y, y] -> [-, -, y, o] 	After: [-, -, -, -] -> [y, y, y, o] 
+D: 18 	Move: 9->1	Before: [b, b, l, m] -> [-, -, -, -] 	After: [-, -, l, m] -> [-, -, b, b] 
+find_solo_vial: candidate vial 0 for color 12 (b) (only_color=true, num_on_top=2) vial=["-", "-", "b", "b"]
+D: 19 	Move: 5->1	Before: [-, b, i, p] -> [-, -, b, b] 	After: [-, -, i, p] -> [-, b, b, b] 
+D: 20 	Move: 12->5	Before: [i, i, g, b] -> [-, -, i, p] 	After: [-, -, g, b] -> [i, i, i, p] 
+D: 21 	Move: 8->12	Before: [g, g, l, n] -> [-, -, g, b] 	After: [-, -, l, n] -> [g, g, g, b] 
+D: 22 	Move: 8->9	Before: [-, -, l, n] -> [-, -, l, m] 	After: [-, -, -, n] -> [-, l, l, m] 
+find_solo_vial: candidate vial 7 for color 10 (n) (only_color=true, num_on_top=1) vial=["-", "-", "-", "n"]
+D: 23 	Move: 10->8	Before: [n, n, n, o] -> [-, -, -, n] 	After: [-, -, -, o] -> [n, n, n, n] 
+D: 24 	Move: 10->13	Before: [-, -, -, o] -> [-, -, o, o] 	After: [-, -, -, -] -> [-, o, o, o] 
+D: 25 	Move: 2->10	Before: [r, p, k, l] -> [-, -, -, -] 	After: [-, p, k, l] -> [-, -, -, r] 
+find_solo_vial: candidate vial 9 for color 6 (r) (only_color=true, num_on_top=1) vial=["-", "-", "-", "r"]
+D: 26 	Move: 4->10	Before: [r, r, r, i] -> [-, -, -, r] 	After: [-, -, -, i] -> [r, r, r, r] 
+find_solo_vial: candidate vial 3 for color 11 (i) (only_color=true, num_on_top=1) vial=["-", "-", "-", "i"]
+D: 27 	Move: 5->4	Before: [i, i, i, p] -> [-, -, -, i] 	After: [-, -, -, p] -> [i, i, i, i] 
+find_solo_vial: candidate vial 4 for color 7 (p) (only_color=true, num_on_top=1) vial=["-", "-", "-", "p"]
+D: 28 	Move: 2->5	Before: [-, p, k, l] -> [-, -, -, p] 	After: [-, -, k, l] -> [-, -, p, p] 
+find_solo_vial: candidate vial 13 for color 8 (k) (only_color=true, num_on_top=3) vial=["-", "k", "k", "k"]
+D: 29 	Move: 2->14	Before: [-, -, k, l] -> [-, k, k, k] 	After: [-, -, -, l] -> [k, k, k, k] 
+find_solo_vial: candidate vial 1 for color 9 (l) (only_color=true, num_on_top=1) vial=["-", "-", "-", "l"]
+D: 30 	Move: 9->2	Before: [-, l, l, m] -> [-, -, -, l] 	After: [-, -, -, m] -> [-, l, l, l] 
+find_solo_vial: candidate vial 8 for color 2 (m) (only_color=true, num_on_top=1) vial=["-", "-", "-", "m"]
+D: 31 	Move: 3->9	Before: [m, m, m, p] -> [-, -, -, m] 	After: [-, -, -, p] -> [m, m, m, m] 
+D: 32 	Move: 3->5	Before: [-, -, -, p] -> [-, -, p, p] 	After: [-, -, -, -] -> [-, p, p, p] 
+D: 33 	Move: 7->3	Before: [g, g, l, g] -> [-, -, -, -] 	After: [-, -, l, g] -> [-, -, g, g] 
+find_solo_vial: candidate vial 1 for color 9 (l) (only_color=true, num_on_top=3) vial=["-", "l", "l", "l"]
+D: 34 	Move: 7->2	Before: [-, -, l, g] -> [-, l, l, l] 	After: [-, -, -, g] -> [l, l, l, l] 
+find_solo_vial: candidate vial 2 for color 3 (g) (only_color=true, num_on_top=2) vial=["-", "-", "g", "g"]
+find_solo_vial: candidate vial 6 for color 3 (g) (only_color=true, num_on_top=1) vial=["-", "-", "-", "g"]
+prepare_move: reject require_max_solo_vial for 11->6 (max_solo_vial=2)
+D: 34 	Move: 12->7	Before: [g, g, g, b] -> [-, -, -, g] 	After: [g, g, g, b] -> [-, -, -, g] No change! 
+find_solo_vial: candidate vial 2 for color 3 (g) (only_color=true, num_on_top=2) vial=["-", "-", "g", "g"]
+find_solo_vial: candidate vial 6 for color 3 (g) (only_color=true, num_on_top=1) vial=["-", "-", "-", "g"]
+D: 35 	Move: 6->3	Before: [g, g, p, y] -> [-, -, g, g] 	After: [-, -, p, y] -> [g, g, g, g] 
+find_solo_vial: candidate vial 4 for color 7 (p) (only_color=true, num_on_top=3) vial=["-", "p", "p", "p"]
+D: 36 	Move: 6->5	Before: [-, -, p, y] -> [-, p, p, p] 	After: [-, -, -, y] -> [p, p, p, p] 
+find_solo_vial: candidate vial 5 for color 5 (y) (only_color=true, num_on_top=1) vial=["-", "-", "-", "y"]
+D: 37 	Move: 11->6	Before: [y, y, y, o] -> [-, -, -, y] 	After: [-, -, -, o] -> [y, y, y, y] 
+D: 38 	Move: 11->13	Before: [-, -, -, o] -> [-, o, o, o] 	After: [-, -, -, -] -> [o, o, o, o] 
+prepare_move: reject color mismatch for 11->0 (start=3 end=12)
+D: 38 	Move: 12->1	Before: [g, g, g, b] -> [-, b, b, b] 	After: [g, g, g, b] -> [-, b, b, b] No change! 
+
+thread 'core::game::tests::test_completion_order_unique_count' (54884484) panicked at src/rust/core/game.rs:749:9:
+assertion `left == right` failed: The final game should include all scheduled moves
+  left: 40
+ right: 38
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    core::game::tests::test_completion_order_unique_count
+
+test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

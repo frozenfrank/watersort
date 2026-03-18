@@ -1,0 +1,14 @@
+i
+956 mystery
+11
+lb	pk	g	m
+m	p	m	pn
+p	o	pn	pk
+r	b	o	g
+m	lb	p	b
+r	pk	b	g
+pk	lb	p	o
+pn	g	b	r
+pn	r	o	lb
+-	-	-	-
+-	-	-	-
