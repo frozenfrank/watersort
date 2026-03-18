@@ -19,7 +19,7 @@ if USE_READCHAR:
   from readchar import readkey, key
 
 
-USE_BIG_MOVES = False
+USE_BIG_MOVES = True
 
 INSTALLED_BASE_PATH = ""
 WRITE_FILES_TO_ABSOLUTE_PATH = False
