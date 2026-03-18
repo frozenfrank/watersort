@@ -8,6 +8,7 @@ pub mod display;
 pub mod init;
 pub mod io;
 pub mod play;
+pub mod solver;
 pub mod types;
 pub mod utils;
 

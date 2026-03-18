@@ -1,4 +1,4 @@
-use crate::init::Mode;
+use crate::{init::Mode, solver::SolveMethod};
 
 /// Game constants that define the structure of Water Sort Puzzle games
 
@@ -16,6 +16,7 @@ pub const ANALYZER_VERSION: u32 = 6;
 
 pub const DEFAULT_ANALYZE_ATTEMPTS: usize = 100;
 pub const DEFAULT_DFR_SEARCH_ATTEMPTS: usize = 100;
-pub const FORCE_SOLVE_LEVEL: Option<&str> = None;
+pub const FORCE_SOLVE_LEVEL: Option<&str> = Some(&"2");
 pub const FORCE_INTERACTION_MODE: Option<Mode> = None;
-pub const DEFAULT_SOLVE_METHOD: &str = "MIX";
+pub const DEFAULT_SOLVE_METHOD: SolveMethod = SolveMethod::DFS;
+pub const INITIAL_SOLVER_QUEUE_CAP: usize = 200;

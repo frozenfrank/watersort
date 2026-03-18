@@ -2,7 +2,7 @@
 use watersort::{
     Game,
     init::{Mode, choose_interaction},
-    io::{parser, save_game},
+    io::parser,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -27,15 +27,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match interaction.mode {
         Mode::Play => watersort::play::play_game(&mut game),
-        Mode::NewGame | Mode::Solve | Mode::Interact => unimplemented!("Solve game functionality"),
+        Mode::NewGame | Mode::Solve | Mode::Interact => {
+            watersort::solver::solve_game(game.to_arc())
+        }
         Mode::Analyze => unimplemented!("Analyze game functionality"),
         Mode::Quit => unreachable!("The program has already interpreted this option."),
         Mode::Unknown => {
             unreachable!("After selecting an interaction, game mode should always be known.")
         }
     }
-
-    save_game(&game, false)?;
 
     Ok(())
 }

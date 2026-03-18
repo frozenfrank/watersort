@@ -18,6 +18,9 @@ USE_READCHAR = True
 if USE_READCHAR:
   from readchar import readkey, key
 
+
+USE_BIG_MOVES = False
+
 INSTALLED_BASE_PATH = ""
 WRITE_FILES_TO_ABSOLUTE_PATH = False
 
@@ -132,7 +135,7 @@ class Game:
   preferBigMoves: bool = True
 
   # Flags set on the root game
-  level: str
+  level: str = None
   modified: bool # Indicates it's changed from the last read in state
   _colorError: bool
   _hasUnknowns: bool
@@ -1755,7 +1758,7 @@ class BaseSolver:
   minSolutionUpdates: int
   numSolutionsAbandoned: int
 
-  # Solution Solution status
+  # Solution status
   numIterations: int
   numDeadEnds: int
   numPartialSolutionsGenerated: int
@@ -1822,8 +1825,7 @@ class BaseSolver:
     self.QUEUE_CHECK_FREQ = self.REPORT_ITERATION_FREQ * 10
     self.REPORT_SEC_FREQ = 15
 
-    # Time check setup
-    timeCheck: float
+
     computed: set["Game"]|None = None
 
 
@@ -1908,8 +1910,7 @@ class BaseSolver:
 
           hasNetNewNextGame = True
           if nextGame.isFinished():
-            timeCheck = time()
-            self.solutionEnd = timeCheck
+            self.solutionEnd = time()
             if self._onSolutionFound(nextGame):
               break # Finish searching
           else:
@@ -2139,9 +2140,12 @@ class SolutionSolver(BaseSolver):
           """)
 
     if self.minSolution:
-      BigSolutionDisplay(self.minSolution).start()
-      # print(f"Found solution{' to level ' + game.level if game.level else ''}!")
-      # self.minSolution.printMoves()
+      if USE_BIG_MOVES:
+        BigSolutionDisplay(self.minSolution).start()
+      else:
+        print(f"Found solution{' to level ' + self.minSolution.level if self.minSolution.level else ''}!")
+        self.minSolution.printVials()
+        self.minSolution.printMoves()
     else:
       print(formatVialColor("er", "Cannot find solution."))
 
@@ -2202,7 +2206,10 @@ class SafeGameSolver(BaseSolver):
 
 def solveGame(game: "Game", solveMethod = "MIX", analyzeSampleCount = 0, probeDFRSamples = 0):
   solver = AnalysisSolver(game) if analyzeSampleCount > 0 else SolutionSolver(game)
-  solver.solveGame(solveMethod, numSolutions=analyzeSampleCount or probeDFRSamples)
+  numSolutions = analyzeSampleCount or probeDFRSamples
+  if solveMethod == "DFS" or solveMethod == "BFS":
+    numSolutions = 1
+  solver.solveGame(solveMethod, numSolutions=numSolutions)
   pass
 
 def testSolutionPrints(solution: "Game"):
